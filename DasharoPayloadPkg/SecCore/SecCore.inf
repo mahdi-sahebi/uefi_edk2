@@ -46,6 +46,9 @@
   BaseCpuLib
   PeCoffGetEntryPointLib
   PeCoffExtraActionLib
+  IoLib
+  PrintLib
+  ReportStatusCodeLib
 
 [Ppis]
   gEfiSecPlatformInformationPpiGuid             # PPI ALWAYS_PRODUCED

@@ -9,6 +9,12 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 #include "SecMain.h"
 
+//////////////////////////// mahdi
+#include "edkii_vga.h"
+/////////////////////////////////
+
+
+
 EFI_PEI_TEMPORARY_RAM_SUPPORT_PPI gSecTemporaryRamSupportPpi = {
   SecTemporaryRamSupport
 };
@@ -65,6 +71,11 @@ SecStartup (
   IN UINT32                   BootloaderParameter
   )
 {
+  //////////////////////////// mahdi
+  //edkii_vga_clear();
+  //edkii_vga_print(0, "EDK II Started ");
+  ///////////////////////////
+
   EFI_SEC_PEI_HAND_OFF        SecCoreData;
   IA32_DESCRIPTOR             IdtDescriptor;
   SEC_IDT_TABLE               IdtTableInStack;
@@ -73,17 +84,51 @@ SecStartup (
 
   PeiStackSize = (SizeOfRam >> 1);
 
+//////////////////////////////////////////
+    // char buf[32];
+// //edkii_vga_print(1, "Params:");
+
+// AsciiSPrint(buf, sizeof(buf), "HDR: 0x%X", *(UINT32*)BootloaderParameter);
+// //edkii_vga_print(2, buf);
+
+// AsciiSPrint(buf, sizeof(buf), "SOR: 0x%X", SizeOfRam);
+// //edkii_vga_print(3, buf);
+
+// AsciiSPrint(buf, sizeof(buf), "TRB: 0x%X", TempRamBase);
+// //edkii_vga_print(4, buf);
+
+// AsciiSPrint(buf, sizeof(buf), "BFV: 0x%X", (UINT32)(UINTN)BootFirmwareVolume);
+// //edkii_vga_print(5, buf);
+
+// AsciiSPrint(buf, sizeof(buf), "BLP: 0x%X", BootloaderParameter);
+// //edkii_vga_print(6, buf);
+
+
+// // Also verify the coreboot table signature
+// UINT32 *lb = (UINT32 *)BootloaderParameter;
+// if (lb && lb[0] == 0x4F49424C) {  // "LBIO" in little-endian
+//     //edkii_vga_print(7, "LBIO OK");
+// } else {
+//     //edkii_vga_print(7, "LBIO FAIL");
+// }
+
+// if (SizeOfRam == 0 || TempRamBase == 0) {
+//     //edkii_vga_print(8, "ERROR: Invalid params!");
+// }
+///////////////////////////////////////////
   ASSERT (PeiStackSize < SizeOfRam);
 
   //
   // Process all libraries constructor function linked to SecCore.
   //
+  // //edkii_vga_print(0, "EDK II Started - 1");
   ProcessLibraryConstructorList ();
 
   //
   // Initialize floating point operating environment
   // to be compliant with UEFI spec.
   //
+  // //edkii_vga_print(0, "EDK II Started - 2");
   InitializeFloatingPointUnits ();
 
 
@@ -101,14 +146,20 @@ SecStartup (
   // |                   |
   // |                   |
   // |-------------------|---->  TempRamBase
+  // //edkii_vga_print(0, "EDK II Started - 3");
 
   IdtTableInStack.PeiService = 0;
   for (Index = 0; Index < SEC_IDT_ENTRY_COUNT; Index ++) {
     CopyMem ((VOID*)&IdtTableInStack.IdtTable[Index], (VOID*)&mIdtEntryTemplate, sizeof (UINT64));
   }
+  // //edkii_vga_print(0, "EDK II Started - 4");
 
   IdtDescriptor.Base  = (UINTN) &IdtTableInStack.IdtTable;
   IdtDescriptor.Limit = (UINT16)(sizeof (IdtTableInStack.IdtTable) - 1);
+
+  // //edkii_vga_print(0, "EDK II Started - 5");
+  AsmWriteIdtr (&IdtDescriptor);
+  // //edkii_vga_print(0, "EDK II Started - 6");
 
   AsmWriteIdtr (&IdtDescriptor);
 
@@ -148,6 +199,10 @@ SecStartupPhase2(
   IN VOID                     *Context
   )
 {
+  char buf[78];
+  edkii_vga_clear();
+  edkii_vga_print(0, "SePh2-start");
+
   EFI_SEC_PEI_HAND_OFF        *SecCoreData;
   EFI_PEI_CORE_ENTRY_POINT    PeiCoreEntryPoint;
 
@@ -159,14 +214,27 @@ SecStartupPhase2(
   FindAndReportEntryPoints ((EFI_FIRMWARE_VOLUME_HEADER *) SecCoreData->BootFirmwareVolumeBase, &PeiCoreEntryPoint);
   if (PeiCoreEntryPoint == NULL)
   {
+    edkii_vga_print(0, "SePh2 - PeiCoreEntryPoint is NULL");
     CpuDeadLoop ();
   }
 
   //
   // Transfer the control to the PEI core
   //
+  // edkii_vga_print(3, "SePh2[3]");
   ASSERT (PeiCoreEntryPoint != NULL);
-  (*PeiCoreEntryPoint) (SecCoreData, (EFI_PEI_PPI_DESCRIPTOR *)&mPeiSecPlatformInformationPpi);
+  AsciiSPrint(buf, sizeof(buf), "SePh2: 0x%X, 0x%X,", 
+    (UINT32)(UINTN)SecCoreData->BootFirmwareVolumeBase, 
+    (UINT32)(UINTN)PeiCoreEntryPoint);
+  edkii_vga_print(0, buf);
+
+  // edkii_vga_hex_dump((void*)PeiCoreEntryPoint, 64, 11);
+  // edkii_vga_hex_dump((void*)SecCoreData, 64, 16);
+  ASSERT (PeiCoreEntryPoint != NULL);
+  // (*PeiCoreEntryPoint) (SecCoreData, (EFI_PEI_PPI_DESCRIPTOR *)&mPeiSecPlatformInformationPpi);
+  PeiCoreEntryPoint(SecCoreData, (EFI_PEI_PPI_DESCRIPTOR *)&mPeiSecPlatformInformationPpi);
+
+  edkii_vga_print(0, "SePh2[4] Fatal");
 
   //
   // Should not come here.
