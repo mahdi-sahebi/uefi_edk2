@@ -228,8 +228,9 @@ SecStartupPhase2(
     (UINT32)(UINTN)PeiCoreEntryPoint);
   edkii_vga_print(0, buf);
 
-  // edkii_vga_hex_dump((void*)PeiCoreEntryPoint, 64, 11);
-  // edkii_vga_hex_dump((void*)SecCoreData, 64, 16);
+  edkii_vga_hex_dump((void*)PeiCoreEntryPoint, 64, 9);
+  edkii_vga_hex_dump((void*)*PeiCoreEntryPoint, 64, 14);
+  edkii_vga_hex_dump((void*)SecCoreData, 64, 19);
   ASSERT (PeiCoreEntryPoint != NULL);
   // (*PeiCoreEntryPoint) (SecCoreData, (EFI_PEI_PPI_DESCRIPTOR *)&mPeiSecPlatformInformationPpi);
   PeiCoreEntryPoint(SecCoreData, (EFI_PEI_PPI_DESCRIPTOR *)&mPeiSecPlatformInformationPpi);

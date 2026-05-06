@@ -54,7 +54,7 @@ FindImageBase (
     CurrentAddress + BootFirmwareVolumePtr->HeaderLength);
   edkii_vga_print(3, buf);
 
-  edkii_vga_hex_dump((unsigned char*)BootFirmwareVolumePtr, 256, 6);
+  edkii_vga_hex_dump((unsigned char*)BootFirmwareVolumePtr, 32, 6);
 
 
   //
