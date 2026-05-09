@@ -8,6 +8,165 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 #include "PeiMain.h"
 
+
+
+/////////////////////////////////////////////////////
+
+#include <stdarg.h> 
+
+#include <Library/IoLib.h>
+#include <Library/PrintLib.h>
+#include <Library/BaseLib.h>
+#include <Library/DebugLib.h>
+#include <Library/BaseMemoryLib.h>
+#include <Library/PcdLib.h>
+// #include <Library/CpuLib.h>
+// #include <Library/PeCoffGetEntryPointLib.h>
+// #include <Library/PeCoffExtraActionLib.h>
+#include <Library/DebugAgentLib.h>
+
+#define mde_1__VGA_FB 0xB8000
+#define mde_1__VGA_COLUMNS 80
+
+char mde_1_g_buffer[80];
+
+void mde_1_edkii_vga_write_at_offset(unsigned int line, unsigned int offset, const char *string)
+{
+	if (!string)
+		return;
+
+	unsigned short *p = (unsigned short *)mde_1__VGA_FB + (mde_1__VGA_COLUMNS * line) + offset;
+	unsigned int i, len = AsciiStrLen(string);
+
+	for (i = 0; i < (mde_1__VGA_COLUMNS - offset); i++) {
+		if (i < len)
+			p[i] = 0x0F00 | (unsigned char)string[i];
+		else
+			p[i] = 0x0F00;
+	}
+}
+
+
+void mde_1_edkii_vga_print(unsigned int line, const char *string)
+{
+	mde_1_edkii_vga_write_at_offset(line, 0, string);
+}
+
+void mde_1_edkii_vga_sprintf(
+  unsigned int row,
+  const char* format,
+  ...)
+{
+  VA_LIST  marker;
+  
+  VA_START (marker, format);
+  AsciiVSPrint(mde_1_g_buffer, sizeof(mde_1_g_buffer), format, marker);
+  VA_END (marker);
+  
+  mde_1_edkii_vga_print (row, mde_1_g_buffer);
+}
+
+void mde_1_edkii_vga_clear()
+{
+  mde_1_edkii_vga_print(0, "                                                                                                    ");
+  mde_1_edkii_vga_print(1, "                                                                                                    ");
+  mde_1_edkii_vga_print(2, "                                                                                                    ");
+  mde_1_edkii_vga_print(3, "                                                                                                    ");
+  mde_1_edkii_vga_print(4, "                                                                                                    ");
+  mde_1_edkii_vga_print(5, "                                                                                                    ");
+  mde_1_edkii_vga_print(6, "                                                                                                    ");
+  mde_1_edkii_vga_print(7, "                                                                                                    ");
+  mde_1_edkii_vga_print(8, "                                                                                                    ");
+  mde_1_edkii_vga_print(9, "                                                                                                    ");
+  mde_1_edkii_vga_print(10, "                                                                                                    ");
+  mde_1_edkii_vga_print(11, "                                                                                                    ");
+  mde_1_edkii_vga_print(12, "                                                                                                    ");
+  mde_1_edkii_vga_print(13, "                                                                                                    ");
+  mde_1_edkii_vga_print(14, "                                                                                                    ");
+  mde_1_edkii_vga_print(15, "                                                                                                    ");
+  mde_1_edkii_vga_print(16, "                                                                                                    ");
+  mde_1_edkii_vga_print(17, "                                                                                                    ");
+  mde_1_edkii_vga_print(18, "                                                                                                    ");
+  mde_1_edkii_vga_print(19, "                                                                                                    ");
+  mde_1_edkii_vga_print(20, "                                                                                                    ");
+  mde_1_edkii_vga_print(21, "                                                                                                    ");
+  mde_1_edkii_vga_print(22, "                                                                                                    ");
+  mde_1_edkii_vga_print(23, "                                                                                                    ");
+  mde_1_edkii_vga_print(24, "                                                                                                    ");
+}
+
+void mde_1_edkii_vga_hex_dump(const unsigned char *addr, unsigned int len, int start_row) 
+{
+    unsigned int i;
+    
+    for (i = 0; i < len; i += 16) {
+        unsigned int j;
+        int row = start_row + (i / 16);
+        int offset_pos = 0;
+        
+        // Write offset character by character
+        unsigned long ptr_val = (unsigned long)(addr + i);
+        for (j = 28; j > 0; j -= 4) {
+            char nibble = (ptr_val >> j) & 0x0F;
+            char c = (nibble < 10) ? ('0' + nibble) : ('A' + nibble - 10);
+            char buf[2] = {c, '\0'};
+            mde_1_edkii_vga_write_at_offset(row, offset_pos++, buf);
+        }
+        {
+            char last_nibble = ptr_val & 0x0F;
+            char c = (last_nibble < 10) ? ('0' + last_nibble) : ('A' + last_nibble - 10);
+            char buf[2] = {c, '\0'};
+            mde_1_edkii_vga_write_at_offset(row, offset_pos++, buf);
+        }
+        mde_1_edkii_vga_write_at_offset(row, offset_pos++, ": ");
+        
+        // Write hex bytes
+        for (j = 0; j < 16 && (i + j < len); j++) {
+            unsigned char byte = addr[i + j];
+            // Write high nibble
+            char high = (byte >> 4) & 0x0F;
+            char c1 = (high < 10) ? ('0' + high) : ('A' + high - 10);
+            char buf1[2] = {c1, '\0'};
+            mde_1_edkii_vga_write_at_offset(row, offset_pos++, buf1);
+            // Write low nibble
+            char low = byte & 0x0F;
+            char c2 = (low < 10) ? ('0' + low) : ('A' + low - 10);
+            char buf2[2] = {c2, '\0'};
+            mde_1_edkii_vga_write_at_offset(row, offset_pos++, buf2);
+            // Write space
+            mde_1_edkii_vga_write_at_offset(row, offset_pos++, " ");
+        }
+        
+        // Pad remaining hex spaces
+        for (; j < 16; j++) {
+            mde_1_edkii_vga_write_at_offset(row, offset_pos++, "   ");
+        }
+        
+        // Write ASCII representation
+        mde_1_edkii_vga_write_at_offset(row, offset_pos++, "  ");
+        
+        for (j = 0; j < 16 && (i + j < len); j++) {
+            unsigned char byte = addr[i + j];
+            char c = (byte >= 0x20 && byte <= 0x7e) ? (char)byte : '.';
+            char buf[2] = {c, '\0'};
+            mde_1_edkii_vga_write_at_offset(row, offset_pos + j, buf);
+        }
+    }
+}
+
+
+
+/////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
 EFI_PEI_PPI_DESCRIPTOR  mMemoryDiscoveredPpi = {
   (EFI_PEI_PPI_DESCRIPTOR_PPI | EFI_PEI_PPI_DESCRIPTOR_TERMINATE_LIST),
   &gEfiPeiMemoryDiscoveredPpiGuid,
@@ -172,6 +331,7 @@ PeiCore (
   IN VOID                          *Data
   )
 {
+
   PEI_CORE_INSTANCE               PrivateData;
   EFI_SEC_PEI_HAND_OFF            *SecCoreData;
   EFI_SEC_PEI_HAND_OFF            NewSecCoreData;
@@ -183,6 +343,9 @@ PeiCore (
   EFI_HOB_HANDOFF_INFO_TABLE      *HandoffInformationTable;
   EFI_PEI_TEMPORARY_RAM_DONE_PPI  *TemporaryRamDonePpi;
   UINTN                           Index;
+
+  mde_1_edkii_vga_clear();
+  mde_1_edkii_vga_print(0, "PeiCore");
 
   //
   // Retrieve context passed into PEI Core
