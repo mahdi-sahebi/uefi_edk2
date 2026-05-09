@@ -11,6 +11,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 //////////////////////////// mahdi
 #include "edkii_vga.h"
+#include <Library/TimerLib.h>
 /////////////////////////////////
 
 
@@ -72,10 +73,10 @@ SecStartup (
   )
 {
   //////////////////////////// mahdi
-  //edkii_vga_clear();
-  //edkii_vga_print(0, "EDK II Started ");
+  // edkii_vga_clear();
+  // edkii_vga_print(0, "EDK II Started ");
   ///////////////////////////
-
+// MicroSecondDelay (5000000);
   EFI_SEC_PEI_HAND_OFF        SecCoreData;
   IA32_DESCRIPTOR             IdtDescriptor;
   SEC_IDT_TABLE               IdtTableInStack;
@@ -199,9 +200,8 @@ SecStartupPhase2(
   IN VOID                     *Context
   )
 {
-  char buf[78];
   edkii_vga_clear();
-  edkii_vga_print(0, "SePh2-start");
+  edkii_vga_print(0, "EDK II SePh2-start");
 
   EFI_SEC_PEI_HAND_OFF        *SecCoreData;
   EFI_PEI_CORE_ENTRY_POINT    PeiCoreEntryPoint;
@@ -223,17 +223,17 @@ SecStartupPhase2(
   //
   // edkii_vga_print(3, "SePh2[3]");
   ASSERT (PeiCoreEntryPoint != NULL);
-  AsciiSPrint(buf, sizeof(buf), "SePh2: 0x%X, 0x%X,", 
+  edkii_vga_sprintf(0, "SePh2: 0x%X, 0x%X,", 
     (UINT32)(UINTN)SecCoreData->BootFirmwareVolumeBase, 
     (UINT32)(UINTN)PeiCoreEntryPoint);
-  edkii_vga_print(0, buf);
 
   edkii_vga_hex_dump((void*)PeiCoreEntryPoint, 64, 9);
   edkii_vga_hex_dump((void*)*PeiCoreEntryPoint, 64, 14);
   edkii_vga_hex_dump((void*)SecCoreData, 64, 19);
+
+  MicroSecondDelay(5000000);
   ASSERT (PeiCoreEntryPoint != NULL);
-  // (*PeiCoreEntryPoint) (SecCoreData, (EFI_PEI_PPI_DESCRIPTOR *)&mPeiSecPlatformInformationPpi);
-  PeiCoreEntryPoint(SecCoreData, (EFI_PEI_PPI_DESCRIPTOR *)&mPeiSecPlatformInformationPpi);
+  (*PeiCoreEntryPoint) (SecCoreData, (EFI_PEI_PPI_DESCRIPTOR *)&mPeiSecPlatformInformationPpi);
 
   edkii_vga_print(0, "SePh2[4] Fatal");
 

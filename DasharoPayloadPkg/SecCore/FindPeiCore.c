@@ -209,8 +209,6 @@ FindAndReportEntryPoints (
   OUT EFI_PEI_CORE_ENTRY_POINT         *PeiCoreEntryPoint
   )
 {
-  char buf[78];
-
   EFI_STATUS                       Status;
   EFI_PHYSICAL_ADDRESS             SecCoreImageBase;
   EFI_PHYSICAL_ADDRESS             PeiCoreImageBase;
@@ -262,13 +260,12 @@ FindAndReportEntryPoints (
   //
   // edkii_vga_print(8, "FE - 7");
   Status = PeCoffLoaderGetEntryPoint ((VOID *) (UINTN) PeiCoreImageBase, (VOID**) PeiCoreEntryPoint);
-  AsciiSPrint(buf, sizeof(buf), "IP-0x%X, 0x%X, 0x%X, 0x%X, %u", 
+  edkii_vga_sprintf(2, "IP-0x%X, 0x%X, 0x%X, 0x%X, %u", 
     (UINT32)(UINTN)iptr_sec,
     (UINT32)(UINTN)iptr_pei,
     PeiCoreEntryPoint,
     *PeiCoreEntryPoint,
     Status);
-  edkii_vga_print(2, buf);
   if (EFI_ERROR (Status)) {
     // edkii_vga_print(8, "FE - 8");
     *PeiCoreEntryPoint = 0;

@@ -51,6 +51,7 @@
   IoLib
   PrintLib
   ReportStatusCodeLib
+  TimerLib
 
 [Ppis]
   gEfiSecPlatformInformationPpiGuid             # PPI ALWAYS_PRODUCED

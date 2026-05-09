@@ -4,6 +4,22 @@
 #define _VGA_FB 0xB8000
 #define _VGA_COLUMNS 80
 
+static char g_buffer[80];
+
+void edkii_vga_sprintf(
+  unsigned int row,
+  const char* format,
+  ...)
+{
+  VA_LIST  marker;
+  
+  VA_START (marker, format);
+  AsciiVSPrint(g_buffer, sizeof(g_buffer), format, marker);
+  VA_END (marker);
+  
+  edkii_vga_print (row, g_buffer);
+}
+
 static void
 edkii_vga_write_at_offset(unsigned int line, unsigned int offset, const char *string)
 {
