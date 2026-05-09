@@ -232,7 +232,7 @@ SecStartupPhase2(
   edkii_vga_hex_dump((void*)SecCoreData, 64, 19);
 
   MicroSecondDelay(5000000);
-  ASSERT (PeiCoreEntryPoint != NULL);
+  // ASSERT (PeiCoreEntryPoint != NULL);
   (*PeiCoreEntryPoint) (SecCoreData, (EFI_PEI_PPI_DESCRIPTOR *)&mPeiSecPlatformInformationPpi);
 
   edkii_vga_print(0, "SePh2[4] Fatal");
