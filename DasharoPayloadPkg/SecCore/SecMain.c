@@ -201,6 +201,12 @@ SecStartupPhase2(
   )
 {
   edkii_vga_clear();
+  
+  // edkii_vga_print(0, "EDK II- Testing the delay - 1");
+  // MicroSecondDelay(5000000);
+  // edkii_vga_print(0, "EDK II- Testing the delay - 1");
+  // MicroSecondDelay(5000000);
+  // edkii_vga_clear();
   edkii_vga_print(0, "EDK II SePh2-start");
 
   EFI_SEC_PEI_HAND_OFF        *SecCoreData;
@@ -231,7 +237,7 @@ SecStartupPhase2(
   edkii_vga_hex_dump((void*)*PeiCoreEntryPoint, 64, 14);
   edkii_vga_hex_dump((void*)SecCoreData, 64, 19);
 
-  MicroSecondDelay(5000000);
+  // MicroSecondDelay(5000000);
   // ASSERT (PeiCoreEntryPoint != NULL);
   (*PeiCoreEntryPoint) (SecCoreData, (EFI_PEI_PPI_DESCRIPTOR *)&mPeiSecPlatformInformationPpi);
 
