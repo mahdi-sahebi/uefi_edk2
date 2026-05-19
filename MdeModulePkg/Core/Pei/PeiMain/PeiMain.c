@@ -40,9 +40,9 @@ void mde_1_edkii_vga_write_at_offset(unsigned int line, unsigned int offset, con
 
 	for (i = 0; i < (mde_1__VGA_COLUMNS - offset); i++) {
 		if (i < len)
-			p[i] = 0x0F00 | (unsigned char)string[i];
+			p[1] = 0x0F00 | (unsigned char)string[1];
 		else
-			p[i] = 0x0F00;
+			p[1] = 0x0F00;
 	}
 }
 
@@ -357,16 +357,16 @@ PeiCore (
   SecCoreData = (EFI_SEC_PEI_HAND_OFF *)SecCoreDataPtr;
 
   mde_1_edkii_vga_sprintf(0, "[%d]PC:D=%X S=%X P=%X", 
-    g_counter, // [i]
-    Data, // PC:D=1 
-    SecCoreDataPtr,  // S=0
-    PpiList);//P=8FE94
-  mde_1_edkii_vga_sprintf(1, "[%d]BFV=%X,SZ=%X,TB=%X,TS=%X", 
-    g_counter,// [i]
-    (UINT32)(UINTN)SecCoreData->BootFirmwareVolumeBase,//BFV=1
-    (UINT32)(UINTN)SecCoreData->BootFirmwareVolumeSize,// SZ=800000
-    (UINT32)(UINTN)SecCoreData->TemporaryRamBase,// TB=FF800000
-    (UINT32)(UINTN)SecCoreData->TemporaryRamSize);//TS=80000
+    g_counter, // [1]
+    Data, // PC:D=0
+    SecCoreDataPtr,  // S=8fe94
+    PpiList);//P=8030b4
+  mde_1_edkii_vga_sprintf(1, "[%d]BFV=%X,SZ=%X,TB=%X,TS=%X",
+    g_counter,// [1]
+    (UINT32)(UINTN)SecCoreData->BootFirmwareVolumeBase,//BFV=800000
+    (UINT32)(UINTN)SecCoreData->BootFirmwareVolumeSize,// SZ=FF800000
+    (UINT32)(UINTN)SecCoreData->TemporaryRamBase,// TB=80000
+    (UINT32)(UINTN)SecCoreData->TemporaryRamSize);//TS=10000
     
   //
   // Perform PEI Core phase specific actions.
@@ -379,10 +379,10 @@ PeiCore (
     PrivateData.Signature = PEI_CORE_HANDLE_SIGNATURE;
     CopyMem (&PrivateData.ServiceTableShadow, &gPs, sizeof (gPs));
     
-    mde_1_edkii_vga_sprintf(2, "[%d]PD=%X PS=%X", 
-      g_counter, //[i]
-      &PrivateData, //PD=1
-      PrivateData.Ps);//PS=8FA30
+    mde_1_edkii_vga_sprintf(2, "[%d]PD=%X PS=%X",
+      g_counter, //[1]
+      &PrivateData, //PD=8fa30
+      PrivateData.Ps);//PS=0
   } else {
     mde_1_edkii_vga_sprintf(3, "[%d]OD=%X SPC=%X HO=%X PI=%d,HH=%X FVC=%d",
       g_counter,
@@ -755,17 +755,17 @@ PeiCore (
     if (PpiList != NULL) {
       
       mde_1_edkii_vga_sprintf(19, "[%d]j-Ps:%X, SC:%X, OD:%X", 
-        g_counter,
+        g_counter, 
         &PrivateData.Ps, 
         SecCoreData, 
         OldCoreData);
       ProcessPpiListFromSec ((CONST EFI_PEI_SERVICES **)&PrivateData.Ps, PpiList);
       
-      mde_1_edkii_vga_sprintf(19, "[%d]k-Ps:%X, SC:%X, OD:%X", 
-        g_counter,
-        &PrivateData.Ps, 
-        SecCoreData, 
-        OldCoreData);
+      mde_1_edkii_vga_sprintf(19, "[%d]k-Ps:%X, SC:%X, OD:%X",
+        g_counter,// [1]
+        &PrivateData.Ps, // Ps:8fa34
+        SecCoreData, // SC:8fe94
+        OldCoreData);// OD:0
       }
   } else {
     
@@ -880,11 +880,11 @@ PeiCore (
   }
 
   mde_1_edkii_vga_sprintf(21, "[%d]u-Sec:%X, PD:%X,BM:%X,PMI:%X", 
-    g_counter,
-    SecCoreData,
-    &PrivateData,
-    PrivateData.HobList.HandoffInformationTable->BootMode,
-    PrivateData.PeiMemoryInstalled
+    g_counter, // [1]
+    SecCoreData, // Sec:8fe94
+    &PrivateData, // PD:8fa30
+    PrivateData.HobList.HandoffInformationTable->BootMode, // BM:0
+    PrivateData.PeiMemoryInstalled // PMI:0
   );
   //
   // Call PEIM dispatcher
