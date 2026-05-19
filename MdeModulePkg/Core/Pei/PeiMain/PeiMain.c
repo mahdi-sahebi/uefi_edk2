@@ -40,9 +40,9 @@ void mde_1_edkii_vga_write_at_offset(unsigned int line, unsigned int offset, con
 
 	for (i = 0; i < (mde_1__VGA_COLUMNS - offset); i++) {
 		if (i < len)
-			p[1] = 0x0F00 | (unsigned char)string[1];
+			p[i] = 0x0F00 | (unsigned char)string[i];
 		else
-			p[1] = 0x0F00;
+			p[i] = 0x0F00;
 	}
 }
 
