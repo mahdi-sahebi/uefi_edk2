@@ -2184,7 +2184,7 @@ PeiDispatcher (
                          
       mde_2_edkii_vga_sprintf(5, "NCHa-,%X,%X",
         Private,
-        FvCount,
+        FvCount
       );
       CoreFvHandle = FindNextCoreFvHandle (Private, FvCount);
                          
@@ -2377,14 +2377,14 @@ PeiDispatcher (
             }
 
             
-            // mde_2_edkii_vga_print(8, "8a");
+            mde_2_edkii_vga_print(8, "8a");
             PeiCheckAndSwitchStack (SecCoreData, Private);
 
             //
             // Process the Notify list and dispatch any notifies for
             // newly installed PPIs.
             //
-            // mde_2_edkii_vga_print(8, "8b");
+            mde_2_edkii_vga_print(8, "8b");
 
             ProcessDispatchNotifyList (Private);
 
@@ -2393,17 +2393,17 @@ PeiDispatcher (
             // in case PeiInstallPeiMemory() is done in a callback with
             // EFI_PEI_PPI_DESCRIPTOR_NOTIFY_DISPATCH.
             //
-            // mde_2_edkii_vga_print(8, "8c");
+            mde_2_edkii_vga_print(8, "8c");
             PeiCheckAndSwitchStack (SecCoreData, Private);
-            // mde_2_edkii_vga_sprintf(8, "8c-%X-%X-%X-%X-%X-%X-%X",
-            //   Private->PeiMemoryInstalled,
-            //   PeimCount,
-            //   FvCount,
-            //   Private->Fv[FvCount].PeimState[PeimCount],
-            //   PcdGetBool (PcdMigrateTemporaryRamFirmwareVolumes),
-            //   Private->HobList.HandoffInformationTable->BootMode,
-            //   PcdGetBool (PcdShadowPeimOnS3Boot)
-            // );
+            mde_2_edkii_vga_sprintf(8, "8c-%X-%X-%X-%X-%X-%X-%X",
+              Private->PeiMemoryInstalled,
+              PeimCount,
+              FvCount,
+              Private->Fv[FvCount].PeimState[PeimCount],
+              PcdGetBool (PcdMigrateTemporaryRamFirmwareVolumes),
+              Private->HobList.HandoffInformationTable->BootMode,
+              PcdGetBool (PcdShadowPeimOnS3Boot)
+            );
 
             if ((Private->PeiMemoryInstalled) && (Private->Fv[FvCount].PeimState[PeimCount] == PEIM_STATE_REGISTER_FOR_SHADOW) &&   \
                 (PcdGetBool (PcdMigrateTemporaryRamFirmwareVolumes) ||
@@ -2417,21 +2417,21 @@ PeiDispatcher (
               //
               // PERF_START (PeiServices, L"PEIM", PeimFileHandle, 0);
               
-              // mde_2_edkii_vga_sprintf(9, "9a-%X-%X-%X",
-              //   PcdGetBool (PcdShadowPeimOnBoot),
-              //   PcdGetBool (PcdMigrateTemporaryRamFirmwareVolumes),
-              //   Private->HobList.HandoffInformationTable->BootMode
-              // );
+              mde_2_edkii_vga_sprintf(9, "9a-%X-%X-%X",
+                PcdGetBool (PcdShadowPeimOnBoot),
+                PcdGetBool (PcdMigrateTemporaryRamFirmwareVolumes),
+                Private->HobList.HandoffInformationTable->BootMode
+              );
               
               if ((Private->HobList.HandoffInformationTable->BootMode != BOOT_ON_S3_RESUME) && !PcdGetBool (PcdShadowPeimOnBoot) &&
                   !PcdGetBool (PcdMigrateTemporaryRamFirmwareVolumes))
               {
                 
-                // mde_2_edkii_vga_sprintf(9, "9b-%X-%X-%X",
-                //   PcdGetBool (PcdShadowPeimOnBoot),
-                //   PcdGetBool (PcdMigrateTemporaryRamFirmwareVolumes),
-                //   Private->HobList.HandoffInformationTable->BootMode
-                // );
+                mde_2_edkii_vga_sprintf(9, "9b-%X-%X-%X",
+                  PcdGetBool (PcdShadowPeimOnBoot),
+                  PcdGetBool (PcdMigrateTemporaryRamFirmwareVolumes),
+                  Private->HobList.HandoffInformationTable->BootMode
+                );
                 
                 //
                 // Load PEIM into Memory for Register for shadow PEIM.
@@ -2445,12 +2445,12 @@ PeiDispatcher (
                            );
                            
                 
-                // mde_2_edkii_vga_sprintf(9, "9c-%X,%X-%X-%X",
-                //   Status,
-                //   PcdGetBool (PcdShadowPeimOnBoot),
-                //   PcdGetBool (PcdMigrateTemporaryRamFirmwareVolumes),
-                //   Private->HobList.HandoffInformationTable->BootMode
-                // );
+                mde_2_edkii_vga_sprintf(9, "9c-%X,%X-%X-%X",
+                  Status,
+                  PcdGetBool (PcdShadowPeimOnBoot),
+                  PcdGetBool (PcdMigrateTemporaryRamFirmwareVolumes),
+                  Private->HobList.HandoffInformationTable->BootMode
+                );
                 if (Status == EFI_SUCCESS) {
                   PeimEntryPoint = (EFI_PEIM_ENTRY_POINT2)(UINTN)EntryPoint;
                 }
