@@ -2377,14 +2377,14 @@ PeiDispatcher (
             }
 
             
-            mde_2_edkii_vga_print(8, "8a");
+            // mde_2_edkii_vga_print(8, "8a");
             PeiCheckAndSwitchStack (SecCoreData, Private);
 
             //
             // Process the Notify list and dispatch any notifies for
             // newly installed PPIs.
             //
-            mde_2_edkii_vga_print(8, "8b");
+            // mde_2_edkii_vga_print(8, "8b");
 
             ProcessDispatchNotifyList (Private);
 
@@ -2393,7 +2393,7 @@ PeiDispatcher (
             // in case PeiInstallPeiMemory() is done in a callback with
             // EFI_PEI_PPI_DESCRIPTOR_NOTIFY_DISPATCH.
             //
-            mde_2_edkii_vga_print(8, "8c");
+            // mde_2_edkii_vga_print(8, "8c");
             PeiCheckAndSwitchStack (SecCoreData, Private);
             // mde_2_edkii_vga_sprintf(8, "8c-%X-%X-%X-%X-%X-%X-%X",
             //   Private->PeiMemoryInstalled,
