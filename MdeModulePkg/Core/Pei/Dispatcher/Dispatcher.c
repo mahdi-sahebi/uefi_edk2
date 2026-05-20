@@ -2051,12 +2051,12 @@ PeiDispatcher (
     }
   }
 
-  mde_2_edkii_vga_sprintf(2, "PI:%X,PMTRFV:%X,HITBM:%X,PSPSB:%X",
-    Private->PeiMemoryInstalled,
-    PcdMigrateTemporaryRamFirmwareVolumes,
-    Private->HobList.HandoffInformationTable->BootMode,
-    PcdShadowPeimOnS3Boot
-  );
+  // mde_2_edkii_vga_sprintf(2, "PI:%X,PMTRFV:%X,HITBM:%X,PSPSB:%X",
+  //   Private->PeiMemoryInstalled,
+  //   PcdMigrateTemporaryRamFirmwareVolumes,
+  //   Private->HobList.HandoffInformationTable->BootMode,
+  //   PcdShadowPeimOnS3Boot
+  // );
   
   if ((Private->PeiMemoryInstalled) &&
       (PcdGetBool (PcdMigrateTemporaryRamFirmwareVolumes) ||
