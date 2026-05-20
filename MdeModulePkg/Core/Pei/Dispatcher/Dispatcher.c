@@ -2249,22 +2249,30 @@ PeiDispatcher (
 
             Status = CoreFvHandle->FvPpi->GetFileInfo (CoreFvHandle->FvPpi, PeimFileHandle, &FvFileInfo);
             
-            mde_2_edkii_vga_sprintf(6, "FIc-%X-%X-%X,%X-%X-%X",
+            mde_2_edkii_vga_sprintf(6, "FIc-%X-%X-%X,%X-%X-%X,%X",
               PeimCount,
               Private->Fv[FvCount].PeimState[PeimCount],
               Status,
               CoreFvHandle->FvPpi,
               PeimFileHandle,
-              &FvFileInfo
+              &FvFileInfo,
+              FvFileInfo.FileType
             );
 
 
             ASSERT_EFI_ERROR (Status);
             if (FvFileInfo.FileType == EFI_FV_FILETYPE_FIRMWARE_VOLUME_IMAGE) {
+              
+              mde_2_edkii_vga_sprintf(7, "PFFa");
+            
               //
               // For FV type file, Produce new FvInfo PPI and FV HOB
               //
               Status = ProcessFvFile (Private, &Private->Fv[FvCount], PeimFileHandle);
+              mde_2_edkii_vga_sprintf(7, "PFFb-%X",
+                Status
+              );
+
               if (Status == EFI_SUCCESS) {
                 //
                 // PEIM_STATE_NOT_DISPATCHED move to PEIM_STATE_DISPATCHED
@@ -2280,6 +2288,14 @@ PeiDispatcher (
                 Private->PeimNeedingDispatch = TRUE;
               }
             } else {
+              
+              mde_2_edkii_vga_sprintf(7, "PLIa-%X-%X-%X-%X-%X",
+                Status,
+                PeiServices,
+                PeimFileHandle,
+                &EntryPoint,
+                AuthenticationState
+              );
               //
               // For PEIM driver, Load its entry point
               //
@@ -2290,6 +2306,14 @@ PeiDispatcher (
                          &EntryPoint,
                          &AuthenticationState
                          );
+                         
+              mde_2_edkii_vga_sprintf(7, "PLIb-%X-%X-%X-%X-%X",
+                Status,
+                PeiServices,
+                PeimFileHandle,
+                &EntryPoint,
+                AuthenticationState
+              );
               if (Status == EFI_SUCCESS) {
                 //
                 // The PEIM has its dependencies satisfied, and its entry point
@@ -2304,7 +2328,24 @@ PeiDispatcher (
                   sizeof (PeimFileHandle)
                   );
 
+                mde_2_edkii_vga_sprintf(7, "PLIc-%X-%X-%X-%X-%X",
+                  PeiServices,
+                  PeimFileHandle,
+                  &EntryPoint,
+                  AuthenticationState,
+                  CoreFvHandle->FvHandle
+                );
+
                 Status = VerifyPeim (Private, CoreFvHandle->FvHandle, PeimFileHandle, AuthenticationState);
+                
+                mde_2_edkii_vga_sprintf(7, "PLId-%X,%X-%X-%X-%X-%X",
+                  Status,
+                  PeiServices,
+                  PeimFileHandle,
+                  &EntryPoint,
+                  AuthenticationState,
+                  CoreFvHandle->FvHandle
+                );
                 if (Status != EFI_SECURITY_VIOLATION) {
                   //
                   // PEIM_STATE_NOT_DISPATCHED move to PEIM_STATE_DISPATCHED
@@ -2335,12 +2376,16 @@ PeiDispatcher (
               }
             }
 
+            
+            mde_2_edkii_vga_sprintf(8, "8a");
             PeiCheckAndSwitchStack (SecCoreData, Private);
 
             //
             // Process the Notify list and dispatch any notifies for
             // newly installed PPIs.
             //
+            mde_2_edkii_vga_sprintf(8, "8b");
+
             ProcessDispatchNotifyList (Private);
 
             //
@@ -2348,7 +2393,17 @@ PeiDispatcher (
             // in case PeiInstallPeiMemory() is done in a callback with
             // EFI_PEI_PPI_DESCRIPTOR_NOTIFY_DISPATCH.
             //
+            mde_2_edkii_vga_sprintf(8, "8c");
             PeiCheckAndSwitchStack (SecCoreData, Private);
+            mde_2_edkii_vga_sprintf(8, "8c-%X-%X-%X-%X-%X-%X-%X",
+              Private->PeiMemoryInstalled,
+              PeimCount,
+              FvCount,
+              Private->Fv[FvCount].PeimState[PeimCount],
+              PcdGetBool (PcdMigrateTemporaryRamFirmwareVolumes),
+              Private->HobList.HandoffInformationTable->BootMode,
+              PcdGetBool (PcdShadowPeimOnS3Boot)
+            );
 
             if ((Private->PeiMemoryInstalled) && (Private->Fv[FvCount].PeimState[PeimCount] == PEIM_STATE_REGISTER_FOR_SHADOW) &&   \
                 (PcdGetBool (PcdMigrateTemporaryRamFirmwareVolumes) ||
@@ -2361,9 +2416,23 @@ PeiDispatcher (
               // We call the entry point a 2nd time so the module knows it's shadowed.
               //
               // PERF_START (PeiServices, L"PEIM", PeimFileHandle, 0);
+              
+              mde_2_edkii_vga_sprintf(9, "9a-%X-%X-%X",
+                PcdGetBool (PcdShadowPeimOnBoot),
+                PcdGetBool (PcdMigrateTemporaryRamFirmwareVolumes),
+                Private->HobList.HandoffInformationTable->BootMode,
+              );
+              
               if ((Private->HobList.HandoffInformationTable->BootMode != BOOT_ON_S3_RESUME) && !PcdGetBool (PcdShadowPeimOnBoot) &&
                   !PcdGetBool (PcdMigrateTemporaryRamFirmwareVolumes))
               {
+                
+                mde_2_edkii_vga_sprintf(9, "9b-%X-%X-%X",
+                  PcdGetBool (PcdShadowPeimOnBoot),
+                  PcdGetBool (PcdMigrateTemporaryRamFirmwareVolumes),
+                  Private->HobList.HandoffInformationTable->BootMode,
+                );
+                
                 //
                 // Load PEIM into Memory for Register for shadow PEIM.
                 //
@@ -2374,6 +2443,14 @@ PeiDispatcher (
                            &EntryPoint,
                            &AuthenticationState
                            );
+                           
+                
+                mde_2_edkii_vga_sprintf(9, "9c-%X,%X-%X-%X",
+                  Status,
+                  PcdGetBool (PcdShadowPeimOnBoot),
+                  PcdGetBool (PcdMigrateTemporaryRamFirmwareVolumes),
+                  Private->HobList.HandoffInformationTable->BootMode,
+                );
                 if (Status == EFI_SUCCESS) {
                   PeimEntryPoint = (EFI_PEIM_ENTRY_POINT2)(UINTN)EntryPoint;
                 }
