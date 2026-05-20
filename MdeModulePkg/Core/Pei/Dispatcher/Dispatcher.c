@@ -2072,14 +2072,15 @@ PeiDispatcher (
     SaveCurrentFvCount    = Private->CurrentPeimFvCount;
     SaveCurrentFileHandle =  Private->CurrentFileHandle;
 
-    mde_2_edkii_vga_sprintf(2, "b-PI:%X,PMTRFV:%X,HITBM:%X,PSPSB:%X,%X,%X,%X",
+    mde_2_edkii_vga_sprintf(2, "b-PI:%X,TRFV:%X,HITBM:%X,PSB:%X,%X,%X,%X,%X",
       Private->PeiMemoryInstalled,
       PcdGetBool (PcdMigrateTemporaryRamFirmwareVolumes),
       Private->HobList.HandoffInformationTable->BootMode,
       PcdGetBool (PcdShadowPeimOnS3Boot),
       SaveCurrentPeimCount,
       SaveCurrentFvCount,
-      SaveCurrentFileHandle
+      SaveCurrentFileHandle,
+      Private->FvCount
     );
 
     for (Index1 = 0; Index1 < Private->FvCount; Index1++) {
@@ -2089,6 +2090,16 @@ PeiDispatcher (
           Private->CurrentFileHandle  = PeimFileHandle;
           Private->CurrentPeimFvCount = Index1;
           Private->CurrentPeimCount   = Index2;
+
+          
+          mde_2_edkii_vga_sprintf(3, "LIa-%X,%X,%X,%X,%X",
+            (CONST EFI_PEI_SERVICES **)&Private->Ps,
+            PeimFileHandle,
+            PEIM_STATE_REGISTER_FOR_SHADOW,
+            &EntryPoint,
+            &AuthenticationState
+          );
+          
           Status                      = PeiLoadImage (
                                           (CONST EFI_PEI_SERVICES **)&Private->Ps,
                                           PeimFileHandle,
@@ -2096,6 +2107,16 @@ PeiDispatcher (
                                           &EntryPoint,
                                           &AuthenticationState
                                           );
+                                          
+          mde_2_edkii_vga_sprintf(3, "LIb-%X,%X,%X,%X,%X,S:%X",
+            (CONST EFI_PEI_SERVICES **)&Private->Ps,
+            PeimFileHandle,
+            PEIM_STATE_REGISTER_FOR_SHADOW,
+            &EntryPoint,
+            &AuthenticationState,
+            Status
+          );
+          
           if (Status == EFI_SUCCESS) {
             //
             // PEIM_STATE_REGISTER_FOR_SHADOW move to PEIM_STATE_DONE
@@ -2116,6 +2137,15 @@ PeiDispatcher (
           // newly installed PPIs.
           //
           ProcessDispatchNotifyList (Private);
+                                     
+          mde_2_edkii_vga_sprintf(3, "LIc-%X,%X,%X,%X,%X,S:%X",
+            (CONST EFI_PEI_SERVICES **)&Private->Ps,
+            PeimFileHandle,
+            PEIM_STATE_REGISTER_FOR_SHADOW,
+            &EntryPoint,
+            &AuthenticationState,
+            Status
+          );
         }
       }
     }
@@ -2134,6 +2164,12 @@ PeiDispatcher (
   // satisfied, this dispatcher should run only once.
   //
   do {
+                          
+    mde_2_edkii_vga_sprintf(4, "PDR-,%X,%X,%X",
+      Private->PeimDispatcherReenter,
+      Private->CurrentPeimFvCount,
+      Private->FvCount
+    );
     //
     // In case that reenter PeiCore happens, the last pass record is still available.
     //
@@ -2145,7 +2181,20 @@ PeiDispatcher (
     }
 
     for (FvCount = Private->CurrentPeimFvCount; FvCount < Private->FvCount; FvCount++) {
+                         
+      mde_2_edkii_vga_sprintf(5, "NCHa-,%X,%X",
+        Private,
+        FvCount,
+      );
       CoreFvHandle = FindNextCoreFvHandle (Private, FvCount);
+                         
+      mde_2_edkii_vga_sprintf(5, "NCHb-,%X,%X,CVH:%X,Fp:%X,CPC:%X",
+        Private,
+        FvCount,
+        CoreFvHandle,
+        CoreFvHandle->FvPpi,
+        Private->CurrentPeimCount
+      );
       ASSERT (CoreFvHandle != NULL);
 
       //
@@ -2178,9 +2227,38 @@ PeiDispatcher (
 
         if (Private->Fv[FvCount].PeimState[PeimCount] == PEIM_STATE_NOT_DISPATCHED) {
           if (!DepexSatisfied (Private, PeimFileHandle, PeimCount)) {
+            
+            mde_2_edkii_vga_sprintf(6, "FIa-%X-%X,%X-%X-%X",
+              PeimCount,
+              Private->Fv[FvCount].PeimState[PeimCount],
+              CoreFvHandle->FvPpi,
+              PeimFileHandle,
+              &FvFileInfo
+            );
+
             Private->PeimNeedingDispatch = TRUE;
           } else {
+
+            mde_2_edkii_vga_sprintf(6, "FIb-%X-%X,%X-%X-%X",
+              PeimCount,
+              Private->Fv[FvCount].PeimState[PeimCount],
+              CoreFvHandle->FvPpi,
+              PeimFileHandle,
+              &FvFileInfo
+            );
+
             Status = CoreFvHandle->FvPpi->GetFileInfo (CoreFvHandle->FvPpi, PeimFileHandle, &FvFileInfo);
+            
+            mde_2_edkii_vga_sprintf(6, "FIc-%X-%X-%X,%X-%X-%X",
+              PeimCount,
+              Private->Fv[FvCount].PeimState[PeimCount],
+              Status,
+              CoreFvHandle->FvPpi,
+              PeimFileHandle,
+              &FvFileInfo
+            );
+
+
             ASSERT_EFI_ERROR (Status);
             if (FvFileInfo.FileType == EFI_FV_FILETYPE_FIRMWARE_VOLUME_IMAGE) {
               //
