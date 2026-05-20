@@ -2395,15 +2395,15 @@ PeiDispatcher (
             //
             mde_2_edkii_vga_print(8, "8c");
             PeiCheckAndSwitchStack (SecCoreData, Private);
-            mde_2_edkii_vga_sprintf(8, "8c-%X-%X-%X-%X-%X-%X-%X",
-              Private->PeiMemoryInstalled,
-              PeimCount,
-              FvCount,
-              Private->Fv[FvCount].PeimState[PeimCount],
-              PcdGetBool (PcdMigrateTemporaryRamFirmwareVolumes),
-              Private->HobList.HandoffInformationTable->BootMode,
-              PcdGetBool (PcdShadowPeimOnS3Boot)
-            );
+            // mde_2_edkii_vga_sprintf(8, "8c-%X-%X-%X-%X-%X-%X-%X",
+            //   Private->PeiMemoryInstalled,
+            //   PeimCount,
+            //   FvCount,
+            //   Private->Fv[FvCount].PeimState[PeimCount],
+            //   PcdGetBool (PcdMigrateTemporaryRamFirmwareVolumes),
+            //   Private->HobList.HandoffInformationTable->BootMode,
+            //   PcdGetBool (PcdShadowPeimOnS3Boot)
+            // );
 
             if ((Private->PeiMemoryInstalled) && (Private->Fv[FvCount].PeimState[PeimCount] == PEIM_STATE_REGISTER_FOR_SHADOW) &&   \
                 (PcdGetBool (PcdMigrateTemporaryRamFirmwareVolumes) ||
@@ -2427,11 +2427,11 @@ PeiDispatcher (
                   !PcdGetBool (PcdMigrateTemporaryRamFirmwareVolumes))
               {
                 
-                mde_2_edkii_vga_sprintf(9, "9b-%X-%X-%X",
-                  PcdGetBool (PcdShadowPeimOnBoot),
-                  PcdGetBool (PcdMigrateTemporaryRamFirmwareVolumes),
-                  Private->HobList.HandoffInformationTable->BootMode
-                );
+                // mde_2_edkii_vga_sprintf(9, "9b-%X-%X-%X",
+                //   PcdGetBool (PcdShadowPeimOnBoot),
+                //   PcdGetBool (PcdMigrateTemporaryRamFirmwareVolumes),
+                //   Private->HobList.HandoffInformationTable->BootMode
+                // );
                 
                 //
                 // Load PEIM into Memory for Register for shadow PEIM.
@@ -2445,12 +2445,12 @@ PeiDispatcher (
                            );
                            
                 
-                mde_2_edkii_vga_sprintf(9, "9c-%X,%X-%X-%X",
-                  Status,
-                  PcdGetBool (PcdShadowPeimOnBoot),
-                  PcdGetBool (PcdMigrateTemporaryRamFirmwareVolumes),
-                  Private->HobList.HandoffInformationTable->BootMode
-                );
+                // mde_2_edkii_vga_sprintf(9, "9c-%X,%X-%X-%X",
+                //   Status,
+                //   PcdGetBool (PcdShadowPeimOnBoot),
+                //   PcdGetBool (PcdMigrateTemporaryRamFirmwareVolumes),
+                //   Private->HobList.HandoffInformationTable->BootMode
+                // );
                 if (Status == EFI_SUCCESS) {
                   PeimEntryPoint = (EFI_PEIM_ENTRY_POINT2)(UINTN)EntryPoint;
                 }
