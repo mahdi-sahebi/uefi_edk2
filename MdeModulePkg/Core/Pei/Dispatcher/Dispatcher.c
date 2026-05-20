@@ -377,9 +377,23 @@ DelayedDispatchDispatcher (
   DELAYED_DISPATCH_ENTRY  *Entry;
   EFI_STATUS              Status;
 
+  mde_2_edkii_vga_sprintf(12, "DelayedDis-%X,%X",
+    DelayedDispatchTable,
+    DelayedGroupId
+  );
+  
   Dispatched            = FALSE;
   DelayedGroupIdPresent = TRUE;
   Status                = SafeUint64Add (GET_TIME_IN_US (), FixedPcdGet32 (PcdDelayedDispatchCompletionTimeoutUs), &MaxDispatchTime);
+  
+  mde_2_edkii_vga_sprintf(12, "DelayedDis-%X,%X-%X,%X,%X",
+    DelayedDispatchTable,
+    DelayedGroupId,
+    Status,
+    FixedPcdGet32 (PcdDelayedDispatchCompletionTimeoutUs),
+    MaxDispatchTime
+  );
+
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a Delay overflow\n", __func__));
     return FALSE;
@@ -389,8 +403,19 @@ DelayedDispatchDispatcher (
     DelayedGroupIdPresent = FALSE;
     DelayedDispatchTable->DispCount++;
 
+    
+    mde_2_edkii_vga_sprintf(13, "Timea-%X",
+      DelayedDispatchTable->DispCount
+    );
+
     // If dispatching is messed up, clear DelayedDispatchTable and exit.
     TimeCurrent =  GET_TIME_IN_US ();
+    
+    mde_2_edkii_vga_sprintf(13, "Timeb-%X,%LX",
+      DelayedDispatchTable->DispCount,
+      TimeCurrent
+    );
+
     if (TimeCurrent > MaxDispatchTime) {
       DEBUG ((DEBUG_ERROR, "%a - DelayedDispatch Completion timeout!\n", __func__));
       ReportStatusCode ((EFI_ERROR_MAJOR | EFI_ERROR_CODE), (EFI_SOFTWARE_PEI_CORE | EFI_SW_EC_ABORTED));
@@ -399,9 +424,20 @@ DelayedDispatchDispatcher (
       break;
     }
 
+    mde_2_edkii_vga_sprintf(13, "Timec-%X,%LX",
+      DelayedDispatchTable->DispCount,
+      TimeCurrent
+    );
+
     // Check each entry in the table for possible dispatch
     for (Index1 = 0; Index1 < DelayedDispatchTable->Count;) {
       Entry = &DelayedDispatchTable->Entry[Index1];
+        
+      mde_2_edkii_vga_sprintf(14, "LPa-%X,%X",
+        Index1,
+        DelayedDispatchTable->Count
+      );
+      
       // If DelayedGroupId is present, insure there is an additional check of the table.
       if (DelayedGroupId != NULL) {
         if (CompareGuid (DelayedGroupId, &Entry->DelayedGroupId)) {
@@ -410,6 +446,14 @@ DelayedDispatchDispatcher (
       }
 
       TimeCurrent =  GET_TIME_IN_US ();
+        
+      mde_2_edkii_vga_sprintf(14, "LPb-%X,%X,%LX,%LX",
+        Index1,
+        DelayedDispatchTable->Count,
+        TimeCurrent,
+        Entry->DispatchTime
+      );
+      
       if (TimeCurrent >= Entry->DispatchTime) {
         // Time expired, invoked the function
         DEBUG ((
@@ -421,26 +465,78 @@ DelayedDispatchDispatcher (
           TimeCurrent,
           DelayedDispatchTable->DispCount
           ));
+
+          
+        mde_2_edkii_vga_sprintf(15, "FunA-%X,%X,%LX-%X",
+          Entry,
+          Entry->Function,
+          Entry->Context,
+          Entry->MicrosecondDelay
+        );
+        
         Dispatched              = TRUE;
         Entry->MicrosecondDelay = 0;
         Entry->Function (
                  &Entry->Context,
                  &Entry->MicrosecondDelay
                  );
+                 
+        mde_2_edkii_vga_sprintf(15, "FunB-%X,%X,%LX-%X",
+          Entry,
+          Entry->Function,
+          Entry->Context,
+          Entry->MicrosecondDelay
+        );         
+        mde_2_edkii_vga_sprintf(16, "S-%X,%X,%X-%X",
+          sizeof (DELAYED_DISPATCH_ENTRY),
+          DelayedDispatchTable->Count,
+          Index1,
+          FixedPcdGet32 (PcdDelayedDispatchMaxDelayUs)
+        );
+
         DEBUG ((DEBUG_ERROR, "Delayed dispatch Function returned delay=%d\n", Entry->MicrosecondDelay));
         if (Entry->MicrosecondDelay == 0) {
           // NewTime = 0 = delete this entry from the table
           DelayedDispatchTable->Count--;
           CopyMem (Entry, Entry+1, sizeof (DELAYED_DISPATCH_ENTRY) * (DelayedDispatchTable->Count - Index1));
+          
+          mde_2_edkii_vga_sprintf(17, "P1-%X,%LX",
+            (DelayedDispatchTable->Count - Index1),
+            sizeof (DELAYED_DISPATCH_ENTRY) * (DelayedDispatchTable->Count - Index1)
+          );
+          
         } else {
+          mde_2_edkii_vga_sprintf(17, "P2a-%X,%X",
+            Entry->MicrosecondDelay,
+            FixedPcdGet32 (PcdDelayedDispatchMaxDelayUs)
+          );
+
           if (Entry->MicrosecondDelay > FixedPcdGet32 (PcdDelayedDispatchMaxDelayUs)) {
+            mde_2_edkii_vga_sprintf(17, "P2b-%X,%X",
+              Entry->MicrosecondDelay,
+              FixedPcdGet32 (PcdDelayedDispatchMaxDelayUs)
+            );
+
             DEBUG ((DEBUG_ERROR, "%a Illegal new delay %d requested\n", __func__, Entry->MicrosecondDelay));
             ASSERT (FALSE);
             Entry->MicrosecondDelay = FixedPcdGet32 (PcdDelayedDispatchMaxDelayUs);
           }
 
+          mde_2_edkii_vga_sprintf(17, "P2c-%X,%X-%X",
+            Entry->MicrosecondDelay,
+            FixedPcdGet32 (PcdDelayedDispatchMaxDelayUs),
+            Entry->DispatchTime
+          );
+
           // NewTime != 0 - update the time from us to Dispatch time
           Status = SafeUint64Add (GET_TIME_IN_US (), Entry->MicrosecondDelay, &Entry->DispatchTime);
+          
+          mde_2_edkii_vga_sprintf(18, "P2d-%X-%LX,%X,%X",
+            Status,
+            ET_TIME_IN_US (),
+            Entry->DispatchTime,
+            Index1
+          );
           if (EFI_ERROR (Status)) {
             DEBUG ((DEBUG_ERROR, "%a Delay overflow, this event will likely never be fired...\n", __func__));
             Entry->DispatchTime = MAX_UINT64;
@@ -448,12 +544,15 @@ DelayedDispatchDispatcher (
 
           Index1++;
         }
+            
       } else {
         Index1++;
       }
     }
   }
-
+  
+  mde_2_edkii_vga_print(20, "End of DelayedDispath");
+  
   return Dispatched;
 }
 
