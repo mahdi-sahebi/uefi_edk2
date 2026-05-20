@@ -2051,12 +2051,12 @@ PeiDispatcher (
     }
   }
 
-  // mde_2_edkii_vga_sprintf(2, "PI:%X,PMTRFV:%X,HITBM:%X,PSPSB:%X",
-  //   Private->PeiMemoryInstalled,
-  //   PcdMigrateTemporaryRamFirmwareVolumes,
-  //   Private->HobList.HandoffInformationTable->BootMode,
-  //   PcdShadowPeimOnS3Boot
-  // );
+  mde_2_edkii_vga_sprintf(2, "a-PI:%X,PMTRFV:%X,HITBM:%X,PSPSB:%X",
+    Private->PeiMemoryInstalled,
+    PcdGetBool (PcdMigrateTemporaryRamFirmwareVolumes),
+    Private->HobList.HandoffInformationTable->BootMode,
+    PcdGetBool (PcdShadowPeimOnS3Boot)
+  );
   
   if ((Private->PeiMemoryInstalled) &&
       (PcdGetBool (PcdMigrateTemporaryRamFirmwareVolumes) ||
@@ -2071,6 +2071,16 @@ PeiDispatcher (
     SaveCurrentPeimCount  = Private->CurrentPeimCount;
     SaveCurrentFvCount    = Private->CurrentPeimFvCount;
     SaveCurrentFileHandle =  Private->CurrentFileHandle;
+
+    mde_2_edkii_vga_sprintf(2, "b-PI:%X,PMTRFV:%X,HITBM:%X,PSPSB:%X,%X,%X,%X",
+      Private->PeiMemoryInstalled,
+      PcdGetBool (PcdMigrateTemporaryRamFirmwareVolumes),
+      Private->HobList.HandoffInformationTable->BootMode,
+      PcdGetBool (PcdShadowPeimOnS3Boot),
+      SaveCurrentPeimCount,
+      SaveCurrentFvCount,
+      SaveCurrentFileHandle
+    );
 
     for (Index1 = 0; Index1 < Private->FvCount; Index1++) {
       for (Index2 = 0; Index2 < Private->Fv[Index1].PeimCount; Index2++) {
