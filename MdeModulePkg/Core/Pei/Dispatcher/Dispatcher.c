@@ -1987,10 +1987,10 @@ PeiDispatcher (
     GuidHob = GetFirstGuidHob (&gEfiDelayedDispatchTableGuid);
     
     mde_2_edkii_vga_sprintf(0, "Dis-MI:%X,S:%X,PDDT:%X,GHOB:%X",
-      Private->PeiMemoryInstalled,
-      SecCoreData,
-      Private->DelayedDispatchTable,
-      GuidHob
+      Private->PeiMemoryInstalled,// Dis-MI:0 
+      SecCoreData,//S:8fe94 
+      Private->DelayedDispatchTable,// PDDT:0 
+      GuidHob//GHOB:0
     );
     
     if (GuidHob != NULL) {
@@ -2038,9 +2038,9 @@ PeiDispatcher (
           Status = PeiServicesNotifyPpi (&mDelayedDispatchNotifyDesc);
           
           mde_2_edkii_vga_sprintf(1, "TS-c:%X,PDDT:%X,S:%X",
-            TableSize,
-            Private->DelayedDispatchTable,
-            Status
+            TableSize, // TS-c:260 
+            Private->DelayedDispatchTable, // PDDT:80EC8 
+            Status // S:0
           );
           if (EFI_ERROR (Status)) {
             DEBUG ((DEBUG_ERROR, "%a Failed to notify Delayed Dispatch on End of Pei: %r!\n", __func__, Status));
@@ -2052,10 +2052,10 @@ PeiDispatcher (
   }
 
   mde_2_edkii_vga_sprintf(2, "a-PI:%X,PMTRFV:%X,HITBM:%X,PSPSB:%X",
-    Private->PeiMemoryInstalled,
-    PcdGetBool (PcdMigrateTemporaryRamFirmwareVolumes),
-    Private->HobList.HandoffInformationTable->BootMode,
-    PcdGetBool (PcdShadowPeimOnS3Boot)
+    Private->PeiMemoryInstalled, // a-PI:0 
+    PcdGetBool (PcdMigrateTemporaryRamFirmwareVolumes), // PMTRFV:0 
+    Private->HobList.HandoffInformationTable->BootMode, // HITBM:0 
+    PcdGetBool (PcdShadowPeimOnS3Boot)// PSPSB:0
   );
   
   if ((Private->PeiMemoryInstalled) &&
@@ -2166,9 +2166,9 @@ PeiDispatcher (
   do {
                           
     mde_2_edkii_vga_sprintf(4, "PDR-,%X,%X,%X",
-      Private->PeimDispatcherReenter,
-      Private->CurrentPeimFvCount,
-      Private->FvCount
+      Private->PeimDispatcherReenter, // PDR-,0 
+      Private->CurrentPeimFvCount, // 0 
+      Private->FvCount// 1
     );
     //
     // In case that reenter PeiCore happens, the last pass record is still available.
@@ -2188,12 +2188,12 @@ PeiDispatcher (
       );
       CoreFvHandle = FindNextCoreFvHandle (Private, FvCount);
                          
-      mde_2_edkii_vga_sprintf(5, "NCHb-,%X,%X,CVH:%X,Fp:%X,CPC:%X",
-        Private,
-        FvCount,
-        CoreFvHandle,
-        CoreFvHandle->FvPpi,
-        Private->CurrentPeimCount
+      mde_2_edkii_vga_sprintf(5, "NCHb-,%X,%X,CVH:%X,Fp:%X,CPC:%X", // NCHb- 
+        Private, // 8fa30 
+        FvCount, // 0 
+        CoreFvHandle, // CVH:80D28 
+        CoreFvHandle->FvPpi, // Fp:8161A8 
+        Private->CurrentPeimCount // CPC:0
       );
       ASSERT (CoreFvHandle != NULL);
 
@@ -2249,14 +2249,14 @@ PeiDispatcher (
 
             Status = CoreFvHandle->FvPpi->GetFileInfo (CoreFvHandle->FvPpi, PeimFileHandle, &FvFileInfo);
             
-            mde_2_edkii_vga_sprintf(6, "FIc-%X-%X-%X,%X-%X-%X,%X",
-              PeimCount,
-              Private->Fv[FvCount].PeimState[PeimCount],
-              Status,
-              CoreFvHandle->FvPpi,
-              PeimFileHandle,
-              &FvFileInfo,
-              FvFileInfo.FileType
+            mde_2_edkii_vga_sprintf(6, "FIc-%X-%X-%X,%X-%X-%X,%X", // FIc-
+              PeimCount, // 2 
+              Private->Fv[FvCount].PeimState[PeimCount], // 0 
+              Status, // 0 
+              CoreFvHandle->FvPpi, // 8161A8 
+              PeimFileHandle, // 829FE8 
+              &FvFileInfo, // 8fcfc 
+              FvFileInfo.FileType // 6
             );
 
 
@@ -2338,13 +2338,13 @@ PeiDispatcher (
 
                 Status = VerifyPeim (Private, CoreFvHandle->FvHandle, PeimFileHandle, AuthenticationState);
                 
-                mde_2_edkii_vga_sprintf(7, "PLId-%X,%X-%X-%X-%X-%X",
-                  Status,
-                  PeiServices,
-                  PeimFileHandle,
-                  &EntryPoint,
-                  AuthenticationState,
-                  CoreFvHandle->FvHandle
+                mde_2_edkii_vga_sprintf(7, "PLId-%X,%X-%X-%X-%X-%X", // PLId- 
+                  Status, // 8000000e 
+                  PeiServices, // 8fa34 
+                  PeimFileHandle, // 829fe8 
+                  &EntryPoint, // 8fa00 
+                  AuthenticationState, // 0 
+                  CoreFvHandle->FvHandle // 800000
                 );
                 if (Status != EFI_SECURITY_VIOLATION) {
                   //
@@ -2395,14 +2395,14 @@ PeiDispatcher (
             //
             mde_2_edkii_vga_print(8, "8c");
             PeiCheckAndSwitchStack (SecCoreData, Private);
-            mde_2_edkii_vga_sprintf(8, "8c-%X-%X-%X-%X-%X-%X-%X",
-              Private->PeiMemoryInstalled,
-              PeimCount,
-              FvCount,
-              Private->Fv[FvCount].PeimState[PeimCount],
-              PcdGetBool (PcdMigrateTemporaryRamFirmwareVolumes),
-              Private->HobList.HandoffInformationTable->BootMode,
-              PcdGetBool (PcdShadowPeimOnS3Boot)
+            mde_2_edkii_vga_sprintf(8, "8c-%X-%X-%X-%X-%X-%X-%X", // 8c 
+              Private->PeiMemoryInstalled, // 0 
+              PeimCount, // 1
+              FvCount, // 0
+              Private->Fv[FvCount].PeimState[PeimCount], // 1
+              PcdGetBool (PcdMigrateTemporaryRamFirmwareVolumes), // 0 
+              Private->HobList.HandoffInformationTable->BootMode, // 0 
+              PcdGetBool (PcdShadowPeimOnS3Boot) // 0
             );
 
             if ((Private->PeiMemoryInstalled) && (Private->Fv[FvCount].PeimState[PeimCount] == PEIM_STATE_REGISTER_FOR_SHADOW) &&   \
@@ -2502,8 +2502,8 @@ PeiDispatcher (
         // Dispatch pending delalyed dispatch requests
         if (Private->DelayedDispatchTable != NULL) {
           
-          mde_2_edkii_vga_sprintf(11, "Pb-%X",
-            Private->DelayedDispatchTable
+          mde_2_edkii_vga_sprintf(11, "Pb-%X", // Pb 
+            Private->DelayedDispatchTable // 80ec8
           );
           
           if (DelayedDispatchDispatcher (Private->DelayedDispatchTable, NULL)) {
