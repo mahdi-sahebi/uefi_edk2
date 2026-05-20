@@ -2456,10 +2456,23 @@ PeiDispatcher (
                 }
               }
 
+              
+              mde_2_edkii_vga_sprintf(10, "aa-%X,%X-%X",
+                PeimEntryPoint,
+                PeimFileHandle,
+                PeiServices
+              );
+              
               ASSERT (PeimEntryPoint != NULL);
               PeimEntryPoint (PeimFileHandle, (const EFI_PEI_SERVICES **)PeiServices);
               // PERF_END (PeiServices, L"PEIM", PeimFileHandle, 0);
 
+              mde_2_edkii_vga_sprintf(10, "ab-%X,%X-%X",
+                PeimEntryPoint,
+                PeimFileHandle,
+                PeiServices
+              );
+              
               //
               // PEIM_STATE_REGISTER_FOR_SHADOW move to PEIM_STATE_DONE
               //
@@ -2470,14 +2483,41 @@ PeiDispatcher (
               // newly installed PPIs.
               //
               ProcessDispatchNotifyList (Private);
+              
+              mde_2_edkii_vga_sprintf(10, "ac-%X,%X-%X",
+                PeimEntryPoint,
+                PeimFileHandle,
+                PeiServices
+              );
+              
             }
           }
         }
 
+        
+        mde_2_edkii_vga_sprintf(11, "Pa-%X",
+          Private->DelayedDispatchTable
+        );
+        
         // Dispatch pending delalyed dispatch requests
         if (Private->DelayedDispatchTable != NULL) {
+          
+          mde_2_edkii_vga_sprintf(11, "Pb-%X",
+            Private->DelayedDispatchTable
+          );
+          
           if (DelayedDispatchDispatcher (Private->DelayedDispatchTable, NULL)) {
+              
+            mde_2_edkii_vga_sprintf(11, "Pc-%X",
+              Private->DelayedDispatchTable
+            );
+          
             ProcessDispatchNotifyList (Private);
+            
+            mde_2_edkii_vga_sprintf(11, "Pd-%X",
+              Private->DelayedDispatchTable
+            );
+        
           }
         }
       }
@@ -2510,6 +2550,9 @@ PeiDispatcher (
     // dispatch registrations still running.
   } while ((Private->PeimNeedingDispatch && Private->PeimDispatchOnThisPass) ||
            (Private->DelayedDispatchTable->Count > 0));
+
+  
+  mde_2_edkii_vga_sprintf(12, "End of Dispatching");
 }
 
 /**
