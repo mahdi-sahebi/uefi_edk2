@@ -386,11 +386,10 @@ DelayedDispatchDispatcher (
   DelayedGroupIdPresent = TRUE;
   Status                = SafeUint64Add (GET_TIME_IN_US (), FixedPcdGet32 (PcdDelayedDispatchCompletionTimeoutUs), &MaxDispatchTime);
   
-  mde_2_edkii_vga_sprintf(12, "DelayedDis-%X,%X-%X,%X,%X",
+  mde_2_edkii_vga_sprintf(12, "DelayedDis-%X,%X-%X,%LX",
     DelayedDispatchTable,
     DelayedGroupId,
     Status,
-    FixedPcdGet32 (PcdDelayedDispatchCompletionTimeoutUs),
     MaxDispatchTime
   );
 
@@ -487,11 +486,10 @@ DelayedDispatchDispatcher (
           Entry->Context,
           Entry->MicrosecondDelay
         );         
-        mde_2_edkii_vga_sprintf(16, "S-%X,%X,%X-%X",
+        mde_2_edkii_vga_sprintf(16, "S-%X,%X,%X",
           sizeof (DELAYED_DISPATCH_ENTRY),
           DelayedDispatchTable->Count,
-          Index1,
-          FixedPcdGet32 (PcdDelayedDispatchMaxDelayUs)
+          Index1
         );
 
         DEBUG ((DEBUG_ERROR, "Delayed dispatch Function returned delay=%d\n", Entry->MicrosecondDelay));
@@ -506,15 +504,13 @@ DelayedDispatchDispatcher (
           );
           
         } else {
-          mde_2_edkii_vga_sprintf(17, "P2a-%X,%X",
-            Entry->MicrosecondDelay,
-            FixedPcdGet32 (PcdDelayedDispatchMaxDelayUs)
+          mde_2_edkii_vga_sprintf(17, "P2a-%X",
+            Entry->MicrosecondDelay
           );
 
           if (Entry->MicrosecondDelay > FixedPcdGet32 (PcdDelayedDispatchMaxDelayUs)) {
-            mde_2_edkii_vga_sprintf(17, "P2b-%X,%X",
-              Entry->MicrosecondDelay,
-              FixedPcdGet32 (PcdDelayedDispatchMaxDelayUs)
+            mde_2_edkii_vga_sprintf(17, "P2b-%X",
+              Entry->MicrosecondDelay
             );
 
             DEBUG ((DEBUG_ERROR, "%a Illegal new delay %d requested\n", __func__, Entry->MicrosecondDelay));
@@ -522,9 +518,8 @@ DelayedDispatchDispatcher (
             Entry->MicrosecondDelay = FixedPcdGet32 (PcdDelayedDispatchMaxDelayUs);
           }
 
-          mde_2_edkii_vga_sprintf(17, "P2c-%X,%X-%X",
+          mde_2_edkii_vga_sprintf(17, "P2c-%X-%LX",
             Entry->MicrosecondDelay,
-            FixedPcdGet32 (PcdDelayedDispatchMaxDelayUs),
             Entry->DispatchTime
           );
 
@@ -533,7 +528,7 @@ DelayedDispatchDispatcher (
           
           mde_2_edkii_vga_sprintf(18, "P2d-%X-%LX,%X,%X",
             Status,
-            ET_TIME_IN_US (),
+            GET_TIME_IN_US (),
             Entry->DispatchTime,
             Index1
           );
