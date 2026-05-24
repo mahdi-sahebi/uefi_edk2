@@ -171,7 +171,7 @@ void mde_2_edkii_vga_hex_dump(const unsigned char *addr, unsigned int len, int s
 
 
 
-
+static int g_cnt = 0;
 
 
 
@@ -386,11 +386,11 @@ DelayedDispatchDispatcher (
   DelayedGroupIdPresent = TRUE;
   Status                = SafeUint64Add (GET_TIME_IN_US (), FixedPcdGet32 (PcdDelayedDispatchCompletionTimeoutUs), &MaxDispatchTime);
   
-  mde_2_edkii_vga_sprintf(12, "DelayedDis-%X,%X-%X,%LX",
-    DelayedDispatchTable,
-    DelayedGroupId,
-    Status,
-    MaxDispatchTime
+  mde_2_edkii_vga_sprintf(12, "DelayedDis-%X,%X-%X,%LX",//Delayedis-
+    DelayedDispatchTable,//80EC8
+    DelayedGroupId,//0
+    Status,//0
+    MaxDispatchTime//989680
   );
 
   if (EFI_ERROR (Status)) {
@@ -2081,7 +2081,7 @@ PeiDispatcher (
     GuidHob = GetFirstGuidHob (&gEfiDelayedDispatchTableGuid);
     
     mde_2_edkii_vga_sprintf(0, "Dis-MI:%X,S:%X,PDDT:%X,GHOB:%X",
-      Private->PeiMemoryInstalled,// Dis-MI:0 
+      Private->PeiMemoryInstalled,// MI:0
       SecCoreData,//S:8fe94 
       Private->DelayedDispatchTable,// PDDT:0 
       GuidHob//GHOB:0
@@ -2133,7 +2133,7 @@ PeiDispatcher (
           
           mde_2_edkii_vga_sprintf(1, "TS-c:%X,PDDT:%X,S:%X",
             TableSize, // TS-c:260 
-            Private->DelayedDispatchTable, // PDDT:80EC8 
+            Private->DelayedDispatchTable, // PDDT:80ec8 
             Status // S:0
           );
           if (EFI_ERROR (Status)) {
@@ -2281,7 +2281,7 @@ PeiDispatcher (
         FvCount
       );
       CoreFvHandle = FindNextCoreFvHandle (Private, FvCount);
-                         
+      
       mde_2_edkii_vga_sprintf(5, "NCHb-,%X,%X,CVH:%X,Fp:%X,CPC:%X", // NCHb- 
         Private, // 8fa30 
         FvCount, // 0 
@@ -2349,7 +2349,7 @@ PeiDispatcher (
               Status, // 0 
               CoreFvHandle->FvPpi, // 8161A8 
               PeimFileHandle, // 829FE8 
-              &FvFileInfo, // 8fcfc 
+              &FvFileInfo, // 8FCFC 
               FvFileInfo.FileType // 6
             );
 
@@ -2433,10 +2433,10 @@ PeiDispatcher (
                 Status = VerifyPeim (Private, CoreFvHandle->FvHandle, PeimFileHandle, AuthenticationState);
                 
                 mde_2_edkii_vga_sprintf(7, "PLId-%X,%X-%X-%X-%X-%X", // PLId- 
-                  Status, // 8000000e 
+                  Status, // 8000000E 
                   PeiServices, // 8fa34 
-                  PeimFileHandle, // 829fe8 
-                  &EntryPoint, // 8fa00 
+                  PeimFileHandle, // 829FE8 
+                  &EntryPoint, // 8FA00 
                   AuthenticationState, // 0 
                   CoreFvHandle->FvHandle // 800000
                 );
@@ -2597,7 +2597,7 @@ PeiDispatcher (
         if (Private->DelayedDispatchTable != NULL) {
           
           mde_2_edkii_vga_sprintf(11, "Pb-%X", // Pb 
-            Private->DelayedDispatchTable // 80ec8
+            Private->DelayedDispatchTable // 80EC8
           );
           
           if (DelayedDispatchDispatcher (Private->DelayedDispatchTable, NULL)) {
@@ -2613,6 +2613,13 @@ PeiDispatcher (
             );
         
           }
+          
+          mde_2_edkii_vga_sprintf(13, "n-%X,%X,%X",
+            Private->PeimNeedingDispatch,
+            Private->PeimDispatchOnThisPass,
+            Private->DelayedDispatchTable->Count,
+            g_cnt
+            );
         }
       }
 
@@ -2642,11 +2649,20 @@ PeiDispatcher (
     //
     // Also continue dispatch loop if there are outstanding delay-
     // dispatch registrations still running.
+    
+          
+    mde_2_edkii_vga_sprintf(14, "n-%X,%X,%X",
+      Private->PeimNeedingDispatch,
+      Private->PeimDispatchOnThisPass,
+      Private->DelayedDispatchTable->Count,
+      g_cnt
+      )
+    g_cnt++;
   } while ((Private->PeimNeedingDispatch && Private->PeimDispatchOnThisPass) ||
            (Private->DelayedDispatchTable->Count > 0));
 
   
-  mde_2_edkii_vga_sprintf(12, "End of Dispatching");
+  mde_2_edkii_vga_sprintf(21, "End of Dispatching");// End of DelayedDispath
 }
 
 /**
