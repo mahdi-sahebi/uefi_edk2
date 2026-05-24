@@ -2614,7 +2614,7 @@ PeiDispatcher (
         
           }
           
-          mde_2_edkii_vga_sprintf(13, "n-%X,%X,%X",
+          mde_2_edkii_vga_sprintf(13, "n-%X,%X,%X,%X",
             Private->PeimNeedingDispatch,
             Private->PeimDispatchOnThisPass,
             Private->DelayedDispatchTable->Count,
@@ -2651,12 +2651,12 @@ PeiDispatcher (
     // dispatch registrations still running.
     
           
-    mde_2_edkii_vga_sprintf(14, "n-%X,%X,%X",
+    mde_2_edkii_vga_sprintf(14, "n-%X,%X,%X,%X",
       Private->PeimNeedingDispatch,
       Private->PeimDispatchOnThisPass,
       Private->DelayedDispatchTable->Count,
       g_cnt
-      )
+      );
     g_cnt++;
   } while ((Private->PeimNeedingDispatch && Private->PeimDispatchOnThisPass) ||
            (Private->DelayedDispatchTable->Count > 0));
