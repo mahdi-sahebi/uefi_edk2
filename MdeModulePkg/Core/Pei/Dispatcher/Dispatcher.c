@@ -2651,11 +2651,11 @@ PeiDispatcher (
     // dispatch registrations still running.
     
           
-    mde_2_edkii_vga_sprintf(14, "n-%X,%X,%X,%X",
-      Private->PeimNeedingDispatch,
-      Private->PeimDispatchOnThisPass,
-      Private->DelayedDispatchTable->Count,
-      g_cnt
+    mde_2_edkii_vga_sprintf(14, "n-%X,%X,%X,%X",//n-
+      Private->PeimNeedingDispatch,//0
+      Private->PeimDispatchOnThisPass,//1
+      Private->DelayedDispatchTable->Count,//0
+      g_cnt//0
       );
     g_cnt++;
   } while ((Private->PeimNeedingDispatch && Private->PeimDispatchOnThisPass) ||
