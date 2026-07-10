@@ -2354,7 +2354,7 @@ PeiDispatcher (
             );
 
 
-            ASSERT_EFI_ERROR (Status);
+            // ASSERT_EFI_ERROR (Status);
             if (FvFileInfo.FileType == EFI_FV_FILETYPE_FIRMWARE_VOLUME_IMAGE) {
               
               mde_2_edkii_vga_sprintf(7, "PFFa");
@@ -2422,36 +2422,86 @@ PeiDispatcher (
                   sizeof (PeimFileHandle)
                   );
 
-                mde_2_edkii_vga_sprintf(7, "PLIc-%X-%X-%X-%X-%X",
-                  PeiServices,
-                  PeimFileHandle,
-                  &EntryPoint,
-                  AuthenticationState,
-                  CoreFvHandle->FvHandle
+                mde_2_edkii_vga_sprintf(8, "PLIc-%X-%X-%X-%X-%X",// PLIc-
+                  PeiServices,//8fa34
+                  PeimFileHandle,//829fe8
+                  &EntryPoint,//8fa00
+                  AuthenticationState,//0
+                  CoreFvHandle->FvHandle// 800000
                 );
 
                 Status = VerifyPeim (Private, CoreFvHandle->FvHandle, PeimFileHandle, AuthenticationState);
                 
-                mde_2_edkii_vga_sprintf(7, "PLId-%X,%X-%X-%X-%X-%X", // PLId- 
-                  Status, // 8000000E 
+                mde_2_edkii_vga_sprintf(9, "PLId-%X,%X-%X-%X-%X-%X", // PLId-
+                  Status, // 8000000E == EFI_NOT_FOUND
                   PeiServices, // 8fa34 
                   PeimFileHandle, // 829FE8 
                   &EntryPoint, // 8FA00 
                   AuthenticationState, // 0 
                   CoreFvHandle->FvHandle // 800000
                 );
-                if (Status != EFI_SECURITY_VIOLATION) {
+                // TODO(MN): Value of EFI_SECURITY_VIOLATION and condition below
+                if (Status != EFI_SECURITY_VIOLATION) {// EFI_SECURITY_VIOLATION == 8000001a
                   //
                   // PEIM_STATE_NOT_DISPATCHED move to PEIM_STATE_DISPATCHED
                   //
                   Private->Fv[FvCount].PeimState[PeimCount]++;
+                  
+                  mde_2_edkii_vga_sprintf(10, "a-%X,%X,%X,%X,%X", //a-
+                    EFI_SECURITY_VIOLATION, //  8000001a
+                    FvCount,//0
+                    PeimCount,//2
+                    Private->PeimDispatchOnThisPass//1
+                  );
+
+                  // volatile UINT32 icnt;
+                  // for (icnt = 0; icnt < 1000000; icnt++) {
+                  //   // Prevent optimization
+                  //   __asm__ __volatile__ ("nop");
+                  // }
+
                   //
                   // Call the PEIM entry point for PEIM driver
                   //
                   PeimEntryPoint = (EFI_PEIM_ENTRY_POINT2)(UINTN)EntryPoint;
+
+                  // mde_2_edkii_vga_hex_dump((const unsigned char *)PeimEntryPoint, 128, 0);
+                  /*
+                  0082d2be:55 89 e5 57 56 53 83 ec 5c e8 ec fc ff ff 8a 15
+                  0082d2ce:40 f0 82 00 80 e2 01 74 3d 85 c0 74 39 e8 b4 ed
+                  0082d2de:ff ff 84 c0 74 18 57 68 07 00 00 80 68 d8 dc 82
+                  0082d2ee:00 68 00 00 00 80 e8 5b fa ff ff 83 c4 10 56 68
+                  0082d2fe:98 db 82 00 68 e3 00 00 00 68 fc dc 82 00 e8 97
+                  0082d30e:f7 ff ff 83 c4 10 e8 f9 fc ff ff 8a 15 40 f0 82
+                  0082d31e:00 80 e2 01 74 3d 85 c0 74 39 e8 67 ed ff ff 84
+                  0082d32e:c0 74 18 53 68 07 00 00 80 68 d8 dc 82 00 68 00
+                  */
+
+// EFI_FV_FILE_INFO  DebugFileInfo;
+// Status = CoreFvHandle->FvPpi->GetFileInfo (CoreFvHandle->FvPpi, PeimFileHandle, &DebugFileInfo);
+// if (!EFI_ERROR (Status)) {
+//     // Print the first 3 parts of the GUID to identify the PEIM
+//     mde_2_edkii_vga_sprintf(23, "PEIM:%08X-%04X-%04X", 
+//         DebugFileInfo.FileName.Data1, 
+//         DebugFileInfo.FileName.Data2, 
+//         DebugFileInfo.FileName.Data3);
+// }
+
                   PeimEntryPoint (PeimFileHandle, (const EFI_PEI_SERVICES **)PeiServices);
+                  
+                  mde_2_edkii_vga_sprintf(15, "End of peim entry-%X",
+                    PeimCount
+                  );// End of peim entry
+
                   Private->PeimDispatchOnThisPass = TRUE;
                 } else {
+                  mde_2_edkii_vga_sprintf(10, "b-%X,%X,%X,%X,%X", //
+                    (Status != EFI_SECURITY_VIOLATION), //  
+                    EFI_SECURITY_VIOLATION, //  
+                    FvCount,
+                    PeimCount,
+                    Private->PeimDispatchOnThisPass
+                  );
                   //
                   // The related GuidedSectionExtraction PPI for the
                   // signed PEIM image section may be installed in the rest
@@ -2459,6 +2509,10 @@ PeiDispatcher (
                   //
                   Private->PeimNeedingDispatch = TRUE;
                 }
+                
+                mde_2_edkii_vga_sprintf(16, "16-%X",
+                  PeimCount
+                );//16-
 
                 REPORT_STATUS_CODE_WITH_EXTENDED_DATA (
                   EFI_PROGRESS_CODE,
@@ -2471,14 +2525,16 @@ PeiDispatcher (
             }
 
             
-            mde_2_edkii_vga_print(8, "8a");
+            mde_2_edkii_vga_sprintf(17, "17a-%X",
+              PeimCount
+            );
             PeiCheckAndSwitchStack (SecCoreData, Private);
 
             //
             // Process the Notify list and dispatch any notifies for
             // newly installed PPIs.
             //
-            mde_2_edkii_vga_print(8, "8b");
+            mde_2_edkii_vga_sprintf(17, "17b-%X", PeimCount);
 
             ProcessDispatchNotifyList (Private);
 
@@ -2487,9 +2543,9 @@ PeiDispatcher (
             // in case PeiInstallPeiMemory() is done in a callback with
             // EFI_PEI_PPI_DESCRIPTOR_NOTIFY_DISPATCH.
             //
-            mde_2_edkii_vga_print(8, "8c");
+            mde_2_edkii_vga_sprintf(17, "17c-%X", PeimCount);
             PeiCheckAndSwitchStack (SecCoreData, Private);
-            mde_2_edkii_vga_sprintf(8, "8c-%X-%X-%X-%X-%X-%X-%X", // 8c 
+            mde_2_edkii_vga_sprintf(17, "17c-%X-%X-%X-%X-%X-%X-%X", // 17c-
               Private->PeiMemoryInstalled, // 0 
               PeimCount, // 1
               FvCount, // 0
@@ -2505,13 +2561,15 @@ PeiDispatcher (
                  PcdGetBool (PcdShadowPeimOnS3Boot))
                 )
             {
+              // Not reached here
+
               //
               // If memory is available we shadow images by default for performance reasons.
               // We call the entry point a 2nd time so the module knows it's shadowed.
               //
               // PERF_START (PeiServices, L"PEIM", PeimFileHandle, 0);
               
-              mde_2_edkii_vga_sprintf(9, "9a-%X-%X-%X",
+              mde_2_edkii_vga_sprintf(18, "18a-%X-%X-%X",
                 PcdGetBool (PcdShadowPeimOnBoot),
                 PcdGetBool (PcdMigrateTemporaryRamFirmwareVolumes),
                 Private->HobList.HandoffInformationTable->BootMode
@@ -2551,7 +2609,7 @@ PeiDispatcher (
               }
 
               
-              mde_2_edkii_vga_sprintf(10, "aa-%X,%X-%X",
+              mde_2_edkii_vga_sprintf(19, "19a-%X,%X-%X",
                 PeimEntryPoint,
                 PeimFileHandle,
                 PeiServices
@@ -2561,7 +2619,7 @@ PeiDispatcher (
               PeimEntryPoint (PeimFileHandle, (const EFI_PEI_SERVICES **)PeiServices);
               // PERF_END (PeiServices, L"PEIM", PeimFileHandle, 0);
 
-              mde_2_edkii_vga_sprintf(10, "ab-%X,%X-%X",
+              mde_2_edkii_vga_sprintf(19, "19b-%X,%X-%X",
                 PeimEntryPoint,
                 PeimFileHandle,
                 PeiServices
@@ -2578,7 +2636,7 @@ PeiDispatcher (
               //
               ProcessDispatchNotifyList (Private);
               
-              mde_2_edkii_vga_sprintf(10, "ac-%X,%X-%X",
+              mde_2_edkii_vga_sprintf(19, "19c-%X,%X-%X",
                 PeimEntryPoint,
                 PeimFileHandle,
                 PeiServices
@@ -2589,14 +2647,14 @@ PeiDispatcher (
         }
 
         
-        mde_2_edkii_vga_sprintf(11, "Pa-%X",
+        mde_2_edkii_vga_sprintf(20, "Pa-%X",
           Private->DelayedDispatchTable
         );
         
         // Dispatch pending delalyed dispatch requests
         if (Private->DelayedDispatchTable != NULL) {
           
-          mde_2_edkii_vga_sprintf(11, "Pb-%X", // Pb 
+          mde_2_edkii_vga_sprintf(20, "Pb-%X", // Pb 
             Private->DelayedDispatchTable // 80EC8
           );
           
@@ -2614,14 +2672,25 @@ PeiDispatcher (
         
           }
           
-          mde_2_edkii_vga_sprintf(13, "n-%X,%X,%X,%X",
-            Private->PeimNeedingDispatch,
-            Private->PeimDispatchOnThisPass,
-            Private->DelayedDispatchTable->Count,
-            g_cnt
+          mde_2_edkii_vga_sprintf(21, "n-%X,%X,%X,%X",//n-
+            Private->PeimNeedingDispatch,//0
+            Private->PeimDispatchOnThisPass,//1
+            Private->DelayedDispatchTable->Count,//0
+            g_cnt//0
             );
         }
-      }
+
+        
+        mde_2_edkii_vga_sprintf(22, "L-%X,%X,%X,%X,%X,%X,%X",
+          PeimCount,//1
+          Private->CurrentPeimCount,//1
+          Private->Fv[FvCount].PeimCount,//B
+          Private->PeimNeedingDispatch,//0
+          Private->PeimDispatchOnThisPass,//1
+          Private->DelayedDispatchTable->Count,//0
+          g_cnt//0
+        );
+      }// for
 
       //
       // Before walking through the next FV, we should set them to NULL/0 to
@@ -2651,18 +2720,18 @@ PeiDispatcher (
     // dispatch registrations still running.
     
           
-    mde_2_edkii_vga_sprintf(14, "n-%X,%X,%X,%X",//n-
-      Private->PeimNeedingDispatch,//0
-      Private->PeimDispatchOnThisPass,//1
-      Private->DelayedDispatchTable->Count,//0
-      g_cnt//0
+    mde_2_edkii_vga_sprintf(23, "o-%X,%X,%X,%X",
+      Private->PeimNeedingDispatch,
+      Private->PeimDispatchOnThisPass,
+      Private->DelayedDispatchTable->Count,
+      g_cnt
       );
     g_cnt++;
   } while ((Private->PeimNeedingDispatch && Private->PeimDispatchOnThisPass) ||
            (Private->DelayedDispatchTable->Count > 0));
 
   
-  mde_2_edkii_vga_sprintf(21, "End of Dispatching");// End of DelayedDispath
+  mde_2_edkii_vga_sprintf(0, "*****************End of Dispatching");
 }
 
 /**
