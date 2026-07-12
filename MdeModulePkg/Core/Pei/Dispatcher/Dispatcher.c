@@ -2401,7 +2401,8 @@ PeiDispatcher (
                          &AuthenticationState
                          );
                          
-              mde_2_edkii_vga_sprintf(7, "PLIb-%X-%X-%X-%X-%X",
+              mde_2_edkii_vga_sprintf(7, "PLIb-%X-%X-%X-%X-%X-%X",
+                PeimCount,
                 Status,
                 PeiServices,
                 PeimFileHandle,
@@ -2422,7 +2423,8 @@ PeiDispatcher (
                   sizeof (PeimFileHandle)
                   );
 
-                mde_2_edkii_vga_sprintf(8, "PLIc-%X-%X-%X-%X-%X",// PLIc-
+                mde_2_edkii_vga_sprintf(8, "PLIc-%X-%X-%X,%X-%X-%X",// PLIc-
+                  PeimCount,
                   PeiServices,//8fa34
                   PeimFileHandle,//829fe8
                   &EntryPoint,//8fa00
@@ -2432,7 +2434,8 @@ PeiDispatcher (
 
                 Status = VerifyPeim (Private, CoreFvHandle->FvHandle, PeimFileHandle, AuthenticationState);
                 
-                mde_2_edkii_vga_sprintf(9, "PLId-%X,%X-%X-%X-%X-%X", // PLId-
+                mde_2_edkii_vga_sprintf(9, "PLId-%X,%X,%X-%X-%X-%X-%X", // PLId-
+                  PeimCount,
                   Status, // 8000000E == EFI_NOT_FOUND
                   PeiServices, // 8fa34 
                   PeimFileHandle, // 829FE8 
@@ -2647,32 +2650,37 @@ PeiDispatcher (
         }
 
         
-        mde_2_edkii_vga_sprintf(20, "Pa-%X",
+        mde_2_edkii_vga_sprintf(20, "Pa-%X-%X",
+            PeimCount,
           Private->DelayedDispatchTable
         );
         
         // Dispatch pending delalyed dispatch requests
         if (Private->DelayedDispatchTable != NULL) {
           
-          mde_2_edkii_vga_sprintf(20, "Pb-%X", // Pb 
+          mde_2_edkii_vga_sprintf(20, "Pb-%X-%X", // Pb 
+            PeimCount,
             Private->DelayedDispatchTable // 80EC8
           );
           
           if (DelayedDispatchDispatcher (Private->DelayedDispatchTable, NULL)) {
               
-            mde_2_edkii_vga_sprintf(11, "Pc-%X",
+            mde_2_edkii_vga_sprintf(11, "Pc-%X-%X",
+            PeimCount,
               Private->DelayedDispatchTable
             );
           
             ProcessDispatchNotifyList (Private);
             
-            mde_2_edkii_vga_sprintf(11, "Pd-%X",
+            mde_2_edkii_vga_sprintf(11, "Pd-%X-%X",
+            PeimCount,
               Private->DelayedDispatchTable
             );
         
           }
           
-          mde_2_edkii_vga_sprintf(21, "n-%X,%X,%X,%X",//n-
+          mde_2_edkii_vga_sprintf(21, "n-%X-%X,%X,%X,%X",//n-
+            PeimCount,
             Private->PeimNeedingDispatch,//0
             Private->PeimDispatchOnThisPass,//1
             Private->DelayedDispatchTable->Count,//0
@@ -2720,7 +2728,7 @@ PeiDispatcher (
     // dispatch registrations still running.
     
           
-    mde_2_edkii_vga_sprintf(23, "o-%X,%X,%X,%X",
+    mde_2_edkii_vga_sprintf(13, "o-%X,%X,%X,%X",
       Private->PeimNeedingDispatch,
       Private->PeimDispatchOnThisPass,
       Private->DelayedDispatchTable->Count,
@@ -2731,7 +2739,7 @@ PeiDispatcher (
            (Private->DelayedDispatchTable->Count > 0));
 
   
-  mde_2_edkii_vga_sprintf(0, "*****************End of Dispatching");
+  mde_2_edkii_vga_sprintf(3, "*****************End of Dispatching");
 }
 
 /**
