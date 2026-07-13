@@ -2316,6 +2316,10 @@ PeiDispatcher (
            PeimCount < Private->Fv[FvCount].PeimCount;
            PeimCount++)
       {
+        if (2 == PeimCount) {
+          continue;
+        }
+
         Private->CurrentPeimCount = PeimCount;
         PeimFileHandle            = Private->CurrentFileHandle = Private->CurrentFvFileHandles[PeimCount];
 
