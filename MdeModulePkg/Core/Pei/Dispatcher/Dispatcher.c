@@ -2484,15 +2484,15 @@ PeiDispatcher (
                   0082d32e:c0 74 18 53 68 07 00 00 80 68 d8 dc 82 00 68 00
                   */
 
-// EFI_FV_FILE_INFO  DebugFileInfo;
-// Status = CoreFvHandle->FvPpi->GetFileInfo (CoreFvHandle->FvPpi, PeimFileHandle, &DebugFileInfo);
-// if (!EFI_ERROR (Status)) {
-//     // Print the first 3 parts of the GUID to identify the PEIM
-//     mde_2_edkii_vga_sprintf(23, "PEIM:%08X-%04X-%04X", 
-//         DebugFileInfo.FileName.Data1, 
-//         DebugFileInfo.FileName.Data2, 
-//         DebugFileInfo.FileName.Data3);
-// }
+EFI_FV_FILE_INFO  DebugFileInfo;
+Status = CoreFvHandle->FvPpi->GetFileInfo (CoreFvHandle->FvPpi, PeimFileHandle, &DebugFileInfo);
+if (!EFI_ERROR (Status)) {
+    // Print the first 3 parts of the GUID to identify the PEIM
+    mde_2_edkii_vga_sprintf(15, "PEIM:%08X-%04X-%04X", 
+        DebugFileInfo.FileName.Data1, 
+        DebugFileInfo.FileName.Data2, 
+        DebugFileInfo.FileName.Data3);
+}
 
                   PeimEntryPoint (PeimFileHandle, (const EFI_PEI_SERVICES **)PeiServices);
                   

@@ -10,6 +10,165 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Coreboot.h>
 #include <IndustryStandard/UefiTcgPlatform.h>
 
+
+
+
+
+
+
+/////////////////////////////////////////////////////
+
+#include <stdarg.h> 
+
+#include <Library/IoLib.h>
+#include <Library/PrintLib.h>
+#include <Library/BaseLib.h>
+#include <Library/DebugLib.h>
+#include <Library/BaseMemoryLib.h>
+#include <Library/PcdLib.h>
+// #include <Library/CpuLib.h>
+// #include <Library/PeCoffGetEntryPointLib.h>
+// #include <Library/PeCoffExtraActionLib.h>
+#include <Library/DebugAgentLib.h>
+
+#define mde_2__VGA_FB 0xB8000
+#define mde_2__VGA_COLUMNS 80
+
+char mde_2_g_buffer[80];
+
+void mde_3_edkii_vga_write_at_offset(unsigned int line, unsigned int offset, const char *string)
+{
+	if (!string)
+		return;
+
+	unsigned short *p = (unsigned short *)mde_2__VGA_FB + (mde_2__VGA_COLUMNS * line) + offset;
+	unsigned int i, len = AsciiStrLen(string);
+
+	for (i = 0; i < (mde_2__VGA_COLUMNS - offset); i++) {
+		if (i < len)
+			p[i] = 0x0F00 | (unsigned char)string[i];
+		else
+			p[i] = 0x0F00;
+	}
+}
+
+
+void mde_3_edkii_vga_print(unsigned int line, const char *string)
+{
+	mde_3_edkii_vga_write_at_offset(line, 0, string);
+}
+
+void mde_3_edkii_vga_sprintf(
+  unsigned int row,
+  const char* format,
+  ...)
+{
+  VA_LIST  marker;
+  
+  VA_START (marker, format);
+  AsciiVSPrint(mde_2_g_buffer, sizeof(mde_2_g_buffer), format, marker);
+  VA_END (marker);
+  
+  mde_3_edkii_vga_print (row, mde_2_g_buffer);
+}
+
+void mde_3_edkii_vga_clear()
+{
+  mde_3_edkii_vga_print(0, "                                                                                                    ");
+  mde_3_edkii_vga_print(1, "                                                                                                    ");
+  mde_3_edkii_vga_print(2, "                                                                                                    ");
+  mde_3_edkii_vga_print(3, "                                                                                                    ");
+  mde_3_edkii_vga_print(4, "                                                                                                    ");
+  mde_3_edkii_vga_print(5, "                                                                                                    ");
+  mde_3_edkii_vga_print(6, "                                                                                                    ");
+  mde_3_edkii_vga_print(7, "                                                                                                    ");
+  mde_3_edkii_vga_print(8, "                                                                                                    ");
+  mde_3_edkii_vga_print(9, "                                                                                                    ");
+  mde_3_edkii_vga_print(10, "                                                                                                    ");
+  mde_3_edkii_vga_print(11, "                                                                                                    ");
+  mde_3_edkii_vga_print(12, "                                                                                                    ");
+  mde_3_edkii_vga_print(13, "                                                                                                    ");
+  mde_3_edkii_vga_print(14, "                                                                                                    ");
+  mde_3_edkii_vga_print(15, "                                                                                                    ");
+  mde_3_edkii_vga_print(16, "                                                                                                    ");
+  mde_3_edkii_vga_print(17, "                                                                                                    ");
+  mde_3_edkii_vga_print(18, "                                                                                                    ");
+  mde_3_edkii_vga_print(19, "                                                                                                    ");
+  mde_3_edkii_vga_print(20, "                                                                                                    ");
+  mde_3_edkii_vga_print(21, "                                                                                                    ");
+  mde_3_edkii_vga_print(22, "                                                                                                    ");
+  mde_3_edkii_vga_print(23, "                                                                                                    ");
+  mde_3_edkii_vga_print(24, "                                                                                                    ");
+}
+
+void mde_3_edkii_vga_hex_dump(const unsigned char *addr, unsigned int len, int start_row) 
+{
+    unsigned int i;
+    
+    for (i = 0; i < len; i += 16) {
+        unsigned int j;
+        int row = start_row + (i / 16);
+        int offset_pos = 0;
+        
+        // Write offset character by character
+        unsigned long ptr_val = (unsigned long)(addr + i);
+        for (j = 28; j > 0; j -= 4) {
+            char nibble = (ptr_val >> j) & 0x0F;
+            char c = (nibble < 10) ? ('0' + nibble) : ('A' + nibble - 10);
+            char buf[2] = {c, '\0'};
+            mde_3_edkii_vga_write_at_offset(row, offset_pos++, buf);
+        }
+        {
+            char last_nibble = ptr_val & 0x0F;
+            char c = (last_nibble < 10) ? ('0' + last_nibble) : ('A' + last_nibble - 10);
+            char buf[2] = {c, '\0'};
+            mde_3_edkii_vga_write_at_offset(row, offset_pos++, buf);
+        }
+        mde_3_edkii_vga_write_at_offset(row, offset_pos++, ": ");
+        
+        // Write hex bytes
+        for (j = 0; j < 16 && (i + j < len); j++) {
+            unsigned char byte = addr[i + j];
+            // Write high nibble
+            char high = (byte >> 4) & 0x0F;
+            char c1 = (high < 10) ? ('0' + high) : ('A' + high - 10);
+            char buf1[2] = {c1, '\0'};
+            mde_3_edkii_vga_write_at_offset(row, offset_pos++, buf1);
+            // Write low nibble
+            char low = byte & 0x0F;
+            char c2 = (low < 10) ? ('0' + low) : ('A' + low - 10);
+            char buf2[2] = {c2, '\0'};
+            mde_3_edkii_vga_write_at_offset(row, offset_pos++, buf2);
+            // Write space
+            mde_3_edkii_vga_write_at_offset(row, offset_pos++, " ");
+        }
+        
+        // Pad remaining hex spaces
+        for (; j < 16; j++) {
+            mde_3_edkii_vga_write_at_offset(row, offset_pos++, "   ");
+        }
+        
+        // Write ASCII representation
+        mde_3_edkii_vga_write_at_offset(row, offset_pos++, "  ");
+        
+        for (j = 0; j < 16 && (i + j < len); j++) {
+            unsigned char byte = addr[i + j];
+            char c = (byte >= 0x20 && byte <= 0x7e) ? (char)byte : '.';
+            char buf[2] = {c, '\0'};
+            mde_3_edkii_vga_write_at_offset(row, offset_pos + j, buf);
+        }
+    }
+}
+
+
+
+/////////////////////////////////////////////////////
+
+
+
+
+
+
 #define PEI_MEM_SIZE                      SIZE_64MB
 
 #define LEGACY_8259_MASK_REGISTER_MASTER  0x21
@@ -666,6 +825,15 @@ BlPeiEntryPoint (
   EFI_PEI_GRAPHICS_DEVICE_INFO_HOB *NewGfxDeviceInfo;
   FIRMWARE_SEC_PERFORMANCE         Performance;
 
+
+  mde_3_edkii_vga_clear();
+  
+  mde_3_edkii_vga_sprintf(0, "BLSa-%x,%x",
+    FileHandle,
+    PeiServices
+  );
+
+
   // Report lower 640KB of RAM.
   // Mark memory as reserved to keep coreboot header in place.
   //
@@ -683,6 +851,11 @@ BlPeiEntryPoint (
     (EFI_PHYSICAL_ADDRESS)(0),
     (UINT64)(0x1000)
     );
+  
+  mde_3_edkii_vga_sprintf(0, "BLSb-%x,%x",
+    FileHandle,
+    PeiServices
+  );
 
   BuildResourceDescriptorHob (
     EFI_RESOURCE_SYSTEM_MEMORY,
@@ -697,6 +870,11 @@ BlPeiEntryPoint (
     (EFI_PHYSICAL_ADDRESS)(0x1000),
     (UINT64)(0x9F000)
     );
+
+  mde_3_edkii_vga_sprintf(0, "BLSc-%x,%x",
+    FileHandle,
+    PeiServices
+  );
 
   BuildResourceDescriptorHob (
     EFI_RESOURCE_MEMORY_RESERVED,
@@ -713,25 +891,48 @@ BlPeiEntryPoint (
     (UINT64)(0x60000)
     );
 
+  mde_3_edkii_vga_sprintf(0, "BLSd-%x,%x",
+    FileHandle,
+    PeiServices
+  );
 
   //
   // Parse memory info
   //
   Status = ParseMemoryInfo (MemInfoCallback, &UsableLowMemTop);
-  if (EFI_ERROR(Status)) {
-    return Status;
-  }
+  
+
+  // if (EFI_ERROR(Status)) {
+  //   return Status;
+  // }
 
   //
   // Install memory
   //
-  ASSERT (UsableLowMemTop >= BASE_1MB + PEI_MEM_SIZE);
+  // ASSERT (UsableLowMemTop >= BASE_1MB + PEI_MEM_SIZE);
   PeiMemBase = (UsableLowMemTop - PEI_MEM_SIZE) & (~(BASE_64KB - 1));
-  DEBUG ((DEBUG_INFO, "UsableLowMemTop 0x%lx\n", UsableLowMemTop));
-  DEBUG ((DEBUG_INFO, "PeiMemBase: 0x%lx.\n", PeiMemBase));
-  DEBUG ((DEBUG_INFO, "PeiMemSize: 0x%lx.\n", PEI_MEM_SIZE));
+  // DEBUG ((DEBUG_INFO, "UsableLowMemTop 0x%lx\n", UsableLowMemTop));
+  // DEBUG ((DEBUG_INFO, "PeiMemBase: 0x%lx.\n", PeiMemBase));
+  // DEBUG ((DEBUG_INFO, "PeiMemSize: 0x%lx.\n", PEI_MEM_SIZE));
+
+  mde_3_edkii_vga_sprintf(0, "BLSe-%x,%x,%x,%x,%x",
+    FileHandle,
+    PeiServices,
+    Status,
+    UsableLowMemTop,
+    PeiMemBase
+  );
+
   Status = PeiServicesInstallPeiMemory (PeiMemBase, PEI_MEM_SIZE);
-  ASSERT_EFI_ERROR (Status);
+  
+  mde_3_edkii_vga_sprintf(1, "BLSf-%x,%x,%x-%x,%x",
+    FileHandle,
+    PeiServices,
+    Status,
+    UsableLowMemTop,
+    PeiMemBase
+  );
+  // ASSERT_EFI_ERROR (Status);
 
   //
   // Create Memory Type Information HOB
@@ -742,10 +943,21 @@ BlPeiEntryPoint (
     sizeof(mDefaultMemoryTypeInformation)
     );
 
+  mde_3_edkii_vga_sprintf(1, "a-%x,%x",
+    gEfiMemoryTypeInformationGuid,
+    sizeof(mDefaultMemoryTypeInformation)
+  );
+
   //
   // Create Fv hob
   //
   PeiReportRemainedFvs ();
+
+  mde_3_edkii_vga_sprintf(1, "b-%x,%x",
+    gEfiMemoryTypeInformationGuid,
+    sizeof(mDefaultMemoryTypeInformation)
+  );
+
 
   BuildMemoryAllocationHob (
     PcdGet32 (PcdPayloadFdMemBase),
@@ -753,10 +965,22 @@ BlPeiEntryPoint (
     EfiBootServicesData
     );
 
+  mde_3_edkii_vga_sprintf(1, "c-%x,%x",
+    gEfiMemoryTypeInformationGuid,
+    sizeof(mDefaultMemoryTypeInformation)
+  );
+
   //
   // Build CPU memory space and IO space hob
   //
   AsmCpuid (0x80000000, &RegEax, NULL, NULL, NULL);
+  
+  mde_3_edkii_vga_sprintf(1, "d-%x,%x,%x",
+    gEfiMemoryTypeInformationGuid,
+    sizeof(mDefaultMemoryTypeInformation),
+    RegEax
+  );
+
   if (RegEax >= 0x80000008) {
     AsmCpuid (0x80000008, &RegEax, NULL, NULL, NULL);
     PhysicalAddressBits = (UINT8) RegEax;
@@ -764,29 +988,70 @@ BlPeiEntryPoint (
     PhysicalAddressBits  = 36;
   }
 
+  mde_3_edkii_vga_sprintf(1, "e-%x,%x,%x-%x",
+    gEfiMemoryTypeInformationGuid,
+    sizeof(mDefaultMemoryTypeInformation),
+    RegEax,
+    PhysicalAddressBits
+  );
+
   //
   // Create a CPU hand-off information
   //
   BuildCpuHob (PhysicalAddressBits, 16);
+
+  mde_3_edkii_vga_sprintf(1, "f-%x,%x,%x-%x",
+    gEfiMemoryTypeInformationGuid,
+    sizeof(mDefaultMemoryTypeInformation),
+    RegEax,
+    PhysicalAddressBits
+  );
 
   //
   // Report Local APIC range
   //
   BuildMemoryMappedIoRangeHob (0xFEC80000, SIZE_512KB);
 
+  mde_3_edkii_vga_sprintf(1, "g-%x,%x,%x-%x",
+    gEfiMemoryTypeInformationGuid,
+    sizeof(mDefaultMemoryTypeInformation),
+    RegEax,
+    PhysicalAddressBits
+  );
+
   //
   // Boot mode
   //
   Status = PeiServicesSetBootMode (BOOT_WITH_FULL_CONFIGURATION);
-  ASSERT_EFI_ERROR (Status);
+  
+  mde_3_edkii_vga_sprintf(1, "h-%x,%x,%x-%x,%x",
+    gEfiMemoryTypeInformationGuid,
+    sizeof(mDefaultMemoryTypeInformation),
+    RegEax,
+    PhysicalAddressBits,
+    Status
+  );
+  // ASSERT_EFI_ERROR (Status);
 
   Status = PeiServicesInstallPpi (mPpiBootMode);
-  ASSERT_EFI_ERROR (Status);
+  
+  mde_3_edkii_vga_sprintf(2, "a-%x",
+    Status
+  );
+  // ASSERT_EFI_ERROR (Status);
 
   //
   // Create guid hob for frame buffer information
   //
   Status = ParseGfxInfo (&GfxInfo);
+  
+  mde_3_edkii_vga_sprintf(2, "b-%x-%x-%x-%x",
+    Status,
+    GfxInfo.FrameBufferBase,
+    GfxInfo.FrameBufferSize,
+    GfxInfo.GraphicsMode
+  );
+
   if (!EFI_ERROR (Status)) {
     NewGfxInfo = BuildGuidHob (&gEfiGraphicsInfoHobGuid, sizeof (GfxInfo));
     ASSERT (NewGfxInfo != NULL);
@@ -798,8 +1063,33 @@ BlPeiEntryPoint (
   Status = ParseGfxDeviceInfo (&GfxDeviceInfo);
   if (!EFI_ERROR (Status)) {
     NewGfxDeviceInfo = BuildGuidHob (&gEfiGraphicsDeviceInfoHobGuid, sizeof (GfxDeviceInfo));
-    ASSERT (NewGfxDeviceInfo != NULL);
+    
+    mde_3_edkii_vga_sprintf(3, "a-%x-%x-%x-%x,-%x-%x-%x-%x-%x",
+      gEfiGraphicsDeviceInfoHobGuid.Data1,
+      gEfiGraphicsDeviceInfoHobGuid.Data2,
+      gEfiGraphicsDeviceInfoHobGuid.Data3,
+      gEfiGraphicsDeviceInfoHobGuid.Data4,
+      NewGfxDeviceInfo->BarIndex,
+      NewGfxDeviceInfo->DeviceId,
+      NewGfxDeviceInfo->RevisionId,
+      NewGfxDeviceInfo->SubsystemId,
+      NewGfxDeviceInfo->VendorId
+    );
+    
+    // ASSERT (NewGfxDeviceInfo != NULL);
     CopyMem (NewGfxDeviceInfo, &GfxDeviceInfo, sizeof (GfxDeviceInfo));
+    
+    mde_3_edkii_vga_sprintf(3, "b-%x-%x-%x-%x,-%x-%x-%x-%x-%x",
+      gEfiGraphicsDeviceInfoHobGuid.Data1,
+      gEfiGraphicsDeviceInfoHobGuid.Data2,
+      gEfiGraphicsDeviceInfoHobGuid.Data3,
+      gEfiGraphicsDeviceInfoHobGuid.Data4,
+      NewGfxDeviceInfo->BarIndex,
+      NewGfxDeviceInfo->DeviceId,
+      NewGfxDeviceInfo->RevisionId,
+      NewGfxDeviceInfo->SubsystemId,
+      NewGfxDeviceInfo->VendorId
+    );
     DEBUG ((DEBUG_INFO, "Created graphics device info hob\n"));
   }
 
@@ -807,77 +1097,266 @@ BlPeiEntryPoint (
   // Create guid hob for SMMSTORE
   //
   Status = ParseSMMSTOREInfo (&SMMSTOREInfo);
+
+  mde_3_edkii_vga_sprintf(4, "a-%x-%x-%x-%x-%x-%x-%x",
+    Status,
+    SMMSTOREInfo.ApmCmd,
+    SMMSTOREInfo.BlockSize,
+    SMMSTOREInfo.ComBuffer,
+    SMMSTOREInfo.ComBufferSize,
+    SMMSTOREInfo.MmioAddress,
+    SMMSTOREInfo.NumBlocks
+  );
+  
   if (!EFI_ERROR (Status)) {
     NewSMMSTOREInfo = BuildGuidHob (&gEfiSmmStoreInfoHobGuid, sizeof (SMMSTOREInfo));
-    ASSERT (NewSMMSTOREInfo != NULL);
+    
+    mde_3_edkii_vga_sprintf(5, "a-%x-%x,%x-%x-%x-%x-%x-%x",
+      gEfiSmmStoreInfoHobGuid.Data1,
+      gEfiSmmStoreInfoHobGuid.Data2,
+      NewSMMSTOREInfo->ApmCmd,
+      NewSMMSTOREInfo->BlockSize,
+      NewSMMSTOREInfo->ComBuffer,
+      NewSMMSTOREInfo->ComBufferSize,
+      NewSMMSTOREInfo->MmioAddress,
+      NewSMMSTOREInfo->NumBlocks
+    );
+    
+    // ASSERT (NewSMMSTOREInfo != NULL);
     CopyMem (NewSMMSTOREInfo, &SMMSTOREInfo, sizeof (SMMSTOREInfo));
-    DEBUG ((DEBUG_INFO, "Created SMMSTORE info hob\n"));
+    
+    mde_3_edkii_vga_sprintf(5, "b-%x-%x,%x-%x-%x-%x-%x-%x",
+      gEfiSmmStoreInfoHobGuid.Data1,
+      gEfiSmmStoreInfoHobGuid.Data2,
+      NewSMMSTOREInfo->ApmCmd,
+      NewSMMSTOREInfo->BlockSize,
+      NewSMMSTOREInfo->ComBuffer,
+      NewSMMSTOREInfo->ComBufferSize,
+      NewSMMSTOREInfo->MmioAddress,
+      NewSMMSTOREInfo->NumBlocks
+    );
+    // DEBUG ((DEBUG_INFO, "Created SMMSTORE info hob\n"));
 
     Status = ValidateFvHeader (&SMMSTOREInfo);
+    
+    mde_3_edkii_vga_sprintf(6, "a-%x",
+      Status
+    );
+
     //
     // gEdkiiFaultTolerantWriteGuid HOB doesn't exist if both working and spare
     // parts of the variable store are invalid, this is when we need to
     // initialize it with defaults.
     //
     if (EFI_ERROR (Status) && GetFirstGuidHob (&gEdkiiFaultTolerantWriteGuid) == NULL) {
+      
+      mde_3_edkii_vga_sprintf(6, "b-%x",
+        Status
+      );
+
       Status = PeiServicesSetBootMode (BOOT_WITH_DEFAULT_SETTINGS);
+      
+      mde_3_edkii_vga_sprintf(6, "c-%x",
+        Status
+      );
+
       DEBUG ((DEBUG_INFO, "BootMode: Boot with default settings\n"));
-      ASSERT_EFI_ERROR (Status);
+      // ASSERT_EFI_ERROR (Status);
     } else {
+      
+      mde_3_edkii_vga_sprintf(6, "d-%x",
+        Status
+      );
+
       Status = PeiServicesSetBootMode (BOOT_ASSUMING_NO_CONFIGURATION_CHANGES);
+      
+      mde_3_edkii_vga_sprintf(6, "e-%x",
+        Status
+      );
+
       DEBUG ((DEBUG_INFO, "BootMode: Boot boot assuming no configuration changes\n"));
-      ASSERT_EFI_ERROR (Status);
+      // ASSERT_EFI_ERROR (Status);
     }
   }
+
+  
+  mde_3_edkii_vga_sprintf(7, "a-%x",
+    0
+  );
 
   //
   // Create guid hob for Tcg Physical Presence Interface
   //
   Status = ParseTPMPPIInfo (&PhysicalPresenceInfo);
+  
+  mde_3_edkii_vga_sprintf(7, "b-%x-%x-%x-%x",
+    Status,
+    PhysicalPresenceInfo.PpiAddress,
+    PhysicalPresenceInfo.PpiVersion,
+    PhysicalPresenceInfo.TpmVersion
+  );
+
   if (!EFI_ERROR (Status)) {
     NewPhysicalPresenceInfo = BuildGuidHob (&gEfiTcgPhysicalPresenceInfoHobGuid, sizeof (TCG_PHYSICAL_PRESENCE_INFO));
-    ASSERT (NewPhysicalPresenceInfo != NULL);
+    
+    mde_3_edkii_vga_sprintf(8, "a-%x-%x-%x-%x",
+      Status,
+      NewPhysicalPresenceInfo->PpiAddress,
+      NewPhysicalPresenceInfo->PpiVersion,
+      NewPhysicalPresenceInfo->TpmVersion
+    );
+    
+    // ASSERT (NewPhysicalPresenceInfo != NULL);
     CopyMem (NewPhysicalPresenceInfo, &PhysicalPresenceInfo, sizeof (TCG_PHYSICAL_PRESENCE_INFO));
+    
+    mde_3_edkii_vga_sprintf(8, "b-%x-%x-%x-%x",
+      Status,
+      NewPhysicalPresenceInfo->PpiAddress,
+      NewPhysicalPresenceInfo->PpiVersion,
+      NewPhysicalPresenceInfo->TpmVersion
+    );
     DEBUG ((DEBUG_INFO, "Created Tcg Physical Presence info hob\n"));
   }
+
+  
+  mde_3_edkii_vga_sprintf(9, "a-%x",
+    0
+  );
 
   //
   // Create guid hob for system tables like acpi table and smbios table
   //
   Status = ParseSystemTable(&SysTableInfo);
-  ASSERT_EFI_ERROR (Status);
+  
+  mde_3_edkii_vga_sprintf(9, "a-%x-%x-%x-%x",
+    Status,
+    SysTableInfo.AcpiTableBase,
+    SysTableInfo.AcpiTableSize,
+    SysTableInfo.SmbiosTableBase,
+    SysTableInfo.SmbiosTableSize
+  );
+
+  // ASSERT_EFI_ERROR (Status);
   if (!EFI_ERROR (Status)) {
     NewSysTableInfo = BuildGuidHob (&gUefiSystemTableInfoGuid, sizeof (SYSTEM_TABLE_INFO));
-    ASSERT (NewSysTableInfo != NULL);
+    
+    mde_3_edkii_vga_sprintf(10, "a-%x-%x-%x-%x-%x",
+      Status,
+      NewSysTableInfo->AcpiTableBase,
+      NewSysTableInfo->AcpiTableSize,
+      NewSysTableInfo->SmbiosTableBase,
+      NewSysTableInfo->SmbiosTableSize
+    );
+    
+    // ASSERT (NewSysTableInfo != NULL);
     CopyMem (NewSysTableInfo, &SysTableInfo, sizeof (SYSTEM_TABLE_INFO));
+    
+    mde_3_edkii_vga_sprintf(10, "b-%x-%x-%x-%x-%x",
+      Status,
+      NewSysTableInfo->AcpiTableBase,
+      NewSysTableInfo->AcpiTableSize,
+      NewSysTableInfo->SmbiosTableBase,
+      NewSysTableInfo->SmbiosTableSize
+    );
+    
     DEBUG ((DEBUG_INFO, "Detected Acpi Table at 0x%lx, length 0x%x\n", SysTableInfo.AcpiTableBase, SysTableInfo.AcpiTableSize));
     DEBUG ((DEBUG_INFO, "Detected Smbios Table at 0x%lx, length 0x%x\n", SysTableInfo.SmbiosTableBase, SysTableInfo.SmbiosTableSize));
   }
 
+  
+  mde_3_edkii_vga_sprintf(11, "a-%x",
+    0
+  );
+  
   //
   // Create guid hob for acpi board information
   //
   Status = ParseAcpiInfo (SysTableInfo.AcpiTableBase, &AcpiBoardInfo);
-  ASSERT_EFI_ERROR (Status);
+  
+  mde_3_edkii_vga_sprintf(11, "b-%x-%x-%x-%x-%x-%x-%x-%x",
+    Status,
+    AcpiBoardInfo.PcieBaseAddress,
+    AcpiBoardInfo.PcieBaseSize,
+    AcpiBoardInfo.PmCtrlRegBase,
+    AcpiBoardInfo.PmEvtBase,
+    AcpiBoardInfo.PmGpeEnBase,
+    AcpiBoardInfo.PmTimerRegBase,
+    AcpiBoardInfo.ResetRegAddress,
+    AcpiBoardInfo.ResetValue
+  );
+  
+  // ASSERT_EFI_ERROR (Status);
   if (!EFI_ERROR (Status)) {
+    
+    mde_3_edkii_vga_sprintf(12, "a-%x",
+      0
+    );
+
     NewAcpiBoardInfo = BuildGuidHob (&gUefiAcpiBoardInfoGuid, sizeof (ACPI_BOARD_INFO));
-    ASSERT (NewAcpiBoardInfo != NULL);
+    
+    mde_3_edkii_vga_sprintf(12, "b-%x-%x-%x-%x-%x-%x-%x-%x",
+      NewAcpiBoardInfo,
+      NewAcpiBoardInfo->PcieBaseAddress,
+      NewAcpiBoardInfo->PcieBaseSize,
+      NewAcpiBoardInfo->PmCtrlRegBase,
+      NewAcpiBoardInfo->PmEvtBase,
+      NewAcpiBoardInfo->PmGpeEnBase,
+      NewAcpiBoardInfo->PmTimerRegBase,
+      NewAcpiBoardInfo->ResetRegAddress,
+      NewAcpiBoardInfo->ResetValue
+    );
+    // ASSERT (NewAcpiBoardInfo != NULL);
     CopyMem (NewAcpiBoardInfo, &AcpiBoardInfo, sizeof (ACPI_BOARD_INFO));
+    
+    mde_3_edkii_vga_sprintf(12, "c-%x-%x-%x-%x-%x-%x-%x-%x",
+      NewAcpiBoardInfo,
+      NewAcpiBoardInfo->PcieBaseAddress,
+      NewAcpiBoardInfo->PcieBaseSize,
+      NewAcpiBoardInfo->PmCtrlRegBase,
+      NewAcpiBoardInfo->PmEvtBase,
+      NewAcpiBoardInfo->PmGpeEnBase,
+      NewAcpiBoardInfo->PmTimerRegBase,
+      NewAcpiBoardInfo->ResetRegAddress,
+      NewAcpiBoardInfo->ResetValue
+    );
     DEBUG ((DEBUG_INFO, "Create acpi board info guid hob\n"));
   }
 
+  
+  mde_3_edkii_vga_sprintf(13, "a-%x",
+    0
+  );
   // Build SEC Performance Data Hob
   Status =   ParseTimestampTable(&Performance);
   if (!EFI_ERROR (Status)) {
+    mde_3_edkii_vga_sprintf(13, "b-%x",
+      0
+    );
     BuildGuidDataHob (&gEfiFirmwarePerformanceGuid, &Performance, sizeof (Performance));
+    
+    mde_3_edkii_vga_sprintf(13, "c-%x",
+      Performance.ResetEnd
+    );
   } else {
+    
+    mde_3_edkii_vga_sprintf(13, "d-%x",
+      0
+    );
     DEBUG ((DEBUG_ERROR, "Error when parsing timestamp info, Status = %r\n", Status));
   }
 
+  
+  mde_3_edkii_vga_sprintf(14, "a-%x",
+    0
+  );
   //
   // Parse platform specific information.
   //
   Status = ParsePlatformInfo ();
+  
+  mde_3_edkii_vga_sprintf(14, "b-%x",
+    Status
+  );
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "Error when parsing platform info, Status = %r\n", Status));
     return Status;
@@ -886,33 +1365,77 @@ BlPeiEntryPoint (
   //
   // Import update capsules, if there are any.
   //
+  
+  mde_3_edkii_vga_sprintf(15, "a-%x",
+    0
+  );
   Status = ParseCapsules (BuildCvHob);
+  
+  mde_3_edkii_vga_sprintf(15, "b-%x",
+    Status
+  );
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "Error when importing update capsules, Status = %r\n", Status));
     return Status;
   }
 
+  
+  mde_3_edkii_vga_sprintf(15, "c-%x",
+    Status
+  );
   if (GetFirstHob (EFI_HOB_TYPE_UEFI_CAPSULE) != NULL || ParseIsDiskCapsulesBoot ()) {
+    
+    mde_3_edkii_vga_sprintf(15, "d-%x",
+      Status
+    );
     if (GetFirstHob (EFI_HOB_TYPE_UEFI_CAPSULE) != NULL) {
+      
+      mde_3_edkii_vga_sprintf(15, "e-%x",
+        Status
+      );
       DEBUG ((DEBUG_INFO, "BootMode: Flash update (for in-RAM capsule(s))\n"));
     } else {
+      
+      mde_3_edkii_vga_sprintf(15, "f-%x",
+        Status
+      );
       DEBUG ((DEBUG_INFO, "BootMode: Flash update (for on-disk capsule(s))\n"));
     }
 
+    mde_3_edkii_vga_sprintf(16, "a-%x",
+      0
+    );
     Status = PeiServicesSetBootMode (BOOT_ON_FLASH_UPDATE);
-    ASSERT_EFI_ERROR (Status);
+    
+
+    mde_3_edkii_vga_sprintf(16, "b-%x",
+      Status
+    );
+    // ASSERT_EFI_ERROR (Status);
   }
 
+  
+  mde_3_edkii_vga_sprintf(17, "a-%x",
+    0
+  );
   //
   // Mask off all legacy 8259 interrupt sources
   //
   IoWrite8 (LEGACY_8259_MASK_REGISTER_MASTER, 0xFF);
   IoWrite8 (LEGACY_8259_MASK_REGISTER_SLAVE,  0xFF);
 
+  mde_3_edkii_vga_sprintf(17, "b-%x",
+    0
+  );
+
   //
   // Parse coreboot's log.
   //
   Status = ParseAndPublishTPMLog ();
+  
+  mde_3_edkii_vga_sprintf(17, "c-%x",
+    Status
+  );
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "Error when parsing platform info, Status = %r\n", Status));
     return Status;
