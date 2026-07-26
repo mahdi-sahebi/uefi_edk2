@@ -18,7 +18,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Library/HobLib.h>
 #include <Library/SafeIntLib.h>
 #include <Library/VariableFlashInfoLib.h>
-#include <Library/TimerLib.h>
+// #include <Library/TimerLib.h>
 
 
 
@@ -386,7 +386,7 @@ PeimFaultTolerantWriteInitialize (
   mde_4_edkii_vga_sprintf(0, "FTWa-%x",
     0);
 
-  MicroSecondDelay(3000000);
+  // MicroSecondDelay(3000000);
 
   Status = GetVariableFlashFtwWorkingInfo (&WorkSpaceAddress, &Size);
   mde_4_edkii_vga_sprintf(0, "FTWb-%x-%x-%x",
@@ -574,7 +574,11 @@ PeimFaultTolerantWriteInitialize (
   );
 
 
-  MicroSecondDelay(3000000);
+  int i = 10;
+  while (i) {
+    i = 20;
+  }
+  // MicroSecondDelay(3000000);
   //
   // Install gEdkiiFaultTolerantWriteGuid PPI to inform the check for FTW last write data has been done.
   //
