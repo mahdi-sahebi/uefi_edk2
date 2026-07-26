@@ -41,6 +41,7 @@
   PcdLib
   SafeIntLib
   VariableFlashInfoLib
+  TimerLib
 
 [Guids]
   ## SOMETIMES_PRODUCES   ## HOB
