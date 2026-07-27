@@ -73,8 +73,8 @@ SecStartup (
   )
 {
   //////////////////////////// mahdi
-  // edkii_vga_clear();
-  // edkii_vga_print(0, "EDK II Started ");
+  edkii_vga_clear();
+  edkii_vga_print(0, "EDK II Started ");
   ///////////////////////////
 // MicroSecondDelay (5000000);
   EFI_SEC_PEI_HAND_OFF        SecCoreData;
@@ -207,7 +207,7 @@ SecStartupPhase2(
   // edkii_vga_print(0, "EDK II- Testing the delay - 1");
   // MicroSecondDelay(5000000);
   // edkii_vga_clear();
-  edkii_vga_print(0, "EDK II SePh2-start");
+  edkii_vga_print(0, "EDK II SecStartupPhase2");
 
   EFI_SEC_PEI_HAND_OFF        *SecCoreData;
   EFI_PEI_CORE_ENTRY_POINT    PeiCoreEntryPoint;
@@ -218,9 +218,17 @@ SecStartupPhase2(
   // is enabled.
   //
   FindAndReportEntryPoints ((EFI_FIRMWARE_VOLUME_HEADER *) SecCoreData->BootFirmwareVolumeBase, &PeiCoreEntryPoint);
+  edkii_vga_sprintf(9, "SPa-%x-%x-%x,%x-%x-%x",
+    SecCoreData,
+    SecCoreData->BootFirmwareVolumeBase, 
+    PeiCoreEntryPoint,
+    mPeiSecPlatformInformationPpi->Flags,
+    mPeiSecPlatformInformationPpi->Guid,
+    mPeiSecPlatformInformationPpi->Ppi
+  );
   if (PeiCoreEntryPoint == NULL)
   {
-    edkii_vga_print(0, "SePh2 - PeiCoreEntryPoint is NULL");
+    // edkii_vga_print(0, "SePh2 - PeiCoreEntryPoint is NULL");
     CpuDeadLoop ();
   }
 
@@ -229,20 +237,26 @@ SecStartupPhase2(
   //
   // edkii_vga_print(3, "SePh2[3]");
   ASSERT (PeiCoreEntryPoint != NULL);
-  edkii_vga_sprintf(0, "SePh2: 0x%X, 0x%X,", 
-    (UINT32)(UINTN)SecCoreData->BootFirmwareVolumeBase, 
-    (UINT32)(UINTN)PeiCoreEntryPoint);
 
-  edkii_vga_hex_dump((void*)PeiCoreEntryPoint, 64, 9);
-  edkii_vga_hex_dump((void*)*PeiCoreEntryPoint, 64, 14);
-  edkii_vga_hex_dump((void*)SecCoreData, 64, 19);
+  // edkii_vga_hex_dump((void*)PeiCoreEntryPoint, 64, 9);
+  // edkii_vga_hex_dump((void*)*PeiCoreEntryPoint, 64, 14);
+  // edkii_vga_hex_dump((void*)SecCoreData, 64, 19);
 
   // MicroSecondDelay(5000000);
   // ASSERT (PeiCoreEntryPoint != NULL);
   (*PeiCoreEntryPoint) (SecCoreData, (EFI_PEI_PPI_DESCRIPTOR *)&mPeiSecPlatformInformationPpi);
+  edkii_vga_sprintf(10, "SPb-%x-%x-%x,%x-%x-%x",
+    SecCoreData,
+    SecCoreData->BootFirmwareVolumeBase, 
+    PeiCoreEntryPoint,
+    mPeiSecPlatformInformationPpi->Flags,
+    mPeiSecPlatformInformationPpi->Guid,
+    mPeiSecPlatformInformationPpi->Ppi
+  );
+  // edkii_vga_print(0, "SePh2[4] Fatal");
 
-  edkii_vga_print(0, "SePh2[4] Fatal");
-
+int test = 1;
+  while (test);
   //
   // Should not come here.
   //

@@ -1,35 +1,36 @@
 
 #include "edkii_vga.h"
 
-#define _VGA_FB 0xB8000
-#define _VGA_COLUMNS 80
 
-static char g_buffer[80];
+/////////////////////////////////////////////////////
 
-void edkii_vga_sprintf(
-  unsigned int row,
-  const char* format,
-  ...)
-{
-  VA_LIST  marker;
-  
-  VA_START (marker, format);
-  AsciiVSPrint(g_buffer, sizeof(g_buffer), format, marker);
-  VA_END (marker);
-  
-  edkii_vga_print (row, g_buffer);
-}
+#include <stdarg.h> 
 
-static void
-edkii_vga_write_at_offset(unsigned int line, unsigned int offset, const char *string)
+#include <Library/IoLib.h>
+#include <Library/PrintLib.h>
+#include <Library/BaseLib.h>
+#include <Library/DebugLib.h>
+#include <Library/BaseMemoryLib.h>
+#include <Library/PcdLib.h>
+// #include <Library/CpuLib.h>
+// #include <Library/PeCoffGetEntryPointLib.h>
+// #include <Library/PeCoffExtraActionLib.h>
+#include <Library/DebugAgentLib.h>
+
+#define mde_2__VGA_FB 0xB8000
+#define mde_2__VGA_COLUMNS 80
+
+char mde_2_g_buffer[80];
+
+void edkii_vga_write_at_offset(unsigned int line, unsigned int offset, const char *string)
 {
 	if (!string)
 		return;
 
-	unsigned short *p = (unsigned short *)_VGA_FB + (_VGA_COLUMNS * line) + offset;
+	unsigned short *p = (unsigned short *)mde_2__VGA_FB + (mde_2__VGA_COLUMNS * line) + offset;
 	unsigned int i, len = AsciiStrLen(string);
 
-	for (i = 0; i < (_VGA_COLUMNS - offset); i++) {
+	for (i = 0; i < (mde_2__VGA_COLUMNS - offset); i++) {
 		if (i < len)
 			p[i] = 0x0F00 | (unsigned char)string[i];
 		else
@@ -41,6 +42,20 @@ edkii_vga_write_at_offset(unsigned int line, unsigned int offset, const char *st
 void edkii_vga_print(unsigned int line, const char *string)
 {
 	edkii_vga_write_at_offset(line, 0, string);
+}
+
+void edkii_vga_sprintf(
+  unsigned int row,
+  const char* format,
+  ...)
+{
+  VA_LIST  marker;
+  
+  VA_START (marker, format);
+  AsciiVSPrint(mde_2_g_buffer, sizeof(mde_2_g_buffer), format, marker);
+  VA_END (marker);
+  
+  edkii_vga_print (row, mde_2_g_buffer);
 }
 
 void edkii_vga_clear()
@@ -132,3 +147,5 @@ void edkii_vga_hex_dump(const unsigned char *addr, unsigned int len, int start_r
 }
 
 
+
+/////////////////////////////////////////////////////

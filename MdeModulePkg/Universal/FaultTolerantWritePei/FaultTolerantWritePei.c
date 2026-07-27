@@ -390,31 +390,31 @@ PeimFaultTolerantWriteInitialize (
 
   Status = GetVariableFlashFtwWorkingInfo (&WorkSpaceAddress, &Size);
   mde_4_edkii_vga_sprintf(0, "FTWb-%x-%x-%x",
-    Status,
-    WorkSpaceAddress,
-    Size);
+    Status,//0
+    WorkSpaceAddress,//0
+    Size);//0
 
   // ASSERT_EFI_ERROR (Status);
 
   Status = SafeUint64ToUintn (Size, &WorkSpaceLength);
   // This driver currently assumes the size will be UINTN so assert the value is safe for now.
   mde_4_edkii_vga_sprintf(1, "1b-%x-%x",
-    Status,
-    WorkSpaceLength);
+    Status,//0
+    WorkSpaceLength);//0
   // ASSERT_EFI_ERROR (Status);
 
   Status = GetVariableFlashFtwSpareInfo (&SpareAreaAddress, &Size);
   mde_4_edkii_vga_sprintf(2, "2c-%x-%x-%x",
-    Status,
-    SpareAreaAddress,
-    Size);
+    Status,//0
+    SpareAreaAddress,//0
+    Size);//0
   // ASSERT_EFI_ERROR (Status);
 
   Status = SafeUint64ToUintn (Size, &SpareAreaLength);
   mde_4_edkii_vga_sprintf(3, "3d-%x-%x-%x",
-    Status,
-    SpareAreaLength,
-    Size);
+    Status,//0
+    SpareAreaLength,//0
+    Size);//0
   // This driver currently assumes the size will be UINTN so assert the value is safe for now.
   // ASSERT_EFI_ERROR (Status);
 
