@@ -574,10 +574,10 @@ PeimFaultTolerantWriteInitialize (
   );
 
 
-  int i = 10;
-  while (i) {
-    i = 20;
-  }
+  // int i = 10;
+  // while (i) {
+  //   i = 20;
+  // }
   // MicroSecondDelay(3000000);
   //
   // Install gEdkiiFaultTolerantWriteGuid PPI to inform the check for FTW last write data has been done.

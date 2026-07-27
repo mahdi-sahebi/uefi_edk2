@@ -255,8 +255,8 @@ SecStartupPhase2(
   );
   // edkii_vga_print(0, "SePh2[4] Fatal");
 
-int test = 1;
-  while (test);
+// int test = 1;
+//   while (test);
   //
   // Should not come here.
   //
