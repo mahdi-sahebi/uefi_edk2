@@ -210,9 +210,20 @@ SmmStorePeiInitialize (
 
   mde_5_edkii_vga_clear();
   mde_5_edkii_vga_print(0, "SmmStore");
-  
+
 
   Status = ParseSMMSTOREInfo (&SmmStoreInfo);
+  
+  mde_5_edkii_vga_sprintf(0, "SMM-%x-%x-%x-%x,-%x-%x-%x",
+    Status,
+    SmmStoreInfo.ComBuffer,
+    SmmStoreInfo.ComBufferSize,
+    SmmStoreInfo.NumBlocks,
+    SmmStoreInfo.BlockSize,
+    SmmStoreInfo.MmioAddress,
+    SmmStoreInfo.ApmCmd
+  );
+
   if (EFI_ERROR (Status)) {
     DEBUG ((
       DEBUG_ERROR,
@@ -234,6 +245,15 @@ SmmStorePeiInitialize (
   FtwSpareSize   = (SmmStoreInfo.NumBlocks / 2) * SmmStoreInfo.BlockSize;
   FtwWorkingSize = SmmStoreInfo.BlockSize;
   NvVariableSize = NvStorageSize - FtwSpareSize - FtwWorkingSize;
+  
+  mde_5_edkii_vga_sprintf(1, "1a-%x-%x-%x-%x,%x",
+    NvStorageSize,
+    NvStorageBase,
+    FtwSpareSize,
+    FtwWorkingSize,
+    NvVariableSize
+  );
+
   if (NvVariableSize >= 0x80000000) {
     DEBUG ((
       DEBUG_ERROR,
@@ -245,6 +265,14 @@ SmmStorePeiInitialize (
 
   ZeroMem (&VariableFlashInfo, sizeof (VariableFlashInfo));
 
+  mde_5_edkii_vga_sprintf(1, "1b-%x-%x-%x-%x,%x",
+    NvStorageSize,
+    NvStorageBase,
+    FtwSpareSize,
+    FtwWorkingSize,
+    NvVariableSize
+  );
+
   VariableFlashInfo.Version               = VARIABLE_FLASH_INFO_HOB_VERSION;
   VariableFlashInfo.NvVariableBaseAddress = NvStorageBase;
   VariableFlashInfo.NvVariableLength      = NvVariableSize;
@@ -253,6 +281,43 @@ SmmStorePeiInitialize (
   VariableFlashInfo.FtwWorkingBaseAddress = NvStorageBase + NvVariableSize;
   VariableFlashInfo.FtwWorkingLength      = FtwWorkingSize;
 
+  
+  mde_5_edkii_vga_sprintf(2, "2a-%x-%x-%x-%x,%x,%x",
+    VariableFlashInfo.NvVariableBaseAddress,
+    VariableFlashInfo.NvVariableLength,
+    VariableFlashInfo.FtwSpareBaseAddress,
+    VariableFlashInfo.FtwSpareLength ,
+    VariableFlashInfo.FtwWorkingBaseAddress,
+    VariableFlashInfo.FtwWorkingLength
+  );
+
   BuildGuidDataHob (&gVariableFlashInfoHobGuid, &VariableFlashInfo, sizeof (VariableFlashInfo));
-  return PeiServicesInstallPpi (&mPpiListVariable);
+  
+  
+  mde_5_edkii_vga_sprintf(2, "2b-%x-%x-%x-%x,%x,%x",
+    VariableFlashInfo.NvVariableBaseAddress,
+    VariableFlashInfo.NvVariableLength,
+    VariableFlashInfo.FtwSpareBaseAddress,
+    VariableFlashInfo.FtwSpareLength ,
+    VariableFlashInfo.FtwWorkingBaseAddress,
+    VariableFlashInfo.FtwWorkingLength
+  );
+
+  
+  mde_5_edkii_vga_sprintf(3, "3a-%x",
+    gVariableFlashInfoHobGuid
+  );
+
+  EFI_STATUS res = PeiServicesInstallPpi (&mPpiListVariable);
+
+  mde_5_edkii_vga_sprintf(4, "4a-%x-%x-%x-%x",
+    res,
+    mPpiListVariable.Flags,
+    mPpiListVariable.Guid,
+    mPpiListVariable.Ppi
+  );
+
+
+    while (1) {};
+  return res;
 }
