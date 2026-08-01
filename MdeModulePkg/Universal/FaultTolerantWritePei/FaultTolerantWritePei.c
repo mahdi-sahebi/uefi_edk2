@@ -18,6 +18,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Library/HobLib.h>
 #include <Library/SafeIntLib.h>
 #include <Library/VariableFlashInfoLib.h>
+#include <Guid/VariableFlashInfo.h>
 // #include <Library/TimerLib.h>
 
 
@@ -385,6 +386,34 @@ PeimFaultTolerantWriteInitialize (
   mde_4_edkii_vga_clear();
   mde_4_edkii_vga_sprintf(0, "FTWa-%x",
     0);
+
+  //
+  // Direct HOB probe - bypasses VariableFlashInfoLib entirely so we can
+  // tell, independent of what the library/PCD-fallback reports, whether
+  // gVariableFlashInfoHobGuid actually exists in the HOB list at the
+  // moment FtwPei dispatches. If this prints "NOTFOUND", SmmStorePei's
+  // HOB genuinely is not visible here (real dispatch-order or HOB-list
+  // problem). If it prints a non-null pointer, the HOB exists and the
+  // bug is specifically inside VariableFlashInfoLib's consumption of it.
+  //
+  {
+    EFI_HOB_GUID_TYPE  *DirectHob;
+    extern EFI_GUID     gVariableFlashInfoHobGuid;
+
+    DirectHob = GetFirstGuidHob (&gVariableFlashInfoHobGuid);
+    if (DirectHob == NULL) {
+      mde_4_edkii_vga_sprintf(6, "HOBraw-NOTFOUND");
+    } else {
+      VARIABLE_FLASH_INFO  *DirectInfo = (VARIABLE_FLASH_INFO *)GET_GUID_HOB_DATA (DirectHob);
+      mde_4_edkii_vga_sprintf(6, "HOBraw-FOUND-%x", (UINTN)DirectHob);
+      mde_4_edkii_vga_sprintf(7, "HOBval-Var%x,%x",
+        (UINTN)DirectInfo->NvVariableBaseAddress,
+        (UINTN)DirectInfo->NvVariableLength);
+      mde_4_edkii_vga_sprintf(8, "HOBval-Wrk%x-Spr%x",
+        (UINTN)DirectInfo->FtwWorkingBaseAddress,
+        (UINTN)DirectInfo->FtwSpareBaseAddress);
+    }
+  }
 
   // MicroSecondDelay(3000000);
 
