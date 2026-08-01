@@ -215,13 +215,13 @@ SmmStorePeiInitialize (
   Status = ParseSMMSTOREInfo (&SmmStoreInfo);
   
   mde_5_edkii_vga_sprintf(0, "SMM-%x-%x-%x-%x,-%x-%x-%x",
-    Status,
-    SmmStoreInfo.ComBuffer,
-    SmmStoreInfo.ComBufferSize,
-    SmmStoreInfo.NumBlocks,
-    SmmStoreInfo.BlockSize,
-    SmmStoreInfo.MmioAddress,
-    SmmStoreInfo.ApmCmd
+    Status,//0
+    SmmStoreInfo.ComBuffer,//63562000
+    SmmStoreInfo.ComBufferSize,//0
+    SmmStoreInfo.NumBlocks,//10000
+    SmmStoreInfo.BlockSize,//4
+    SmmStoreInfo.MmioAddress,//10000
+    SmmStoreInfo.ApmCmd//ff000000
   );
 
   if (EFI_ERROR (Status)) {
@@ -266,11 +266,11 @@ SmmStorePeiInitialize (
   ZeroMem (&VariableFlashInfo, sizeof (VariableFlashInfo));
 
   mde_5_edkii_vga_sprintf(1, "1b-%x-%x-%x-%x,%x",
-    NvStorageSize,
-    NvStorageBase,
-    FtwSpareSize,
-    FtwWorkingSize,
-    NvVariableSize
+    NvStorageSize,//40000
+    NvStorageBase,//ff000000
+    FtwSpareSize,//20000
+    FtwWorkingSize,//10000
+    NvVariableSize//10000
   );
 
   VariableFlashInfo.Version               = VARIABLE_FLASH_INFO_HOB_VERSION;
@@ -295,26 +295,26 @@ SmmStorePeiInitialize (
   
   
   mde_5_edkii_vga_sprintf(2, "2b-%x-%x-%x-%x,%x,%x",
-    VariableFlashInfo.NvVariableBaseAddress,
-    VariableFlashInfo.NvVariableLength,
-    VariableFlashInfo.FtwSpareBaseAddress,
-    VariableFlashInfo.FtwSpareLength ,
-    VariableFlashInfo.FtwWorkingBaseAddress,
-    VariableFlashInfo.FtwWorkingLength
+    VariableFlashInfo.NvVariableBaseAddress,//ff000000
+    VariableFlashInfo.NvVariableLength,//0
+    VariableFlashInfo.FtwSpareBaseAddress,//10000
+    VariableFlashInfo.FtwSpareLength ,//0
+    VariableFlashInfo.FtwWorkingBaseAddress,//ff020000
+    VariableFlashInfo.FtwWorkingLength//0
   );
 
   
   mde_5_edkii_vga_sprintf(3, "3a-%x",
-    gVariableFlashInfoHobGuid
+    gVariableFlashInfoHobGuid//5d11c653
   );
 
   EFI_STATUS res = PeiServicesInstallPpi (&mPpiListVariable);
 
   mde_5_edkii_vga_sprintf(4, "4a-%x-%x-%x-%x",
-    res,
-    mPpiListVariable.Flags,
-    mPpiListVariable.Guid,
-    mPpiListVariable.Ppi
+    res,//0
+    mPpiListVariable.Flags,//80000010
+    mPpiListVariable.Guid,//82700c
+    mPpiListVariable.Ppi//0
   );
 
 
