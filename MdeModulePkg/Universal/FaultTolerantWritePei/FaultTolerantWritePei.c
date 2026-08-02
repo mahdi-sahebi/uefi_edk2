@@ -345,6 +345,24 @@ IsValidWorkSpace (
   return TRUE;
 }
 
+unsigned long del(unsigned long n)
+{
+  unsigned long x = n;
+  char buf1[10];
+
+  while (x--) {
+    for (int i = 0; i < sizeof(buf1); i++) {
+      buf1[i] = x;
+    }
+  }
+
+  
+    for (int i = 0; i < sizeof(buf1); i++) {
+      x += buf1[i];
+    }
+    return x;
+}
+
 /**
   Main entry for Fault Tolerant Write PEIM.
 
@@ -384,8 +402,17 @@ PeimFaultTolerantWriteInitialize (
   WorkSpaceLength  = 0;
 
   mde_4_edkii_vga_clear();
-  mde_4_edkii_vga_sprintf(0, "FTWa-%x",
-    0);
+
+  mde_4_edkii_vga_sprintf(0, "FTWa-%x", 0);
+  del(1000000);
+  mde_4_edkii_vga_sprintf(0, "FTWa-%x", 1);
+  del(1000000);
+  mde_4_edkii_vga_sprintf(0, "FTWa-%x", 2);
+  del(10000000);
+  mde_4_edkii_vga_sprintf(0, "FTWa-%x", 3);
+  del(10000000);
+
+
 
   //
   // Direct HOB probe - bypasses VariableFlashInfoLib entirely so we can
@@ -402,23 +429,24 @@ PeimFaultTolerantWriteInitialize (
 
     DirectHob = GetFirstGuidHob (&gVariableFlashInfoHobGuid);
     if (DirectHob == NULL) {
-      mde_4_edkii_vga_sprintf(6, "HOBraw-NOTFOUND");
+      mde_4_edkii_vga_sprintf(1, "HOBraw-NOTFOUND");
     } else {
       VARIABLE_FLASH_INFO  *DirectInfo = (VARIABLE_FLASH_INFO *)GET_GUID_HOB_DATA (DirectHob);
-      mde_4_edkii_vga_sprintf(6, "HOBraw-FOUND-%x", (UINTN)DirectHob);
-      mde_4_edkii_vga_sprintf(7, "HOBval-Var%x,%x",
+      mde_4_edkii_vga_sprintf(1, "HOBraw-FOUND-%x", (UINTN)DirectHob);
+      mde_4_edkii_vga_sprintf(2, "HOBval-Var%x,%x",
         (UINTN)DirectInfo->NvVariableBaseAddress,
         (UINTN)DirectInfo->NvVariableLength);
-      mde_4_edkii_vga_sprintf(8, "HOBval-Wrk%x-Spr%x",
+      mde_4_edkii_vga_sprintf(2, "HOBval-Wrk%x-Spr%x",
         (UINTN)DirectInfo->FtwWorkingBaseAddress,
         (UINTN)DirectInfo->FtwSpareBaseAddress);
     }
   }
 
+  del(10000000);
   // MicroSecondDelay(3000000);
 
   Status = GetVariableFlashFtwWorkingInfo (&WorkSpaceAddress, &Size);
-  mde_4_edkii_vga_sprintf(0, "FTWb-%x-%x-%x",
+  mde_4_edkii_vga_sprintf(3, "FTWb-%x-%x-%x",
     Status,//0
     WorkSpaceAddress,//0
     Size);//0
@@ -427,20 +455,20 @@ PeimFaultTolerantWriteInitialize (
 
   Status = SafeUint64ToUintn (Size, &WorkSpaceLength);
   // This driver currently assumes the size will be UINTN so assert the value is safe for now.
-  mde_4_edkii_vga_sprintf(1, "1b-%x-%x",
+  mde_4_edkii_vga_sprintf(4, "4a-%x-%x",
     Status,//0
     WorkSpaceLength);//0
   // ASSERT_EFI_ERROR (Status);
 
   Status = GetVariableFlashFtwSpareInfo (&SpareAreaAddress, &Size);
-  mde_4_edkii_vga_sprintf(2, "2c-%x-%x-%x",
+  mde_4_edkii_vga_sprintf(5, "5a-%x-%x-%x",
     Status,//0
     SpareAreaAddress,//0
     Size);//0
   // ASSERT_EFI_ERROR (Status);
 
   Status = SafeUint64ToUintn (Size, &SpareAreaLength);
-  mde_4_edkii_vga_sprintf(3, "3d-%x-%x-%x",
+  mde_4_edkii_vga_sprintf(6, "6a",
     Status,//0
     SpareAreaLength,//0
     Size);//0
@@ -452,10 +480,21 @@ PeimFaultTolerantWriteInitialize (
   //
   ASSERT ((WorkSpaceAddress != 0) && (SpareAreaAddress != 0));
 
+  
+  mde_4_edkii_vga_sprintf(7, "7a-%x-%x-%x,%x,%x",
+    Status,//0
+    SpareAreaLength,//0
+    Size,
+    WorkSpaceAddress,
+    SpareAreaAddress
+  );//0
+
+
+
   FtwWorkingBlockHeader = (EFI_FAULT_TOLERANT_WORKING_BLOCK_HEADER *)(UINTN)WorkSpaceAddress;
   if (IsValidWorkSpace (FtwWorkingBlockHeader, WorkSpaceLength)) {
     
-    mde_4_edkii_vga_sprintf(4, "4a-%x-%x",
+    mde_4_edkii_vga_sprintf(8, "8a-%x-%x",
       FtwWorkingBlockHeader,
       WorkSpaceLength);
     Status = FtwGetLastWriteHeader (
@@ -464,7 +503,7 @@ PeimFaultTolerantWriteInitialize (
                &FtwLastWriteHeader
                );
                
-    mde_4_edkii_vga_sprintf(4, "4b-%x-%x-%x-%x",
+    mde_4_edkii_vga_sprintf(8, "8b-%x-%x-%x-%x",
       Status,
       FtwWorkingBlockHeader,
       WorkSpaceLength,
@@ -472,7 +511,7 @@ PeimFaultTolerantWriteInitialize (
 
     if (!EFI_ERROR (Status)) {
       
-      mde_4_edkii_vga_sprintf(4, "4c-%x-%x-%x-%x",
+      mde_4_edkii_vga_sprintf(8, "8c-%x-%x-%x-%x",
         Status,
         FtwWorkingBlockHeader,
         WorkSpaceLength,
@@ -483,7 +522,7 @@ PeimFaultTolerantWriteInitialize (
                  &FtwLastWriteRecord
                  );
                  
-      mde_4_edkii_vga_sprintf(4, "4d-%x-%x-%x-%x-%x",
+      mde_4_edkii_vga_sprintf(8, "8d-%x-%x-%x-%x-%x",
         Status,
         FtwWorkingBlockHeader,
         WorkSpaceLength,
@@ -493,7 +532,7 @@ PeimFaultTolerantWriteInitialize (
     }
 
 
-    mde_4_edkii_vga_sprintf(5, "5a-%x-%x",
+    mde_4_edkii_vga_sprintf(9, "9a-%x-%x",
       Status,
       FtwLastWriteRecord);
 
@@ -501,7 +540,7 @@ PeimFaultTolerantWriteInitialize (
       ASSERT (FtwLastWriteRecord != NULL);
 
 
-      mde_4_edkii_vga_sprintf(5, "5b-%x-%x-%x-%x",
+      mde_4_edkii_vga_sprintf(9, "9b-%x-%x-%x-%x",
         Status,
         FtwLastWriteRecord,
         FtwLastWriteRecord->SpareComplete,
@@ -526,7 +565,7 @@ PeimFaultTolerantWriteInitialize (
           ));
           
 
-        mde_4_edkii_vga_sprintf(5, "5c-%x-%x-%x-%x,%x-%x-%x",
+        mde_4_edkii_vga_sprintf(9, "9c-%x-%x-%x-%x,%x-%x-%x",
           Status,
           FtwLastWriteRecord,
           FtwLastWriteRecord->SpareComplete,
@@ -538,7 +577,7 @@ PeimFaultTolerantWriteInitialize (
         BuildGuidDataHob (&gEdkiiFaultTolerantWriteGuid, (VOID *)&FtwLastWrite, sizeof (FAULT_TOLERANT_WRITE_LAST_WRITE_DATA));
         
 
-        mde_4_edkii_vga_sprintf(6, "6-%x-%x-%x-%x,%x-%x-%x",
+        mde_4_edkii_vga_sprintf(10, "a-%x-%x-%x-%x,%x-%x-%x",
           gEdkiiFaultTolerantWriteGuid.Data1,
           gEdkiiFaultTolerantWriteGuid.Data2,
           gEdkiiFaultTolerantWriteGuid.Data3,
@@ -592,7 +631,7 @@ PeimFaultTolerantWriteInitialize (
   }
 
 
-  mde_4_edkii_vga_sprintf(7, "7-%x-%x-%x-%x,%x-%x-%x",
+  mde_4_edkii_vga_sprintf(11, "11-%x-%x-%x-%x,%x-%x-%x",
     mPpiListVariable.Flags,
     mPpiListVariable.Guid->Data1,
     mPpiListVariable.Guid->Data2,
@@ -603,13 +642,27 @@ PeimFaultTolerantWriteInitialize (
   );
 
 
-  // int i = 10;
-  // while (i) {
-  //   i = 20;
-  // }
   // MicroSecondDelay(3000000);
   //
   // Install gEdkiiFaultTolerantWriteGuid PPI to inform the check for FTW last write data has been done.
   //
-  return PeiServicesInstallPpi (&mPpiListVariable);
+  int res2 = PeiServicesInstallPpi (&mPpiListVariable);
+  
+  mde_4_edkii_vga_sprintf(11, "11-%x,%x-%x-%x-%x,%x-%x-%x",
+    res2,
+    mPpiListVariable.Flags,
+    mPpiListVariable.Guid->Data1,
+    mPpiListVariable.Guid->Data2,
+    mPpiListVariable.Guid->Data3,
+    mPpiListVariable.Guid->Data4,
+    mPpiListVariable.Ppi,
+    *(unsigned int*)(mPpiListVariable.Ppi)
+  );
+
+  // int i = 10;
+  while (1) {
+    // i = 20;
+  }
+  
+  return res2;
 }

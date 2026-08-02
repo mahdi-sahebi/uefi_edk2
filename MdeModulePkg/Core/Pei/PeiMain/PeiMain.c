@@ -892,11 +892,11 @@ PeiCore (
   PeiDispatcher (SecCoreData, &PrivateData);
 
   mde_1_edkii_vga_sprintf(21, "[%d]v-Sec:%X, PD:%X,BM:%X,PMI:%X", 
-    g_counter,
-    SecCoreData,
-    &PrivateData,
-    PrivateData.HobList.HandoffInformationTable->BootMode,
-    PrivateData.PeiMemoryInstalled
+    g_counter,//3
+    SecCoreData,//5f51f1cc
+    &PrivateData,//5f51f1f0
+    PrivateData.HobList.HandoffInformationTable->BootMode,//4
+    PrivateData.PeiMemoryInstalled//1
   );
 
   if (PrivateData.HobList.HandoffInformationTable->BootMode != BOOT_ON_S3_RESUME) {
@@ -950,12 +950,12 @@ PeiCore (
   }
           
   mde_1_edkii_vga_sprintf(22, "[%d]x-s:%X,Sec:%X, PD:%X,BM:%X,PMI:%X", 
-    g_counter,
-    Status,
-    SecCoreData,
-    &PrivateData,
-    PrivateData.HobList.HandoffInformationTable->BootMode,
-    PrivateData.PeiMemoryInstalled
+    g_counter,//3
+    Status,//0
+    SecCoreData,//5f51f1cc
+    &PrivateData,//5f51f1f0
+    PrivateData.HobList.HandoffInformationTable->BootMode,//4
+    PrivateData.PeiMemoryInstalled//1
   );
   //
   // Enter DxeIpl to load Dxe core.
