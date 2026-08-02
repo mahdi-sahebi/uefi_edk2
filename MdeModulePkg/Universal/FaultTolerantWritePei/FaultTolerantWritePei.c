@@ -357,8 +357,6 @@ void delay_s(int n)
       }
     }
   }
-
-  return t;
 }
 
 /**
@@ -422,14 +420,15 @@ PeimFaultTolerantWriteInitialize (
   // bug is specifically inside VariableFlashInfoLib's consumption of it.
   //
   {
+    VARIABLE_FLASH_INFO  *DirectInfo;
     extern EFI_GUID     gVariableFlashInfoHobGuid;
 
     EFI_HOB_GUID_TYPE  *DirectHob = GetFirstGuidHob (&gVariableFlashInfoHobGuid);
     if (DirectHob == NULL) {
       mde_4_edkii_vga_sprintf(1, "HOB-NOTFOUND");
     } else {
-      VARIABLE_FLASH_INFO  *DirectInfo = (VARIABLE_FLASH_INFO *)GET_GUID_HOB_DATA (DirectHob);
-      mde_4_edkii_vga_sprintf(1, "HOB-FOUND-%x", 
+      DirectInfo = (VARIABLE_FLASH_INFO *)GET_GUID_HOB_DATA (DirectHob);
+      mde_4_edkii_vga_sprintf(1, "HOB-FOUND-%x-%x-%x-%x-%x", 
         (UINTN)DirectHob,//80CA0
         (UINTN)DirectInfo->NvVariableBaseAddress,//
         (UINTN)DirectInfo->NvVariableLength,//

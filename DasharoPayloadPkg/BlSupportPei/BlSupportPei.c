@@ -1441,6 +1441,11 @@ BlPeiEntryPoint (
     return Status;
   }
 
+  
+  // // int i = 10;
+  while (1) {
+    // i = 20;
+  }
   return EFI_SUCCESS;
 }
 
