@@ -345,23 +345,20 @@ IsValidWorkSpace (
   return TRUE;
 }
 
-unsigned long del(unsigned long n)
+void delay_s(int n)
 {
-  unsigned long x = n;
-  char buf1[10];
+  unsigned long x = n * 10000;
+  unsigned long t = 25;
 
   while (x--) {
-    for (int i = 0; i < sizeof(buf1); i++) {
-      buf1[i] *= (x * 14823424) / 23.004023425234623435;
+    for (unsigned long i1 = 0; i1 < 1000; i1++) {
+      for (int i = 0; i < 10; i++) {
+        t *= (x * 14823424) / 23.004023425234623435;
+      }
     }
   }
 
-  
-    for (int i = 0; i < sizeof(buf1); i++) {
-      x *= (buf1[i] * 14823424) / 23.004023425234623435;;
-    }
-    
-    return x;
+  return t;
 }
 
 /**
@@ -404,15 +401,14 @@ PeimFaultTolerantWriteInitialize (
 
   mde_4_edkii_vga_clear();
 
-  unsigned long res1 = 0;
-  mde_4_edkii_vga_sprintf(0, "FTWa-%x-%x", 0, res1);
-  res1 = del(1000000);
-  mde_4_edkii_vga_sprintf(0, "FTWa-%x-%x", 1, res1);
-  res1 = del(1000000);
-  mde_4_edkii_vga_sprintf(0, "FTWa-%x-%x", 2, res1);
-  res1 = del(10000000);
-  mde_4_edkii_vga_sprintf(0, "FTWa-%x-%x", 3, res1);
-  res1 = del(10000000);
+  mde_4_edkii_vga_sprintf(0, "FTWa-%x", 0);
+  delay_s(1);
+  mde_4_edkii_vga_sprintf(0, "FTWa-%x", 1);
+  delay_s(1);
+  mde_4_edkii_vga_sprintf(0, "FTWa-%x", 2);
+  delay_s(1);
+  mde_4_edkii_vga_sprintf(0, "FTWa-%x", 3);
+  delay_s(2);
 
 
 
@@ -425,26 +421,24 @@ PeimFaultTolerantWriteInitialize (
   // problem). If it prints a non-null pointer, the HOB exists and the
   // bug is specifically inside VariableFlashInfoLib's consumption of it.
   //
-  // {
-  //   EFI_HOB_GUID_TYPE  *DirectHob;
-  //   extern EFI_GUID     gVariableFlashInfoHobGuid;
+  {
+    extern EFI_GUID     gVariableFlashInfoHobGuid;
 
-  //   DirectHob = GetFirstGuidHob (&gVariableFlashInfoHobGuid);
-  //   if (DirectHob == NULL) {
-  //     mde_4_edkii_vga_sprintf(1, "HOBraw-NOTFOUND");
-  //   } else {
-  //     VARIABLE_FLASH_INFO  *DirectInfo = (VARIABLE_FLASH_INFO *)GET_GUID_HOB_DATA (DirectHob);
-  //     mde_4_edkii_vga_sprintf(1, "HOBraw-FOUND-%x", (UINTN)DirectHob);
-  //     mde_4_edkii_vga_sprintf(2, "HOBval-Var%x,%x",
-  //       (UINTN)DirectInfo->NvVariableBaseAddress,
-  //       (UINTN)DirectInfo->NvVariableLength);
-  //     mde_4_edkii_vga_sprintf(2, "HOBval-Wrk%x-Spr%x",
-  //       (UINTN)DirectInfo->FtwWorkingBaseAddress,
-  //       (UINTN)DirectInfo->FtwSpareBaseAddress);
-  //   }
-  // }
+    EFI_HOB_GUID_TYPE  *DirectHob = GetFirstGuidHob (&gVariableFlashInfoHobGuid);
+    if (DirectHob == NULL) {
+      mde_4_edkii_vga_sprintf(1, "HOB-NOTFOUND");
+    } else {
+      VARIABLE_FLASH_INFO  *DirectInfo = (VARIABLE_FLASH_INFO *)GET_GUID_HOB_DATA (DirectHob);
+      mde_4_edkii_vga_sprintf(1, "HOB-FOUND-%x", 
+        (UINTN)DirectHob,//80CA0
+        (UINTN)DirectInfo->NvVariableBaseAddress,//
+        (UINTN)DirectInfo->NvVariableLength,//
+        (UINTN)DirectInfo->FtwWorkingBaseAddress,//FF010000
+        (UINTN)DirectInfo->FtwSpareBaseAddress);//FF020000
+    }
+  }
 
-  del(10000000);
+  delay_s(2);
   // MicroSecondDelay(3000000);
 
   Status = GetVariableFlashFtwWorkingInfo (&WorkSpaceAddress, &Size);
@@ -661,10 +655,10 @@ PeimFaultTolerantWriteInitialize (
     *(unsigned int*)(mPpiListVariable.Ppi)
   );
 
-  // int i = 10;
-  while (1) {
-    // i = 20;
-  }
+  // // int i = 10;
+  // while (1) {
+  //   // i = 20;
+  // }
 
   return res2;
 }
