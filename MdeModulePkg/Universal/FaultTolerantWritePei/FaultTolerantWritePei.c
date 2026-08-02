@@ -352,14 +352,15 @@ unsigned long del(unsigned long n)
 
   while (x--) {
     for (int i = 0; i < sizeof(buf1); i++) {
-      buf1[i] = x;
+      buf1[i] *= (x * 14823424) / 23.004023425234623435;
     }
   }
 
   
     for (int i = 0; i < sizeof(buf1); i++) {
-      x += buf1[i];
+      x *= (buf1[i] * 14823424) / 23.004023425234623435;;
     }
+    
     return x;
 }
 
@@ -403,14 +404,15 @@ PeimFaultTolerantWriteInitialize (
 
   mde_4_edkii_vga_clear();
 
-  mde_4_edkii_vga_sprintf(0, "FTWa-%x", 0);
-  del(1000000);
-  mde_4_edkii_vga_sprintf(0, "FTWa-%x", 1);
-  del(1000000);
-  mde_4_edkii_vga_sprintf(0, "FTWa-%x", 2);
-  del(10000000);
-  mde_4_edkii_vga_sprintf(0, "FTWa-%x", 3);
-  del(10000000);
+  unsigned long res1 = 0;
+  mde_4_edkii_vga_sprintf(0, "FTWa-%x-%x", 0, res1);
+  res1 = del(1000000);
+  mde_4_edkii_vga_sprintf(0, "FTWa-%x-%x", 1, res1);
+  res1 = del(1000000);
+  mde_4_edkii_vga_sprintf(0, "FTWa-%x-%x", 2, res1);
+  res1 = del(10000000);
+  mde_4_edkii_vga_sprintf(0, "FTWa-%x-%x", 3, res1);
+  res1 = del(10000000);
 
 
 
@@ -423,24 +425,24 @@ PeimFaultTolerantWriteInitialize (
   // problem). If it prints a non-null pointer, the HOB exists and the
   // bug is specifically inside VariableFlashInfoLib's consumption of it.
   //
-  {
-    EFI_HOB_GUID_TYPE  *DirectHob;
-    extern EFI_GUID     gVariableFlashInfoHobGuid;
+  // {
+  //   EFI_HOB_GUID_TYPE  *DirectHob;
+  //   extern EFI_GUID     gVariableFlashInfoHobGuid;
 
-    DirectHob = GetFirstGuidHob (&gVariableFlashInfoHobGuid);
-    if (DirectHob == NULL) {
-      mde_4_edkii_vga_sprintf(1, "HOBraw-NOTFOUND");
-    } else {
-      VARIABLE_FLASH_INFO  *DirectInfo = (VARIABLE_FLASH_INFO *)GET_GUID_HOB_DATA (DirectHob);
-      mde_4_edkii_vga_sprintf(1, "HOBraw-FOUND-%x", (UINTN)DirectHob);
-      mde_4_edkii_vga_sprintf(2, "HOBval-Var%x,%x",
-        (UINTN)DirectInfo->NvVariableBaseAddress,
-        (UINTN)DirectInfo->NvVariableLength);
-      mde_4_edkii_vga_sprintf(2, "HOBval-Wrk%x-Spr%x",
-        (UINTN)DirectInfo->FtwWorkingBaseAddress,
-        (UINTN)DirectInfo->FtwSpareBaseAddress);
-    }
-  }
+  //   DirectHob = GetFirstGuidHob (&gVariableFlashInfoHobGuid);
+  //   if (DirectHob == NULL) {
+  //     mde_4_edkii_vga_sprintf(1, "HOBraw-NOTFOUND");
+  //   } else {
+  //     VARIABLE_FLASH_INFO  *DirectInfo = (VARIABLE_FLASH_INFO *)GET_GUID_HOB_DATA (DirectHob);
+  //     mde_4_edkii_vga_sprintf(1, "HOBraw-FOUND-%x", (UINTN)DirectHob);
+  //     mde_4_edkii_vga_sprintf(2, "HOBval-Var%x,%x",
+  //       (UINTN)DirectInfo->NvVariableBaseAddress,
+  //       (UINTN)DirectInfo->NvVariableLength);
+  //     mde_4_edkii_vga_sprintf(2, "HOBval-Wrk%x-Spr%x",
+  //       (UINTN)DirectInfo->FtwWorkingBaseAddress,
+  //       (UINTN)DirectInfo->FtwSpareBaseAddress);
+  //   }
+  // }
 
   del(10000000);
   // MicroSecondDelay(3000000);
@@ -663,6 +665,6 @@ PeimFaultTolerantWriteInitialize (
   while (1) {
     // i = 20;
   }
-  
+
   return res2;
 }
