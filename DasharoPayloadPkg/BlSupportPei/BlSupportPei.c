@@ -1443,9 +1443,9 @@ BlPeiEntryPoint (
 
   
   // // int i = 10;
-  while (1) {
-    // i = 20;
-  }
+  // while (1) {
+  //   // i = 20;
+  // }
   return EFI_SUCCESS;
 }
 

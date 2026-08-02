@@ -345,7 +345,7 @@ IsValidWorkSpace (
   return TRUE;
 }
 
-void delay_s(int n)
+static void delay_s(int n)
 {
   unsigned long x = n * 10000;
   unsigned long t = 25;

@@ -163,6 +163,19 @@ void mde_1_edkii_vga_hex_dump(const unsigned char *addr, unsigned int len, int s
 
 
 
+static void delay_s(int n)
+{
+  unsigned long x = n * 10000;
+  unsigned long t = 25;
+
+  while (x--) {
+    for (unsigned long i1 = 0; i1 < 1000; i1++) {
+      for (int i = 0; i < 10; i++) {
+        t *= (x * 14823424) / 23.004023425234623435;
+      }
+    }
+  }
+}
 
 
 
@@ -957,6 +970,72 @@ PeiCore (
     PrivateData.HobList.HandoffInformationTable->BootMode,//4
     PrivateData.PeiMemoryInstalled//1
   );
+
+
+  delay_s(4);
+     
+  mde_1_edkii_vga_clear();
+  mde_1_edkii_vga_sprintf(0, "PEIa-%x-%x,%x,%x-%x", 
+    SecCoreData->BootFirmwareVolumeBase,//
+    SecCoreData->BootFirmwareVolumeSize,//
+    SecCoreData->DataSize,//
+    SecCoreData->PeiTemporaryRamBase,//
+    SecCoreData->PeiTemporaryRamSize//
+  );
+  mde_1_edkii_vga_sprintf(1, "b-%x-%x,%x-%x", 
+    SecCoreData->StackBase,//
+    SecCoreData->StackSize,//
+    SecCoreData->TemporaryRamBase,//
+    SecCoreData->TemporaryRamSize//
+  );
+  mde_1_edkii_vga_sprintf(2, "b-%x-%x,%x-%x,%x-%x", 
+    PrivateData.PeiMemoryInstalled,
+    PrivateData.CurrentPeimCount,
+    PrivateData.CurrentPeimFvCount,
+    PrivateData.FreePhysicalMemoryTop,
+    PrivateData.FvCount,
+    PrivateData.HeapOffset,
+    PrivateData.HeapOffsetPositive
+  );
+  mde_1_edkii_vga_sprintf(3, "c-%x-%x,%x-%x,%x-%x", 
+    PrivateData.HobList.Cpu->Header,
+    PrivateData.HobList.Cpu->SizeOfIoSpace,
+    PrivateData.HobList.Cpu->SizeOfMemorySpace,
+    PrivateData.HobList.Capsule->BaseAddress,
+    PrivateData.HobList.Capsule->Header,
+    PrivateData.HobList.Capsule->Length
+  );
+  mde_1_edkii_vga_sprintf(4, "d-%x-%x,%x-%x,%x-%x", 
+    PrivateData.HobList.FirmwareVolume->BaseAddress,
+    PrivateData.HobList.FirmwareVolume->Header,
+    PrivateData.HobList.FirmwareVolume->Length,
+    PrivateData.HobList.HandoffInformationTable->BootMode,
+    PrivateData.HobList.HandoffInformationTable->EfiEndOfHobList,
+    PrivateData.HobList.HandoffInformationTable->EfiFreeMemoryBottom
+  );
+  mde_1_edkii_vga_sprintf(5, "e-%x-%x,%x-%x,%x-%x", 
+    PrivateData.HobList.HandoffInformationTable->EfiFreeMemoryTop,
+    PrivateData.HobList.HandoffInformationTable->EfiMemoryBottom,
+    PrivateData.HobList.HandoffInformationTable->EfiMemoryTop,
+    PrivateData.HobList.HandoffInformationTable->Header,
+    PrivateData.HobList.HandoffInformationTable->Version
+  );
+  mde_1_edkii_vga_sprintf(6, "f-%x-%x,%x-%x,%x-%x", 
+    PrivateData.HobList.MemoryAllocation->AllocDescriptor.MemoryBaseAddress,
+    PrivateData.HobList.MemoryAllocation->AllocDescriptor.MemoryLength,
+    PrivateData.HobList.MemoryAllocation->AllocDescriptor.MemoryType,
+    PrivateData.HobList.MemoryAllocation->AllocDescriptor.Name
+  );
+
+
+  delay_s(4);
+  mde_1_edkii_vga_clear();
+  mde_1_edkii_vga_sprintf(0, "PeiPage2-%x",
+    TempPtr.DxeIpl,
+    TempPtr.DxeIpl->Entry
+  );
+
+
   //
   // Enter DxeIpl to load Dxe core.
   //
@@ -966,15 +1045,12 @@ PeiCore (
                              &PrivateData.Ps,
                              PrivateData.HobList
                              );
-                                       
-  mde_1_edkii_vga_sprintf(22, "[%d]y-s:%X,Sec:%X, PD:%X,BM:%X,PMI:%X", 
-    g_counter,
+                                    
+  mde_1_edkii_vga_sprintf(1, "a-%x-%x",
     Status,
-    SecCoreData,
-    &PrivateData,
-    PrivateData.HobList.HandoffInformationTable->BootMode,
-    PrivateData.PeiMemoryInstalled
-  );
+    PrivateData.Ps->InstallPeiMemory,
+    PrivateData.Ps->InstallPpi,
+  );   
   //
   // Should never reach here.
   //
