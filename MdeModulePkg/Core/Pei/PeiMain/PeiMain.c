@@ -1049,7 +1049,7 @@ PeiCore (
   mde_1_edkii_vga_sprintf(1, "a-%x-%x",
     Status,
     PrivateData.Ps->InstallPeiMemory,
-    PrivateData.Ps->InstallPpi,
+    PrivateData.Ps->InstallPpi
   );   
   //
   // Should never reach here.
