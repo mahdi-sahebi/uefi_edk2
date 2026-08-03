@@ -369,11 +369,14 @@ PeiCore (
   OldCoreData = (PEI_CORE_INSTANCE *)Data;
   SecCoreData = (EFI_SEC_PEI_HAND_OFF *)SecCoreDataPtr;
 
+  delay_s(2);
   mde_1_edkii_vga_sprintf(0, "[%d]PC:D=%X S=%X P=%X", 
     g_counter, // [1]
     Data, // PC:D=0
     SecCoreDataPtr,  // S=8fe94
     PpiList);//P=8030b4
+    
+  delay_s(2);
   mde_1_edkii_vga_sprintf(1, "[%d]BFV=%X,SZ=%X,TB=%X,TS=%X",
     g_counter,// [1]
     (UINT32)(UINTN)SecCoreData->BootFirmwareVolumeBase,//BFV=800000
@@ -668,11 +671,14 @@ PeiCore (
   //
   PrivateData.Ps = &PrivateData.ServiceTableShadow;
 
+  delay_s(2);
   mde_1_edkii_vga_sprintf(19, "[%d]b-Ps:%X, SC:%X, OD:%X", 
     g_counter,
     &PrivateData.Ps, 
     SecCoreData, 
     OldCoreData);
+    
+  delay_s(2);
   //
   // Save PeiServicePointer so that it can be retrieved anywhere.
   //
@@ -683,6 +689,8 @@ PeiCore (
     &PrivateData.Ps, 
     SecCoreData, 
     OldCoreData);
+    
+  delay_s(2);
   //
   // Initialize libraries that the PEI Core is linked against
   //
@@ -694,6 +702,7 @@ PeiCore (
     &PrivateData.Ps, 
     SecCoreData, 
     OldCoreData);
+  delay_s(2);
   //
   // Initialize PEI Core Services
   //
@@ -704,6 +713,7 @@ PeiCore (
     &PrivateData.Ps, 
     SecCoreData, 
     OldCoreData);
+  delay_s(2);
   //
   // Update performance measurements
   //
@@ -726,6 +736,7 @@ PeiCore (
     &PrivateData.Ps, 
     SecCoreData, 
     OldCoreData);
+  delay_s(2);
   //
   // Complete PEI Core Service initialization
   //
@@ -736,6 +747,8 @@ PeiCore (
     &PrivateData.Ps, 
     SecCoreData, 
     OldCoreData);
+  delay_s(2);
+
   InitializeDispatcherData (&PrivateData, OldCoreData, SecCoreData);
   
   mde_1_edkii_vga_sprintf(19, "[%d]h-Ps:%X, SC:%X, OD:%X", 
@@ -743,6 +756,8 @@ PeiCore (
     &PrivateData.Ps, 
     SecCoreData, 
     OldCoreData);
+  delay_s(2);
+
   InitializeImageServices (&PrivateData, OldCoreData);
 
   mde_1_edkii_vga_sprintf(19, "[%d]i-Ps:%X, SC:%X, OD:%X", 
@@ -750,6 +765,7 @@ PeiCore (
     &PrivateData.Ps, 
     SecCoreData, 
     OldCoreData);
+  delay_s(2);
   //
   // Perform PEI Core Phase specific actions
   //
@@ -787,6 +803,7 @@ PeiCore (
       &PrivateData.Ps, 
       SecCoreData, 
       OldCoreData);
+  delay_s(2);
     if (PcdGetBool (PcdMigrateTemporaryRamFirmwareVolumes)) {
       
       mde_1_edkii_vga_sprintf(19, "[%d]l-Ps:%X, SC:%X, OD:%X", 
@@ -794,6 +811,7 @@ PeiCore (
         &PrivateData.Ps, 
         SecCoreData, 
         OldCoreData);
+  delay_s(2);
       //
       // When PcdMigrateTemporaryRamFirmwareVolumes is TRUE, alway shadow all
       // PEIMs no matter the condition of PcdShadowPeimOnBoot and PcdShadowPeimOnS3Boot
@@ -807,6 +825,7 @@ PeiCore (
         &PrivateData.Ps, 
         SecCoreData, 
         OldCoreData);
+  delay_s(2);
       //
       // Migrate installed content from Temporary RAM to Permanent RAM
       // FVs containing PEI_CORE should be migrated here.
@@ -818,6 +837,7 @@ PeiCore (
         &PrivateData.Ps, 
         SecCoreData, 
         OldCoreData);
+  delay_s(2);
       Status = PeiServicesInstallPpi (&mMigrateTempRamPpi);
       
       mde_1_edkii_vga_sprintf(19, "[%d]o-s:%X, Ps:%X, SC:%X, OD:%X", 
@@ -826,6 +846,7 @@ PeiCore (
         &PrivateData.Ps, 
         SecCoreData, 
         OldCoreData);
+  delay_s(2);
       ASSERT_EFI_ERROR (Status);
 
       DEBUG ((DEBUG_VERBOSE, "PPI lists after temporary RAM evacuation:\n"));
@@ -836,6 +857,7 @@ PeiCore (
         &PrivateData.Ps, 
         SecCoreData, 
         OldCoreData);
+  delay_s(2);
     }
 
     
@@ -843,6 +865,7 @@ PeiCore (
       g_counter,
       &gEfiTemporaryRamDonePpiGuid, 
       &TemporaryRamDonePpi);
+  delay_s(2);
     //
     // Try to locate Temporary RAM Done Ppi.
     //
@@ -858,6 +881,7 @@ PeiCore (
       Status,
       &gEfiTemporaryRamDonePpiGuid, 
       &TemporaryRamDonePpi);
+  delay_s(2);
     if (!EFI_ERROR (Status)) {
       //
       // Disable the use of Temporary RAM after the transition from Temporary RAM to Permanent RAM is complete.
@@ -870,6 +894,7 @@ PeiCore (
       Status,
       &gEfiTemporaryRamDonePpiGuid, 
       &TemporaryRamDonePpi);
+  delay_s(2);
     //
     // Alert any listeners that there is permanent memory available
     //
@@ -880,6 +905,7 @@ PeiCore (
       g_counter,
       Status,
       &mMemoryDiscoveredPpi);
+  delay_s(2);
     //
     // Process the Notify list and dispatch any notifies for the Memory Discovered PPI
     //
@@ -889,6 +915,7 @@ PeiCore (
       g_counter,
       Status,
       &mMemoryDiscoveredPpi);
+  delay_s(2);
     PERF_INMODULE_END ("DisMem");
   }
 
@@ -899,6 +926,7 @@ PeiCore (
     PrivateData.HobList.HandoffInformationTable->BootMode, // BM:0
     PrivateData.PeiMemoryInstalled // PMI:0
   );
+  delay_s(2);
   //
   // Call PEIM dispatcher
   //
@@ -911,6 +939,7 @@ PeiCore (
     PrivateData.HobList.HandoffInformationTable->BootMode,//4
     PrivateData.PeiMemoryInstalled//1
   );
+  delay_s(2);
 
   if (PrivateData.HobList.HandoffInformationTable->BootMode != BOOT_ON_S3_RESUME) {
     //
@@ -931,6 +960,7 @@ PeiCore (
     PrivateData.HobList.HandoffInformationTable->BootMode,
     PrivateData.PeiMemoryInstalled
   );
+  delay_s(2);
   //
   // Lookup DXE IPL PPI
   //
@@ -949,6 +979,7 @@ PeiCore (
     PrivateData.HobList.HandoffInformationTable->BootMode,
     PrivateData.PeiMemoryInstalled
   );
+  delay_s(2);
   ASSERT_EFI_ERROR (Status);
 
   if (EFI_ERROR (Status)) {
@@ -988,6 +1019,7 @@ PeiCore (
     SecCoreData->TemporaryRamBase,//
     SecCoreData->TemporaryRamSize//
   );
+  delay_s(2);
   mde_1_edkii_vga_sprintf(2, "b-%x-%x,%x-%x,%x-%x", 
     PrivateData.PeiMemoryInstalled,
     PrivateData.CurrentPeimCount,
@@ -1005,6 +1037,7 @@ PeiCore (
     PrivateData.HobList.Capsule->Header,
     PrivateData.HobList.Capsule->Length
   );
+  delay_s(2);
   mde_1_edkii_vga_sprintf(4, "d-%x-%x,%x-%x,%x-%x", 
     PrivateData.HobList.FirmwareVolume->BaseAddress,
     PrivateData.HobList.FirmwareVolume->Header,
@@ -1034,6 +1067,7 @@ PeiCore (
     TempPtr.DxeIpl,
     TempPtr.DxeIpl->Entry
   );
+  delay_s(2);
 
 
   //
