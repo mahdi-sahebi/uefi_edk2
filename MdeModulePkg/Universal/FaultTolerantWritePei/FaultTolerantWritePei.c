@@ -170,6 +170,23 @@ void mde_4_edkii_vga_hex_dump(const unsigned char *addr, unsigned int len, int s
 
 
 
+static void delay_s(int n)
+{
+  volatile unsigned long t = 25;
+  volatile unsigned long x = (unsigned long)n * 10000UL;
+
+  while (x--) {
+    for (unsigned long i1 = 0; i1 < 1000UL; ++i1) {
+        for (int i = 0; i < 10; ++i) {
+            t = t * 14823424UL + x + 1UL;
+        }
+    }
+  }
+
+  mde_4_edkii_vga_sprintf(23, "%x", t);
+}
+
+
 /////////////////////////////////////////////////////
 
 
@@ -347,26 +364,6 @@ IsValidWorkSpace (
 
 
 
-
-static volatile unsigned long delay_dummy;
-
-static void delay_s(int n)
-{
-    volatile unsigned long t = 25;
-    volatile unsigned long x = (unsigned long)n * 10000UL;
-
-    while (x > 0) {
-        --x;
-
-        for (unsigned long i1 = 0; i1 < 1000UL; ++i1) {
-            for (int i = 0; i < 10; ++i) {
-                t = t * 14823424UL + x + 1UL;
-            }
-        }
-    }
-
-    delay_dummy = t;
-}
 
 
 
