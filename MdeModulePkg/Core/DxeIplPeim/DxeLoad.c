@@ -888,8 +888,8 @@ DxeLoadCore (
   mde_6_edkii_vga_sprintf(8, "8c-%x-%x-%x-%x",
     Status,
     DxeCoreFileInfo.FileName.Data1,
-    DxeCoreAddress,
-    DxeCoreEntryPoint
+    (unsigned int)DxeCoreAddress,
+    (unsigned int)DxeCoreEntryPoint
   );
   mn_6_delay_s(2);
   
@@ -908,8 +908,8 @@ DxeLoadCore (
   mde_6_edkii_vga_sprintf(8, "8d-%x-%x-%x-%x",
     Status,
     DxeCoreFileInfo.FileName.Data1,
-    DxeCoreAddress,
-    DxeCoreEntryPoint
+    (unsigned int)DxeCoreAddress,
+    (unsigned int)DxeCoreEntryPoint
   );
   mn_6_delay_s(2);
 
