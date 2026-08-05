@@ -935,8 +935,8 @@ DxeIplFindDxeCore (
   VOID
   )
 {
-  EFI_STATUS           Status;
-  UINTN                Instance;
+  EFI_STATUS           Status = EFI_SUCCESS;;
+  UINTN                Instance = 0;
   EFI_PEI_FV_HANDLE    VolumeHandle;
   EFI_PEI_FILE_HANDLE  FileHandle;
 
@@ -948,7 +948,6 @@ DxeIplFindDxeCore (
 
   Instance = 0;
   while (TRUE) {
-    
     mde_6_edkii_vga_sprintf(9, "FindDxeCore-9b-%x-%x",
       Status,
       Instance
