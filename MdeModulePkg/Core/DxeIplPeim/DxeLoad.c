@@ -411,13 +411,13 @@ InstallIplPermanentMemoryPpis (
   //
   ExtractHandlerNumber = ExtractGuidedSectionGetGuidList (&ExtractHandlerGuidTable);
 
-  mde_6_edkii_vga_sprintf(0, "DxePPIb-%x-%x-%x-%x-%x",
-    ExtractHandlerNumber,
-    ExtractHandlerGuidTable->Data1,
-    ExtractHandlerGuidTable->Data2,
-    ExtractHandlerGuidTable->Data3,
-    ExtractHandlerGuidTable->Data4
-  );
+  // mde_6_edkii_vga_sprintf(0, "DxePPIb-%x-%x-%x-%x-%x",
+  //   ExtractHandlerNumber,
+  //   ExtractHandlerGuidTable->Data1,
+  //   ExtractHandlerGuidTable->Data2,
+  //   ExtractHandlerGuidTable->Data3,
+  //   ExtractHandlerGuidTable->Data4
+  // );
   mn_6_delay_s(2);
 
   //
@@ -435,13 +435,13 @@ InstallIplPermanentMemoryPpis (
     }
   }
 
-  mde_6_edkii_vga_sprintf(0, "DxePPIc-%x-%x-%x-%x-%x",
-    ExtractHandlerNumber,
-    ExtractHandlerGuidTable->Data1,
-    ExtractHandlerGuidTable->Data2,
-    ExtractHandlerGuidTable->Data3,
-    ExtractHandlerGuidTable->Data4
-  );
+  // mde_6_edkii_vga_sprintf(0, "DxePPIc-%x-%x-%x-%x-%x",
+  //   ExtractHandlerNumber,
+  //   ExtractHandlerGuidTable->Data1,
+  //   ExtractHandlerGuidTable->Data2,
+  //   ExtractHandlerGuidTable->Data3,
+  //   ExtractHandlerGuidTable->Data4
+  // );
   mn_6_delay_s(2);
 
   //
@@ -449,14 +449,14 @@ InstallIplPermanentMemoryPpis (
   //
   Status = PeiServicesInstallPpi (&mDecompressPpiList);
   
-  mde_6_edkii_vga_sprintf(1, "DxePPId-%x-%x,%x-%x-%x-%x",
-    Status,
-    ExtractHandlerNumber,
-    ExtractHandlerGuidTable->Data1,
-    ExtractHandlerGuidTable->Data2,
-    ExtractHandlerGuidTable->Data3,
-    ExtractHandlerGuidTable->Data4
-  );
+  // mde_6_edkii_vga_sprintf(1, "DxePPId-%x-%x,%x-%x-%x-%x",
+  //   Status,
+  //   ExtractHandlerNumber,
+  //   ExtractHandlerGuidTable->Data1,
+  //   ExtractHandlerGuidTable->Data2,
+  //   ExtractHandlerGuidTable->Data3,
+  //   ExtractHandlerGuidTable->Data4
+  // );
   mn_6_delay_s(2);
 
   ASSERT_EFI_ERROR (Status);
@@ -770,11 +770,11 @@ DxeLoadCore (
                (VOID **)&Variable
                );
                 
-    mde_6_edkii_vga_sprintf(5, "5b-%x-%x-%x",
-      BootMode,
-      Status,
-      gEfiPeiReadOnlyVariable2PpiGuid.Data1
-    );
+    // mde_6_edkii_vga_sprintf(5, "5b-%x-%x-%x",
+    //   BootMode,
+    //   Status,
+    //   gEfiPeiReadOnlyVariable2PpiGuid.Data1
+    // );
     mn_6_delay_s(2);
     if (!EFI_ERROR (Status)) {
       DataSize = sizeof (MemoryData);
@@ -879,12 +879,12 @@ DxeLoadCore (
     DxeCoreEntryPoint
     );
 
-  mde_6_edkii_vga_sprintf(8, "8c-%x-%x-%x-%x",
-    Status,
-    DxeCoreFileInfo.FileName.Data1,
-    DxeCoreAddress,
-    DxeCoreEntryPoint
-  );
+  // mde_6_edkii_vga_sprintf(8, "8c-%x-%x-%x-%x",
+  //   Status,
+  //   DxeCoreFileInfo.FileName.Data1,
+  //   DxeCoreAddress,
+  //   DxeCoreEntryPoint
+  // );
   mn_6_delay_s(2);
   
   // Report Status Code EFI_SW_PEI_PC_HANDOFF_TO_NEXT
@@ -899,12 +899,12 @@ DxeLoadCore (
   //
   HandOffToDxeCore (DxeCoreEntryPoint, HobList);
   
-  mde_6_edkii_vga_sprintf(8, "8d-%x-%x-%x-%x",
-    Status,
-    DxeCoreFileInfo.FileName.Data1,
-    DxeCoreAddress,
-    DxeCoreEntryPoint
-  );
+  // mde_6_edkii_vga_sprintf(8, "8d-%x-%x-%x-%x",
+  //   Status,
+  //   DxeCoreFileInfo.FileName.Data1,
+  //   DxeCoreAddress,
+  //   DxeCoreEntryPoint
+  // );
   mn_6_delay_s(2);
 
   //
@@ -954,10 +954,10 @@ DxeIplFindDxeCore (
     //
     Status = PeiServicesFfsFindNextVolume (Instance, &VolumeHandle);
       
-    mde_6_edkii_vga_sprintf(9, "FindDxeCore-9c-%x-%x",
-      Status,
-      Instance
-    );
+    // mde_6_edkii_vga_sprintf(9, "FindDxeCore-9c-%x-%x",
+    //   Status,
+    //   Instance
+    // );
     mn_6_delay_s(2);
 
     //
@@ -976,10 +976,10 @@ DxeIplFindDxeCore (
     FileHandle = NULL;
     Status     = PeiServicesFfsFindNextFile (EFI_FV_FILETYPE_DXE_CORE, VolumeHandle, &FileHandle);
     
-    mde_6_edkii_vga_sprintf(9, "FindDxeCore-9d-%x-%x",
-      Status,
-      Instance
-    );
+    // mde_6_edkii_vga_sprintf(9, "FindDxeCore-9d-%x-%x",
+    //   Status,
+    //   Instance
+    // );
     mn_6_delay_s(2);
 
     if (!EFI_ERROR (Status)) {
@@ -997,9 +997,9 @@ DxeIplFindDxeCore (
   }
 
   
-    mde_6_edkii_vga_sprintf(10, "FindDxeCore-10a-%x",
-      Instance
-    );
+    // mde_6_edkii_vga_sprintf(10, "FindDxeCore-10a-%x",
+    //   0
+    // );
     mn_6_delay_s(2);
   //
   // DxeCore cannot find in any firmware volume.
