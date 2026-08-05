@@ -555,7 +555,7 @@ DxeLoadCore (
   mde_6_edkii_vga_sprintf(0, "DxeLoadCorea-%x-%x-%x-%x",
     This,
     PeiServices,
-    HobList.Guid->Header,
+    HobList.Guid->Header.HobType,
     HobList.Header->HobType
   );
   mn_6_delay_s(2);
@@ -568,7 +568,7 @@ DxeLoadCore (
   mde_6_edkii_vga_sprintf(0, "DxeLoadCorea-%x-%x-%x,%x",
     This,
     PeiServices,
-    HobList.Guid->Header,
+    HobList.Guid->Header.HobType,
     BootMode
   );
   mn_6_delay_s(2);
@@ -578,7 +578,7 @@ DxeLoadCore (
     mde_6_edkii_vga_sprintf(1, "1a-%x-%x-%x,%x",
       This,
       PeiServices,
-      HobList.Guid->Header,
+      HobList.Guid->Header.HobType,
       BootMode
     );
     mn_6_delay_s(2);
@@ -592,7 +592,7 @@ DxeLoadCore (
     mde_6_edkii_vga_sprintf(1, "1b-%x-%x-%x,%x,%x",
       This,
       PeiServices,
-      HobList.Guid->Header,
+      HobList.Guid->Header.HobType,
       BootMode,
       Status
     );
@@ -617,7 +617,7 @@ DxeLoadCore (
     mde_6_edkii_vga_sprintf(1, "1f-%x-%x-%x,%x",
       This,
       PeiServices,
-      HobList.Guid->Header,
+      HobList.Guid->Header.HobType,
       BootMode
     );
     mn_6_delay_s(2);
@@ -627,7 +627,7 @@ DxeLoadCore (
     mde_6_edkii_vga_sprintf(1, "1g-%x-%x-%x,%x",
       This,
       PeiServices,
-      HobList.Guid->Header,
+      HobList.Guid->Header.HobType,
       BootMode
     );
     mn_6_delay_s(2);
@@ -642,7 +642,7 @@ DxeLoadCore (
       Status,
       This,
       PeiServices,
-      HobList.Guid->Header,
+      HobList.Guid->Header.HobType,
       BootMode
     );
     mn_6_delay_s(2);
