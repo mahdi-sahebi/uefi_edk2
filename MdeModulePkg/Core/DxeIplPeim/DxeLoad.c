@@ -732,9 +732,9 @@ DxeLoadCore (
                &CapsuleOnDiskModePpi
                );
                
-    // mde_6_edkii_vga_sprintf(3, "3a-%x",
-    //   BootMode
-    // );
+    mde_6_edkii_vga_sprintf(3, "3a-%x",
+      BootMode
+    );
     mn_6_delay_s(2);
 
     if (!EFI_ERROR (Status)) {
@@ -755,16 +755,16 @@ DxeLoadCore (
   }
 
   
-  // mde_6_edkii_vga_sprintf(4, "4a-%x",
-  //   BootMode
-  // );
+  mde_6_edkii_vga_sprintf(4, "4a-%x",
+    BootMode
+  );
   mn_6_delay_s(2);
 
   if (GetFirstGuidHob ((CONST EFI_GUID *)&gEfiMemoryTypeInformationGuid) == NULL) {
     
-    // mde_6_edkii_vga_sprintf(5, "5a-%x",
-    //   BootMode
-    // );
+    mde_6_edkii_vga_sprintf(5, "5a-%x",
+      BootMode
+    );
     mn_6_delay_s(2);
     
     // Don't build GuidHob if GuidHob has been installed.
@@ -834,10 +834,10 @@ DxeLoadCore (
 
     Status = PeiServicesLocatePpi (&gEfiPeiLoadFilePpiGuid, Instance++, NULL, (VOID **)&LoadFile);
     
-    // mde_6_edkii_vga_sprintf(7, "7b-%x-%x",
-    //   Status,
-    //   Instance
-    // );
+    mde_6_edkii_vga_sprintf(7, "7b-%x-%x",
+      Status,
+      Instance
+    );
     mn_6_delay_s(2);
     //
     // These must exist an instance of EFI_PEI_LOAD_FILE_PPI to support to load DxeCore file handle successfully.
@@ -853,10 +853,10 @@ DxeLoadCore (
                          &AuthenticationState
                          );
                          
-    // mde_6_edkii_vga_sprintf(7, "7c-%x-%x",
-    //   Status,
-    //   Instance
-    // );
+    mde_6_edkii_vga_sprintf(7, "7c-%x-%x",
+      Status,
+      Instance
+    );
   } while (EFI_ERROR (Status));
 
   
