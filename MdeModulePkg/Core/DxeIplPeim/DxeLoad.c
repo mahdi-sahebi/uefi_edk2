@@ -552,9 +552,9 @@ DxeLoadCore (
   VOID                             *CapsuleOnDiskModePpi;
 
   mde_6_edkii_vga_clear();
-  mde_6_edkii_vga_sprintf(0, "DxeLoadCorea-%x-%x-%x-%x",
-    This,
-    PeiServices,
+  mde_6_edkii_vga_sprintf(0, "DxeLoadCorea-%x-%x",
+    // This->Entry,
+    // PeiServices,
     HobList.Guid->Header.HobType,
     HobList.Header->HobType
   );
@@ -565,9 +565,9 @@ DxeLoadCore (
   //
   BootMode = GetBootModeHob ();
 
-  mde_6_edkii_vga_sprintf(0, "DxeLoadCorea-%x-%x-%x,%x",
-    This,
-    PeiServices,
+  mde_6_edkii_vga_sprintf(0, "DxeLoadCorea-%x-%x",
+    // This,
+    // PeiServices,
     HobList.Guid->Header.HobType,
     BootMode
   );
@@ -575,9 +575,9 @@ DxeLoadCore (
 
   if (BootMode == BOOT_ON_S3_RESUME) {
     
-    mde_6_edkii_vga_sprintf(1, "1a-%x-%x-%x,%x",
-      This,
-      PeiServices,
+    mde_6_edkii_vga_sprintf(1, "1a-%x-%x",
+      // This,
+      // PeiServices,
       HobList.Guid->Header.HobType,
       BootMode
     );
@@ -589,9 +589,9 @@ DxeLoadCore (
                (VOID **)&S3Resume
                );
     
-    mde_6_edkii_vga_sprintf(1, "1b-%x-%x-%x,%x,%x",
-      This,
-      PeiServices,
+    mde_6_edkii_vga_sprintf(1, "1b-%x-%x-%x",
+      // This,
+      // PeiServices,
       HobList.Guid->Header.HobType,
       BootMode,
       Status
@@ -614,9 +614,9 @@ DxeLoadCore (
     ASSERT_EFI_ERROR (Status);
   } else if (BootMode == BOOT_IN_RECOVERY_MODE) {
     
-    mde_6_edkii_vga_sprintf(1, "1f-%x-%x-%x,%x",
-      This,
-      PeiServices,
+    mde_6_edkii_vga_sprintf(1, "1f-%x-%x",
+      // This,
+      // PeiServices,
       HobList.Guid->Header.HobType,
       BootMode
     );
@@ -624,9 +624,9 @@ DxeLoadCore (
 
     REPORT_STATUS_CODE (EFI_PROGRESS_CODE, (EFI_SOFTWARE_PEI_MODULE | EFI_SW_PEI_PC_RECOVERY_BEGIN));
     
-    mde_6_edkii_vga_sprintf(1, "1g-%x-%x-%x,%x",
-      This,
-      PeiServices,
+    mde_6_edkii_vga_sprintf(1, "1g-%x-%x",
+      // This,
+      // PeiServices,
       HobList.Guid->Header.HobType,
       BootMode
     );
@@ -638,10 +638,10 @@ DxeLoadCore (
                (VOID **)&PeiRecovery
                );
 
-    mde_6_edkii_vga_sprintf(1, "1h-%x-%x-%x,%x-%x",
+    mde_6_edkii_vga_sprintf(1, "1h-%x-%x-%x",
       Status,
-      This,
-      PeiServices,
+      // This,
+      // PeiServices,
       HobList.Guid->Header.HobType,
       BootMode
     );
@@ -881,7 +881,7 @@ DxeLoadCore (
 
   mde_6_edkii_vga_sprintf(8, "8c-%x-%x-%x-%x",
     Status,
-    DxeCoreFileInfo.FileName,
+    DxeCoreFileInfo.FileName.Data1,
     DxeCoreAddress,
     DxeCoreEntryPoint
   );
@@ -901,7 +901,7 @@ DxeLoadCore (
   
   mde_6_edkii_vga_sprintf(8, "8d-%x-%x-%x-%x",
     Status,
-    DxeCoreFileInfo.FileName,
+    DxeCoreFileInfo.FileName.Data1,
     DxeCoreAddress,
     DxeCoreEntryPoint
   );
