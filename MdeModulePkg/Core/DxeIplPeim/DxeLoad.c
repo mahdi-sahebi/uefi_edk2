@@ -267,31 +267,31 @@ PeimInitializeDxeIpl (
   IN CONST EFI_PEI_SERVICES     **PeiServices
   )
 {
-  EFI_STATUS     Status;
-  EFI_BOOT_MODE  BootMode;
+  EFI_STATUS     Status = 0;
+  EFI_BOOT_MODE  BootMode = 0;
   VOID           *Dummy;
 
   mde_6_edkii_vga_clear();
-  // mde_6_edkii_vga_sprintf(0, "DxeIpla-%x",
-  //   0
-  // );
+  mde_6_edkii_vga_sprintf(0, "DxeIpla-%x",
+    0
+  );
   mn_6_delay_s(2);
 
 
   BootMode = GetBootModeHob ();
 
-  // mde_6_edkii_vga_sprintf(0, "DxeIplb-%x",
-  //   BootMode
-  // );
+  mde_6_edkii_vga_sprintf(0, "DxeIplb-%x",
+    BootMode
+  );
   mn_6_delay_s(2);
 
   if (BootMode != BOOT_ON_S3_RESUME) {
     Status = PeiServicesRegisterForShadow (FileHandle);
     
-    // mde_6_edkii_vga_sprintf(1, "1a-%x-%x",
-    //   BootMode,
-    //   Status
-    // );
+    mde_6_edkii_vga_sprintf(1, "1a-%x-%x",
+      BootMode,
+      Status
+    );
     mn_6_delay_s(2);
 
     
@@ -317,10 +317,10 @@ PeimInitializeDxeIpl (
                (VOID **)&Dummy
                );
                
-    // mde_6_edkii_vga_sprintf(1, "1b-%x-%x",
-    //   BootMode,
-    //   Status
-    // );
+    mde_6_edkii_vga_sprintf(1, "1b-%x-%x",
+      BootMode,
+      Status
+    );
     mn_6_delay_s(2);
 
     
@@ -334,17 +334,17 @@ PeimInitializeDxeIpl (
     // and section extraction.
     //
     Status = InstallIplPermanentMemoryPpis (NULL, NULL, NULL);
-    // mde_6_edkii_vga_sprintf(1, "1c-%x-%x",
-    //   BootMode,
-    //   Status
-    // );
+    mde_6_edkii_vga_sprintf(1, "1c-%x-%x",
+      BootMode,
+      Status
+    );
     mn_6_delay_s(2);
     ASSERT_EFI_ERROR (Status);
   } else {
     
-    // mde_6_edkii_vga_sprintf(1, "1f-%x",
-    //   BootMode
-    // );
+    mde_6_edkii_vga_sprintf(1, "1f-%x",
+      BootMode
+    );
     mn_6_delay_s(2);
     //
     // Install memory discovered PPI notification to install PPIs for
@@ -352,18 +352,18 @@ PeimInitializeDxeIpl (
     //
     Status = PeiServicesNotifyPpi (&mMemoryDiscoveredNotifyList);
     
-    // mde_6_edkii_vga_sprintf(1, "1g-%x-%x",
-    //   BootMode,
-    //   Status
-    // );
+    mde_6_edkii_vga_sprintf(1, "1g-%x-%x",
+      BootMode,
+      Status
+    );
     mn_6_delay_s(2);
     ASSERT_EFI_ERROR (Status);
   }
 
   
-    // mde_6_edkii_vga_sprintf(2, "2a-%x",
-    //   BootMode
-    // );
+    mde_6_edkii_vga_sprintf(2, "2a-%x",
+      BootMode
+    );
     mn_6_delay_s(2);
 
   //
@@ -371,10 +371,10 @@ PeimInitializeDxeIpl (
   //
   Status = PeiServicesInstallPpi (&mDxeIplPpiList);
   
-  // mde_6_edkii_vga_sprintf(2, "2b-%x-%x",
-  //   BootMode,
-  //   Status
-  // );
+  mde_6_edkii_vga_sprintf(2, "2b-%x-%x",
+    BootMode,
+    Status
+  );
   mn_6_delay_s(2);
   ASSERT_EFI_ERROR (Status);
 
