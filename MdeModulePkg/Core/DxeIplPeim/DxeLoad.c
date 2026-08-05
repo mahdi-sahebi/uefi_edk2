@@ -35,21 +35,21 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 char mde_6_g_buffer[80];
 
-unsigned int mn_6_strlen(char *String)
-{
-    UINTN Length = 0;
+// unsigned int mn_6_strlen(char *String)
+// {
+//     UINTN Length = 0;
 
-    if (String == NULL) {
-        return 0;
-    }
+//     if (String == NULL) {
+//         return 0;
+//     }
 
-    while (*String != '\0') {
-        String++;
-        Length++;
-    }
+//     while (*String != '\0') {
+//         String++;
+//         Length++;
+//     }
 
-    return Length;
-}
+//     return Length;
+// }
 
 void mde_6_edkii_vga_write_at_offset(unsigned int line, unsigned int offset, const char *string)
 {
@@ -57,7 +57,7 @@ void mde_6_edkii_vga_write_at_offset(unsigned int line, unsigned int offset, con
 		return;
 
 	unsigned short *p = (unsigned short *)mde_6__VGA_FB + (mde_6__VGA_COLUMNS * line) + offset;
-	unsigned int i, len = mn_6_strlen(string);
+	unsigned int i, len = AsciiStrLen(string);
 
 	for (i = 0; i < (mde_6__VGA_COLUMNS - offset); i++) {
 		if (i < len)
