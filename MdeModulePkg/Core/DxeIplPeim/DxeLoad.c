@@ -773,7 +773,7 @@ DxeLoadCore (
     mde_6_edkii_vga_sprintf(5, "5b-%x-%x-%x",
       BootMode,
       Status,
-      gEfiPeiReadOnlyVariable2PpiGuid
+      gEfiPeiReadOnlyVariable2PpiGuid.Data1
     );
     mn_6_delay_s(2);
     if (!EFI_ERROR (Status)) {
