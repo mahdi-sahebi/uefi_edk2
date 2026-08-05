@@ -265,10 +265,10 @@ PeimInitializeDxeIpl (
   EFI_BOOT_MODE  BootMode;
   VOID           *Dummy;
 
-  // mde_6_edkii_vga_clear();
-  // mde_6_edkii_vga_sprintf(0, "DxeIpla-%x",
-  //   0
-  // );
+  mde_6_edkii_vga_clear();
+  mde_6_edkii_vga_sprintf(0, "DxeIpla-%x",
+    0
+  );
   // mn_6_delay_s(2);
 
 
