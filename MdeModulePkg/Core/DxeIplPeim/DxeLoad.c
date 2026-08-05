@@ -885,12 +885,12 @@ DxeLoadCore (
     DxeCoreEntryPoint
     );
 
-  mde_6_edkii_vga_sprintf(8, "8c-%x-%x-%x-%x",
-    Status,
-    DxeCoreFileInfo.FileName.Data1,
-    (unsigned int)DxeCoreAddress,
-    (unsigned int)DxeCoreEntryPoint
-  );
+  // mde_6_edkii_vga_sprintf(8, "8c-%x-%x-%x-%x",
+  //   Status,
+  //   DxeCoreFileInfo.FileName.Data1,
+  //   (unsigned int)DxeCoreAddress,
+  //   (unsigned int)DxeCoreEntryPoint
+  // );
   mn_6_delay_s(2);
   
   // Report Status Code EFI_SW_PEI_PC_HANDOFF_TO_NEXT
@@ -905,12 +905,12 @@ DxeLoadCore (
   //
   HandOffToDxeCore (DxeCoreEntryPoint, HobList);
   
-  mde_6_edkii_vga_sprintf(8, "8d-%x-%x-%x-%x",
-    Status,
-    DxeCoreFileInfo.FileName.Data1,
-    (unsigned int)DxeCoreAddress,
-    (unsigned int)DxeCoreEntryPoint
-  );
+  // mde_6_edkii_vga_sprintf(8, "8d-%x-%x-%x-%x",
+  //   Status,
+  //   DxeCoreFileInfo.FileName.Data1,
+  //   (unsigned int)DxeCoreAddress,
+  //   (unsigned int)DxeCoreEntryPoint
+  // );
   mn_6_delay_s(2);
 
   //
