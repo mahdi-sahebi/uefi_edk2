@@ -885,12 +885,12 @@ DxeLoadCore (
     DxeCoreEntryPoint
     );
 
-  // mde_6_edkii_vga_sprintf(8, "8c-%x-%x-%x-%x",
-  //   Status,
-  //   DxeCoreFileInfo.FileName.Data1,
-  //   DxeCoreAddress,
-  //   DxeCoreEntryPoint
-  // );
+  mde_6_edkii_vga_sprintf(8, "8c-%x-%x-%x-%x",
+    Status,
+    DxeCoreFileInfo.FileName.Data1,
+    DxeCoreAddress,
+    DxeCoreEntryPoint
+  );
   mn_6_delay_s(2);
   
   // Report Status Code EFI_SW_PEI_PC_HANDOFF_TO_NEXT
@@ -905,12 +905,12 @@ DxeLoadCore (
   //
   HandOffToDxeCore (DxeCoreEntryPoint, HobList);
   
-  // mde_6_edkii_vga_sprintf(8, "8d-%x-%x-%x-%x",
-  //   Status,
-  //   DxeCoreFileInfo.FileName.Data1,
-  //   DxeCoreAddress,
-  //   DxeCoreEntryPoint
-  // );
+  mde_6_edkii_vga_sprintf(8, "8d-%x-%x-%x-%x",
+    Status,
+    DxeCoreFileInfo.FileName.Data1,
+    DxeCoreAddress,
+    DxeCoreEntryPoint
+  );
   mn_6_delay_s(2);
 
   //
@@ -949,10 +949,10 @@ DxeIplFindDxeCore (
   Instance = 0;
   while (TRUE) {
     
-    // mde_6_edkii_vga_sprintf(9, "FindDxeCore-9b-%x-%x",
-    //   Status,
-    //   Instance
-    // );
+    mde_6_edkii_vga_sprintf(9, "FindDxeCore-9b-%x-%x",
+      Status,
+      Instance
+    );
     mn_6_delay_s(2);
 
     //
@@ -960,10 +960,10 @@ DxeIplFindDxeCore (
     //
     Status = PeiServicesFfsFindNextVolume (Instance, &VolumeHandle);
       
-    // mde_6_edkii_vga_sprintf(9, "FindDxeCore-9c-%x-%x",
-    //   Status,
-    //   Instance
-    // );
+    mde_6_edkii_vga_sprintf(9, "FindDxeCore-9c-%x-%x",
+      Status,
+      Instance
+    );
     mn_6_delay_s(2);
 
     //
@@ -982,10 +982,10 @@ DxeIplFindDxeCore (
     FileHandle = NULL;
     Status     = PeiServicesFfsFindNextFile (EFI_FV_FILETYPE_DXE_CORE, VolumeHandle, &FileHandle);
     
-    // mde_6_edkii_vga_sprintf(9, "FindDxeCore-9d-%x-%x",
-    //   Status,
-    //   Instance
-    // );
+    mde_6_edkii_vga_sprintf(9, "FindDxeCore-9d-%x-%x",
+      Status,
+      Instance
+    );
     mn_6_delay_s(2);
 
     if (!EFI_ERROR (Status)) {
