@@ -35,6 +35,12 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 char mde_6_g_buffer[80];
 
+void mde_6_edkii_vga_clear(void);
+void mde_6_edkii_vga_sprintf(unsigned int row, const char* format, ...);
+void mde_6_edkii_vga_print(unsigned int line, const char *string);
+void mde_6_edkii_vga_write_at_offset(unsigned int line, unsigned int offset, const char *string);
+void mn_6_delay_s(int n);
+
 // unsigned int mn_6_strlen(char *String)
 // {
 //     UINTN Length = 0;
@@ -328,17 +334,17 @@ PeimInitializeDxeIpl (
     // and section extraction.
     //
     Status = InstallIplPermanentMemoryPpis (NULL, NULL, NULL);
-    mde_6_edkii_vga_sprintf(1, "1c-%x-%x",
-      BootMode,
-      Status
-    );
+    // mde_6_edkii_vga_sprintf(1, "1c-%x-%x",
+    //   BootMode,
+    //   Status
+    // );
     mn_6_delay_s(2);
     ASSERT_EFI_ERROR (Status);
   } else {
     
-    mde_6_edkii_vga_sprintf(1, "1f-%x",
-      BootMode
-    );
+    // mde_6_edkii_vga_sprintf(1, "1f-%x",
+    //   BootMode
+    // );
     mn_6_delay_s(2);
     //
     // Install memory discovered PPI notification to install PPIs for
@@ -346,18 +352,18 @@ PeimInitializeDxeIpl (
     //
     Status = PeiServicesNotifyPpi (&mMemoryDiscoveredNotifyList);
     
-    mde_6_edkii_vga_sprintf(1, "1g-%x-%x",
-      BootMode,
-      Status
-    );
+    // mde_6_edkii_vga_sprintf(1, "1g-%x-%x",
+    //   BootMode,
+    //   Status
+    // );
     mn_6_delay_s(2);
     ASSERT_EFI_ERROR (Status);
   }
 
   
-    mde_6_edkii_vga_sprintf(2, "2a-%x",
-      BootMode
-    );
+    // mde_6_edkii_vga_sprintf(2, "2a-%x",
+    //   BootMode
+    // );
     mn_6_delay_s(2);
 
   //
@@ -365,10 +371,10 @@ PeimInitializeDxeIpl (
   //
   Status = PeiServicesInstallPpi (&mDxeIplPpiList);
   
-  mde_6_edkii_vga_sprintf(2, "2b-%x-%x",
-    BootMode,
-    Status
-  );
+  // mde_6_edkii_vga_sprintf(2, "2b-%x-%x",
+  //   BootMode,
+  //   Status
+  // );
   mn_6_delay_s(2);
   ASSERT_EFI_ERROR (Status);
 
@@ -698,10 +704,10 @@ DxeLoadCore (
 
     REPORT_STATUS_CODE (EFI_PROGRESS_CODE, (EFI_SOFTWARE_PEI_MODULE | EFI_SW_PEI_PC_CAPSULE_START));
     
-    mde_6_edkii_vga_sprintf(2, "2e-%x-%x",
-      Status,
-      BootMode
-    );
+    // mde_6_edkii_vga_sprintf(2, "2e-%x-%x",
+    //   Status,
+    //   BootMode
+    // );
     mn_6_delay_s(2);
 
     //
@@ -709,9 +715,9 @@ DxeLoadCore (
     //
   } else if (BootMode == BOOT_ON_FLASH_UPDATE) {
     
-    mde_6_edkii_vga_sprintf(3, "3a-%x",
-      BootMode
-    );
+    // mde_6_edkii_vga_sprintf(3, "3a-%x",
+    //   BootMode
+    // );
     mn_6_delay_s(2);
 
 
@@ -726,9 +732,9 @@ DxeLoadCore (
                &CapsuleOnDiskModePpi
                );
                
-    mde_6_edkii_vga_sprintf(3, "3a-%x",
-      BootMode
-    );
+    // mde_6_edkii_vga_sprintf(3, "3a-%x",
+    //   BootMode
+    // );
     mn_6_delay_s(2);
 
     if (!EFI_ERROR (Status)) {
@@ -749,16 +755,16 @@ DxeLoadCore (
   }
 
   
-  mde_6_edkii_vga_sprintf(4, "4a-%x",
-    BootMode
-  );
+  // mde_6_edkii_vga_sprintf(4, "4a-%x",
+  //   BootMode
+  // );
   mn_6_delay_s(2);
 
   if (GetFirstGuidHob ((CONST EFI_GUID *)&gEfiMemoryTypeInformationGuid) == NULL) {
     
-    mde_6_edkii_vga_sprintf(5, "5a-%x",
-      BootMode
-    );
+    // mde_6_edkii_vga_sprintf(5, "5a-%x",
+    //   BootMode
+    // );
     mn_6_delay_s(2);
     
     // Don't build GuidHob if GuidHob has been installed.
