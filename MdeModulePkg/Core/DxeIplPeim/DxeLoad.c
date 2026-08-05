@@ -272,26 +272,26 @@ PeimInitializeDxeIpl (
   VOID           *Dummy;
 
   mde_6_edkii_vga_clear();
-  mde_6_edkii_vga_sprintf(0, "DxeIpla-%x",
-    0
-  );
+  // mde_6_edkii_vga_sprintf(0, "DxeIpla-%x",
+  //   0
+  // );
   mn_6_delay_s(2);
 
 
   BootMode = GetBootModeHob ();
 
-  mde_6_edkii_vga_sprintf(0, "DxeIplb-%x",
-    BootMode
-  );
+  // mde_6_edkii_vga_sprintf(0, "DxeIplb-%x",
+  //   BootMode
+  // );
   mn_6_delay_s(2);
 
   if (BootMode != BOOT_ON_S3_RESUME) {
     Status = PeiServicesRegisterForShadow (FileHandle);
     
-    mde_6_edkii_vga_sprintf(1, "1a-%x-%x",
-      BootMode,
-      Status
-    );
+    // mde_6_edkii_vga_sprintf(1, "1a-%x-%x",
+    //   BootMode,
+    //   Status
+    // );
     mn_6_delay_s(2);
 
     
@@ -317,10 +317,10 @@ PeimInitializeDxeIpl (
                (VOID **)&Dummy
                );
                
-    mde_6_edkii_vga_sprintf(1, "1b-%x-%x",
-      BootMode,
-      Status
-    );
+    // mde_6_edkii_vga_sprintf(1, "1b-%x-%x",
+    //   BootMode,
+    //   Status
+    // );
     mn_6_delay_s(2);
 
     
@@ -834,10 +834,10 @@ DxeLoadCore (
 
     Status = PeiServicesLocatePpi (&gEfiPeiLoadFilePpiGuid, Instance++, NULL, (VOID **)&LoadFile);
     
-    mde_6_edkii_vga_sprintf(7, "7b-%x-%x",
-      Status,
-      Instance
-    );
+    // mde_6_edkii_vga_sprintf(7, "7b-%x-%x",
+    //   Status,
+    //   Instance
+    // );
     mn_6_delay_s(2);
     //
     // These must exist an instance of EFI_PEI_LOAD_FILE_PPI to support to load DxeCore file handle successfully.
@@ -853,10 +853,10 @@ DxeLoadCore (
                          &AuthenticationState
                          );
                          
-    mde_6_edkii_vga_sprintf(7, "7c-%x-%x",
-      Status,
-      Instance
-    );
+    // mde_6_edkii_vga_sprintf(7, "7c-%x-%x",
+    //   Status,
+    //   Instance
+    // );
   } while (EFI_ERROR (Status));
 
   
@@ -949,10 +949,10 @@ DxeIplFindDxeCore (
   Instance = 0;
   while (TRUE) {
     
-    mde_6_edkii_vga_sprintf(9, "FindDxeCore-9b-%x-%x",
-      Status,
-      Instance
-    );
+    // mde_6_edkii_vga_sprintf(9, "FindDxeCore-9b-%x-%x",
+    //   Status,
+    //   Instance
+    // );
     mn_6_delay_s(2);
 
     //
@@ -960,10 +960,10 @@ DxeIplFindDxeCore (
     //
     Status = PeiServicesFfsFindNextVolume (Instance, &VolumeHandle);
       
-    mde_6_edkii_vga_sprintf(9, "FindDxeCore-9c-%x-%x",
-      Status,
-      Instance
-    );
+    // mde_6_edkii_vga_sprintf(9, "FindDxeCore-9c-%x-%x",
+    //   Status,
+    //   Instance
+    // );
     mn_6_delay_s(2);
 
     //
@@ -982,10 +982,10 @@ DxeIplFindDxeCore (
     FileHandle = NULL;
     Status     = PeiServicesFfsFindNextFile (EFI_FV_FILETYPE_DXE_CORE, VolumeHandle, &FileHandle);
     
-    mde_6_edkii_vga_sprintf(9, "FindDxeCore-9d-%x-%x",
-      Status,
-      Instance
-    );
+    // mde_6_edkii_vga_sprintf(9, "FindDxeCore-9d-%x-%x",
+    //   Status,
+    //   Instance
+    // );
     mn_6_delay_s(2);
 
     if (!EFI_ERROR (Status)) {
