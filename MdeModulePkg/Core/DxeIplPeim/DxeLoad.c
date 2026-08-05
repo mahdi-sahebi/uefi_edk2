@@ -400,9 +400,9 @@ InstallIplPermanentMemoryPpis (
   IN VOID                       *Ppi
   )
 {
-  EFI_STATUS              Status;
+  EFI_STATUS              Status = EFI_SUCCESS;;
   EFI_GUID                *ExtractHandlerGuidTable;
-  UINTN                   ExtractHandlerNumber;
+  UINTN                   ExtractHandlerNumber = 0;
   EFI_PEI_PPI_DESCRIPTOR  *GuidPpi;
 
   
@@ -417,13 +417,13 @@ InstallIplPermanentMemoryPpis (
   //
   ExtractHandlerNumber = ExtractGuidedSectionGetGuidList (&ExtractHandlerGuidTable);
 
-  // mde_6_edkii_vga_sprintf(0, "DxePPIb-%x-%x-%x-%x-%x",
-  //   ExtractHandlerNumber,
-  //   ExtractHandlerGuidTable->Data1,
-  //   ExtractHandlerGuidTable->Data2,
-  //   ExtractHandlerGuidTable->Data3,
-  //   ExtractHandlerGuidTable->Data4
-  // );
+  mde_6_edkii_vga_sprintf(0, "DxePPIb-%x-%x-%x-%x-%x",
+    ExtractHandlerNumber,
+    ExtractHandlerGuidTable->Data1,
+    ExtractHandlerGuidTable->Data2,
+    ExtractHandlerGuidTable->Data3,
+    ExtractHandlerGuidTable->Data4
+  );
   mn_6_delay_s(2);
 
   //
@@ -441,13 +441,13 @@ InstallIplPermanentMemoryPpis (
     }
   }
 
-  // mde_6_edkii_vga_sprintf(0, "DxePPIc-%x-%x-%x-%x-%x",
-  //   ExtractHandlerNumber,
-  //   ExtractHandlerGuidTable->Data1,
-  //   ExtractHandlerGuidTable->Data2,
-  //   ExtractHandlerGuidTable->Data3,
-  //   ExtractHandlerGuidTable->Data4
-  // );
+  mde_6_edkii_vga_sprintf(0, "DxePPIc-%x-%x-%x-%x-%x",
+    ExtractHandlerNumber,
+    ExtractHandlerGuidTable->Data1,
+    ExtractHandlerGuidTable->Data2,
+    ExtractHandlerGuidTable->Data3,
+    ExtractHandlerGuidTable->Data4
+  );
   mn_6_delay_s(2);
 
   //
@@ -455,14 +455,14 @@ InstallIplPermanentMemoryPpis (
   //
   Status = PeiServicesInstallPpi (&mDecompressPpiList);
   
-  // mde_6_edkii_vga_sprintf(1, "DxePPId-%x-%x,%x-%x-%x-%x",
-  //   Status,
-  //   ExtractHandlerNumber,
-  //   ExtractHandlerGuidTable->Data1,
-  //   ExtractHandlerGuidTable->Data2,
-  //   ExtractHandlerGuidTable->Data3,
-  //   ExtractHandlerGuidTable->Data4
-  // );
+  mde_6_edkii_vga_sprintf(1, "DxePPId-%x-%x,%x-%x-%x-%x",
+    Status,
+    ExtractHandlerNumber,
+    ExtractHandlerGuidTable->Data1,
+    ExtractHandlerGuidTable->Data2,
+    ExtractHandlerGuidTable->Data3,
+    ExtractHandlerGuidTable->Data4
+  );
   mn_6_delay_s(2);
 
   ASSERT_EFI_ERROR (Status);
@@ -539,12 +539,12 @@ DxeLoadCore (
   IN EFI_PEI_HOB_POINTERS   HobList
   )
 {
-  EFI_STATUS                       Status;
+  EFI_STATUS                       Status = EFI_SUCCESS;;
   EFI_FV_FILE_INFO                 DxeCoreFileInfo;
-  EFI_PHYSICAL_ADDRESS             DxeCoreAddress;
+  EFI_PHYSICAL_ADDRESS             DxeCoreAddress = 0;
   UINT64                           DxeCoreSize;
   EFI_PHYSICAL_ADDRESS             DxeCoreEntryPoint;
-  EFI_BOOT_MODE                    BootMode;
+  EFI_BOOT_MODE                    BootMode = 0;
   EFI_PEI_FILE_HANDLE              FileHandle;
   EFI_PEI_READ_ONLY_VARIABLE2_PPI  *Variable;
   EFI_PEI_LOAD_FILE_PPI            *LoadFile;
@@ -557,7 +557,7 @@ DxeLoadCore (
   EFI_MEMORY_TYPE_INFORMATION      MemoryData[EfiMaxMemoryType + 1];
   VOID                             *CapsuleOnDiskModePpi;
 
-  //mde_6_edkii_vga_clear();
+  mde_6_edkii_vga_clear();
   mde_6_edkii_vga_sprintf(0, "DxeLoadCorea-%x-%x",
     // This->Entry,
     // PeiServices,
@@ -704,10 +704,10 @@ DxeLoadCore (
 
     REPORT_STATUS_CODE (EFI_PROGRESS_CODE, (EFI_SOFTWARE_PEI_MODULE | EFI_SW_PEI_PC_CAPSULE_START));
     
-    // mde_6_edkii_vga_sprintf(2, "2e-%x-%x",
-    //   Status,
-    //   BootMode
-    // );
+    mde_6_edkii_vga_sprintf(2, "2e-%x-%x",
+      Status,
+      BootMode
+    );
     mn_6_delay_s(2);
 
     //
@@ -715,9 +715,9 @@ DxeLoadCore (
     //
   } else if (BootMode == BOOT_ON_FLASH_UPDATE) {
     
-    // mde_6_edkii_vga_sprintf(3, "3a-%x",
-    //   BootMode
-    // );
+    mde_6_edkii_vga_sprintf(3, "3a-%x",
+      BootMode
+    );
     mn_6_delay_s(2);
 
 
@@ -776,11 +776,11 @@ DxeLoadCore (
                (VOID **)&Variable
                );
                 
-    // mde_6_edkii_vga_sprintf(5, "5b-%x-%x-%x",
-    //   BootMode,
-    //   Status,
-    //   gEfiPeiReadOnlyVariable2PpiGuid.Data1
-    // );
+    mde_6_edkii_vga_sprintf(5, "5b-%x-%x-%x",
+      BootMode,
+      Status,
+      gEfiPeiReadOnlyVariable2PpiGuid.Data1
+    );
     mn_6_delay_s(2);
     if (!EFI_ERROR (Status)) {
       DataSize = sizeof (MemoryData);
@@ -885,12 +885,12 @@ DxeLoadCore (
     DxeCoreEntryPoint
     );
 
-  // mde_6_edkii_vga_sprintf(8, "8c-%x-%x-%x-%x",
-  //   Status,
-  //   DxeCoreFileInfo.FileName.Data1,
-  //   (unsigned int)DxeCoreAddress,
-  //   (unsigned int)DxeCoreEntryPoint
-  // );
+  mde_6_edkii_vga_sprintf(8, "8c-%x-%x-%x-%x",
+    Status,
+    DxeCoreFileInfo.FileName.Data1,
+    (unsigned int)DxeCoreAddress,
+    (unsigned int)DxeCoreEntryPoint
+  );
   mn_6_delay_s(2);
   
   // Report Status Code EFI_SW_PEI_PC_HANDOFF_TO_NEXT
@@ -905,12 +905,12 @@ DxeLoadCore (
   //
   HandOffToDxeCore (DxeCoreEntryPoint, HobList);
   
-  // mde_6_edkii_vga_sprintf(8, "8d-%x-%x-%x-%x",
-  //   Status,
-  //   DxeCoreFileInfo.FileName.Data1,
-  //   (unsigned int)DxeCoreAddress,
-  //   (unsigned int)DxeCoreEntryPoint
-  // );
+  mde_6_edkii_vga_sprintf(8, "8d-%x-%x-%x-%x",
+    Status,
+    DxeCoreFileInfo.FileName.Data1,
+    (unsigned int)DxeCoreAddress,
+    (unsigned int)DxeCoreEntryPoint
+  );
   mn_6_delay_s(2);
 
   //
@@ -959,10 +959,10 @@ DxeIplFindDxeCore (
     //
     Status = PeiServicesFfsFindNextVolume (Instance, &VolumeHandle);
       
-    // mde_6_edkii_vga_sprintf(9, "FindDxeCore-9c-%x-%x",
-    //   Status,
-    //   Instance
-    // );
+    mde_6_edkii_vga_sprintf(9, "FindDxeCore-9c-%x-%x",
+      Status,
+      Instance
+    );
     mn_6_delay_s(2);
 
     //
@@ -981,10 +981,10 @@ DxeIplFindDxeCore (
     FileHandle = NULL;
     Status     = PeiServicesFfsFindNextFile (EFI_FV_FILETYPE_DXE_CORE, VolumeHandle, &FileHandle);
     
-    // mde_6_edkii_vga_sprintf(9, "FindDxeCore-9d-%x-%x",
-    //   Status,
-    //   Instance
-    // );
+    mde_6_edkii_vga_sprintf(9, "FindDxeCore-9d-%x-%x",
+      Status,
+      Instance
+    );
     mn_6_delay_s(2);
 
     if (!EFI_ERROR (Status)) {
@@ -1078,7 +1078,7 @@ CustomGuidedSectionExtract (
   OUT       UINT32                                 *AuthenticationStatus
   )
 {
-  EFI_STATUS  Status;
+  EFI_STATUS  Status = EFI_SUCCESS;;
   UINT8       *ScratchBuffer;
   UINT32      ScratchBufferSize;
   UINT32      OutputBufferSize;
