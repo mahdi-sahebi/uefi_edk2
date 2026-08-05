@@ -365,10 +365,10 @@ PeimInitializeDxeIpl (
   //
   Status = PeiServicesInstallPpi (&mDxeIplPpiList);
   
-    // mde_6_edkii_vga_sprintf(2, "2b-%x-%x",
-    //   BootMode,
-    //   Status
-    // );
+  mde_6_edkii_vga_sprintf(2, "2b-%x-%x",
+    BootMode,
+    Status
+  );
     //mn_6_delay_s(2);
   ASSERT_EFI_ERROR (Status);
 
