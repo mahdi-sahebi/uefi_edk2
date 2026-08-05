@@ -269,7 +269,7 @@ PeimInitializeDxeIpl (
   mde_6_edkii_vga_sprintf(0, "DxeIpla-%x",
     0
   );
-  // mn_6_delay_s(2);
+  mn_6_delay_s(2);
 
 
   BootMode = GetBootModeHob ();
