@@ -35,7 +35,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 char mde_6_g_buffer[80];
 
-static unsigned int mn_6_strlen(char *String)
+unsigned int mn_6_strlen(char *String)
 {
     UINTN Length = 0;
 
