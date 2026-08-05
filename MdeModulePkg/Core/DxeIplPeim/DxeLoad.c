@@ -177,7 +177,7 @@ void mde_6_edkii_vga_hex_dump(const unsigned char *addr, unsigned int len, int s
 
 
 
-void //mn_6_delay_s(int n)
+void mn_6_delay_s(int n)
 {
   volatile unsigned long t = 25;
   volatile unsigned long x = (unsigned long)n * 10000UL;
@@ -265,7 +265,7 @@ PeimInitializeDxeIpl (
   EFI_BOOT_MODE  BootMode;
   VOID           *Dummy;
 
-  mde_6_edkii_vga_clear();
+  //mde_6_edkii_vga_clear();
   // mde_6_edkii_vga_sprintf(0, "DxeIpla-%x",
   //   0
   // );
@@ -400,7 +400,7 @@ InstallIplPermanentMemoryPpis (
   EFI_PEI_PPI_DESCRIPTOR  *GuidPpi;
 
   
-  mde_6_edkii_vga_clear();
+  //mde_6_edkii_vga_clear();
   // mde_6_edkii_vga_sprintf(0, "DxePPIa-%x",
   //   0
   // );
@@ -551,7 +551,7 @@ DxeLoadCore (
   EFI_MEMORY_TYPE_INFORMATION      MemoryData[EfiMaxMemoryType + 1];
   VOID                             *CapsuleOnDiskModePpi;
 
-  mde_6_edkii_vga_clear();
+  //mde_6_edkii_vga_clear();
   // mde_6_edkii_vga_sprintf(0, "DxeLoadCorea-%x-%x",
   //   // This->Entry,
   //   // PeiServices,
