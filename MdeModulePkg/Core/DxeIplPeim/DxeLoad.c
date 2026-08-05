@@ -949,10 +949,10 @@ DxeIplFindDxeCore (
   Instance = 0;
   while (TRUE) {
     
-    // mde_6_edkii_vga_sprintf(9, "FindDxeCore-9b-%x-%x",
-    //   Status,
-    //   Instance
-    // );
+    mde_6_edkii_vga_sprintf(9, "FindDxeCore-9b-%x-%x",
+      Status,
+      Instance
+    );
     mn_6_delay_s(2);
 
     //
