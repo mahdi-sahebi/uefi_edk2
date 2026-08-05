@@ -552,12 +552,12 @@ DxeLoadCore (
   VOID                             *CapsuleOnDiskModePpi;
 
   //mde_6_edkii_vga_clear();
-  // mde_6_edkii_vga_sprintf(0, "DxeLoadCorea-%x-%x",
-  //   // This->Entry,
-  //   // PeiServices,
-  //   HobList.Guid->Header.HobType,
-  //   HobList.Header->HobType
-  // );
+  mde_6_edkii_vga_sprintf(0, "DxeLoadCorea-%x-%x",
+    // This->Entry,
+    // PeiServices,
+    HobList.Guid->Header.HobType,
+    HobList.Header->HobType
+  );
   mn_6_delay_s(2);
 
   //
@@ -565,22 +565,22 @@ DxeLoadCore (
   //
   BootMode = GetBootModeHob ();
 
-  // mde_6_edkii_vga_sprintf(0, "DxeLoadCorea-%x-%x",
-  //   // This,
-  //   // PeiServices,
-  //   HobList.Guid->Header.HobType,
-  //   BootMode
-  // );
+  mde_6_edkii_vga_sprintf(0, "DxeLoadCorea-%x-%x",
+    // This,
+    // PeiServices,
+    HobList.Guid->Header.HobType,
+    BootMode
+  );
   mn_6_delay_s(2);
 
   if (BootMode == BOOT_ON_S3_RESUME) {
     
-    // mde_6_edkii_vga_sprintf(1, "1a-%x-%x",
-    //   // This,
-    //   // PeiServices,
-    //   HobList.Guid->Header.HobType,
-    //   BootMode
-    // );
+    mde_6_edkii_vga_sprintf(1, "1a-%x-%x",
+      // This,
+      // PeiServices,
+      HobList.Guid->Header.HobType,
+      BootMode
+    );
     mn_6_delay_s(2);
     Status = PeiServicesLocatePpi (
                &gEfiPeiS3Resume2PpiGuid,
@@ -589,13 +589,13 @@ DxeLoadCore (
                (VOID **)&S3Resume
                );
     
-    // mde_6_edkii_vga_sprintf(1, "1b-%x-%x-%x",
-    //   // This,
-    //   // PeiServices,
-    //   HobList.Guid->Header.HobType,
-    //   BootMode,
-    //   Status
-    // );
+    mde_6_edkii_vga_sprintf(1, "1b-%x-%x-%x",
+      // This,
+      // PeiServices,
+      HobList.Guid->Header.HobType,
+      BootMode,
+      Status
+    );
     mn_6_delay_s(2);
 
     if (EFI_ERROR (Status)) {
@@ -614,22 +614,22 @@ DxeLoadCore (
     ASSERT_EFI_ERROR (Status);
   } else if (BootMode == BOOT_IN_RECOVERY_MODE) {
     
-    // mde_6_edkii_vga_sprintf(1, "1f-%x-%x",
-    //   // This,
-    //   // PeiServices,
-    //   HobList.Guid->Header.HobType,
-    //   BootMode
-    // );
+    mde_6_edkii_vga_sprintf(1, "1f-%x-%x",
+      // This,
+      // PeiServices,
+      HobList.Guid->Header.HobType,
+      BootMode
+    );
     mn_6_delay_s(2);
 
     REPORT_STATUS_CODE (EFI_PROGRESS_CODE, (EFI_SOFTWARE_PEI_MODULE | EFI_SW_PEI_PC_RECOVERY_BEGIN));
     
-    // mde_6_edkii_vga_sprintf(1, "1g-%x-%x",
-    //   // This,
-    //   // PeiServices,
-    //   HobList.Guid->Header.HobType,
-    //   BootMode
-    // );
+    mde_6_edkii_vga_sprintf(1, "1g-%x-%x",
+      // This,
+      // PeiServices,
+      HobList.Guid->Header.HobType,
+      BootMode
+    );
     mn_6_delay_s(2);
     Status = PeiServicesLocatePpi (
                &gEfiPeiRecoveryModulePpiGuid,
@@ -638,13 +638,13 @@ DxeLoadCore (
                (VOID **)&PeiRecovery
                );
 
-    // mde_6_edkii_vga_sprintf(1, "1h-%x-%x-%x",
-    //   Status,
-    //   // This,
-    //   // PeiServices,
-    //   HobList.Guid->Header.HobType,
-    //   BootMode
-    // );
+    mde_6_edkii_vga_sprintf(1, "1h-%x-%x-%x",
+      Status,
+      // This,
+      // PeiServices,
+      HobList.Guid->Header.HobType,
+      BootMode
+    );
     mn_6_delay_s(2);
 
     if (EFI_ERROR (Status)) {
