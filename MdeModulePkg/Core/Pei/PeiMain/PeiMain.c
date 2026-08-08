@@ -164,13 +164,13 @@ static void delay_s(int n)
 
   while (x--) {
     for (unsigned long i1 = 0; i1 < 1000UL; ++i1) {
-        for (int i = 0; i < 10; ++i) {
+        for (int i = 0; i < 200; ++i) {
             t = t * 14823424UL + x + 1UL;
         }
     }
   }
 
-  mde_1_edkii_vga_sprintf(23, "%x", t);
+  mde_1_edkii_vga_sprintf(24, "%x", t);
 }
 /////////////////////////////////////////////////////
 
@@ -675,10 +675,10 @@ PeiCore (
 
   delay_s(2);
   mde_1_edkii_vga_sprintf(19, "[%d]b-Ps:%X, SC:%X, OD:%X", 
-    g_counter,
-    &PrivateData.Ps, 
-    SecCoreData, 
-    OldCoreData);
+    g_counter,//1
+    &PrivateData.Ps, //8fa30
+    SecCoreData, //8fe94
+    OldCoreData);//0
     
   delay_s(2);
   //
@@ -974,12 +974,12 @@ PeiCore (
              );
              
   mde_1_edkii_vga_sprintf(22, "[%d]w-s:%X,Sec:%X, PD:%X,BM:%X,PMI:%X", 
-    g_counter,
-    Status,
-    SecCoreData,
-    &PrivateData,
-    PrivateData.HobList.HandoffInformationTable->BootMode,
-    PrivateData.PeiMemoryInstalled
+    g_counter,//3
+    Status,//0
+    SecCoreData,//5f51f1cc
+    &PrivateData,//
+    PrivateData.HobList.HandoffInformationTable->BootMode,//4
+    PrivateData.PeiMemoryInstalled//1
   );
   delay_s(2);
   ASSERT_EFI_ERROR (Status);
@@ -1009,64 +1009,64 @@ PeiCore (
      
   mde_1_edkii_vga_clear();
   mde_1_edkii_vga_sprintf(0, "PEIa-%x-%x,%x,%x-%x", 
-    SecCoreData->BootFirmwareVolumeBase,//
-    SecCoreData->BootFirmwareVolumeSize,//
-    SecCoreData->DataSize,//
-    SecCoreData->PeiTemporaryRamBase,//
-    SecCoreData->PeiTemporaryRamSize//
+    SecCoreData->BootFirmwareVolumeBase,//800000
+    SecCoreData->BootFirmwareVolumeSize,//ff800000
+    SecCoreData->DataSize,//24
+    SecCoreData->PeiTemporaryRamBase,//80000
+    SecCoreData->PeiTemporaryRamSize//8000
   );
   mde_1_edkii_vga_sprintf(1, "b-%x-%x,%x-%x", 
-    SecCoreData->StackBase,//
-    SecCoreData->StackSize,//
-    SecCoreData->TemporaryRamBase,//
-    SecCoreData->TemporaryRamSize//
+    SecCoreData->StackBase,//88000
+    SecCoreData->StackSize,//8000
+    SecCoreData->TemporaryRamBase,//80000
+    SecCoreData->TemporaryRamSize//10000
   );
   delay_s(2);
-  mde_1_edkii_vga_sprintf(2, "b-%x-%x,%x-%x,%x-%x", 
-    PrivateData.PeiMemoryInstalled,
-    PrivateData.CurrentPeimCount,
-    PrivateData.CurrentPeimFvCount,
-    PrivateData.FreePhysicalMemoryTop,
-    PrivateData.FvCount,
-    PrivateData.HeapOffset,
-    PrivateData.HeapOffsetPositive
+  mde_1_edkii_vga_sprintf(2, "b-%x-%x,%x-%x,%x-%x-%x", 
+    PrivateData.PeiMemoryInstalled,//1
+    PrivateData.CurrentPeimCount,//0
+    PrivateData.CurrentPeimFvCount,//0
+    PrivateData.FreePhysicalMemoryTop,//63500000
+    PrivateData.FvCount,//0
+    PrivateData.HeapOffset,//22
+    PrivateData.HeapOffsetPositive//
   );
   mde_1_edkii_vga_sprintf(3, "c-%x-%x,%x-%x,%x-%x", 
-    PrivateData.HobList.Cpu->Header,
-    PrivateData.HobList.Cpu->SizeOfIoSpace,
-    PrivateData.HobList.Cpu->SizeOfMemorySpace,
-    PrivateData.HobList.Capsule->BaseAddress,
-    PrivateData.HobList.Capsule->Header,
-    PrivateData.HobList.Capsule->Length
+    PrivateData.HobList.Cpu->Header,//380001
+    PrivateData.HobList.Cpu->SizeOfIoSpace,//0
+    PrivateData.HobList.Cpu->SizeOfMemorySpace,//0
+    PrivateData.HobList.Capsule->BaseAddress,//9
+    PrivateData.HobList.Capsule->Header,//9
+    PrivateData.HobList.Capsule->Length//4
   );
   delay_s(2);
   mde_1_edkii_vga_sprintf(4, "d-%x-%x,%x-%x,%x-%x", 
-    PrivateData.HobList.FirmwareVolume->BaseAddress,
-    PrivateData.HobList.FirmwareVolume->Header,
-    PrivateData.HobList.FirmwareVolume->Length,
-    PrivateData.HobList.HandoffInformationTable->BootMode,
-    PrivateData.HobList.HandoffInformationTable->EfiEndOfHobList,
-    PrivateData.HobList.HandoffInformationTable->EfiFreeMemoryBottom
+    PrivateData.HobList.FirmwareVolume->BaseAddress,//9
+    PrivateData.HobList.FirmwareVolume->Header,//4
+    PrivateData.HobList.FirmwareVolume->Length,//380001
+    PrivateData.HobList.HandoffInformationTable->BootMode,//0
+    PrivateData.HobList.HandoffInformationTable->EfiEndOfHobList,//63500000
+    PrivateData.HobList.HandoffInformationTable->EfiFreeMemoryBottom//0
   );
-  mde_1_edkii_vga_sprintf(5, "e-%x-%x,%x-%x,%x-%x", 
-    PrivateData.HobList.HandoffInformationTable->EfiFreeMemoryTop,
-    PrivateData.HobList.HandoffInformationTable->EfiMemoryBottom,
-    PrivateData.HobList.HandoffInformationTable->EfiMemoryTop,
-    PrivateData.HobList.HandoffInformationTable->Header,
-    PrivateData.HobList.HandoffInformationTable->Version
+  mde_1_edkii_vga_sprintf(5, "e-%x-%x,%x-%x,%x", 
+    PrivateData.HobList.HandoffInformationTable->EfiFreeMemoryTop,//634b0000
+    PrivateData.HobList.HandoffInformationTable->EfiMemoryBottom,//0
+    PrivateData.HobList.HandoffInformationTable->EfiMemoryTop,//5f500000
+    PrivateData.HobList.HandoffInformationTable->Header,//63500000
+    PrivateData.HobList.HandoffInformationTable->Version//0
   );
-  mde_1_edkii_vga_sprintf(6, "f-%x-%x,%x-%x,%x-%x", 
-    PrivateData.HobList.MemoryAllocation->AllocDescriptor.MemoryBaseAddress,
-    PrivateData.HobList.MemoryAllocation->AllocDescriptor.MemoryLength,
-    PrivateData.HobList.MemoryAllocation->AllocDescriptor.MemoryType,
-    PrivateData.HobList.MemoryAllocation->AllocDescriptor.Name
+  mde_1_edkii_vga_sprintf(6, "f-%x-%x,%x-%x", 
+    PrivateData.HobList.MemoryAllocation->AllocDescriptor.MemoryBaseAddress,//5f500000
+    PrivateData.HobList.MemoryAllocation->AllocDescriptor.MemoryLength,//0
+    PrivateData.HobList.MemoryAllocation->AllocDescriptor.MemoryType,//634b0000
+    PrivateData.HobList.MemoryAllocation->AllocDescriptor.Name///0
   );
 
 
   delay_s(4);
   mde_1_edkii_vga_clear();
-  mde_1_edkii_vga_sprintf(0, "PeiPage2-%x",
-    TempPtr.DxeIpl,
+  mde_1_edkii_vga_sprintf(0, "PeiPage2-%x-%x",
+    TempPtr.DxeIpl,//634da204
     TempPtr.DxeIpl->Entry
   );
   delay_s(2);

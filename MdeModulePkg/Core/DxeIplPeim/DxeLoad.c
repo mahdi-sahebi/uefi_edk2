@@ -273,7 +273,7 @@ PeimInitializeDxeIpl (
 
   mde_6_edkii_vga_clear();
   mde_6_edkii_vga_sprintf(0, "DxeIpla-%x",
-    0
+    0//0
   );
   mn_6_delay_s(2);
 
@@ -281,16 +281,16 @@ PeimInitializeDxeIpl (
   BootMode = GetBootModeHob ();
 
   mde_6_edkii_vga_sprintf(0, "DxeIplb-%x",
-    BootMode
+    BootMode//4
   );
   mn_6_delay_s(2);
 
   if (BootMode != BOOT_ON_S3_RESUME) {
     Status = PeiServicesRegisterForShadow (FileHandle);
     
-    mde_6_edkii_vga_sprintf(1, "1a-%x-%x",
-      BootMode,
-      Status
+    mde_6_edkii_vga_sprintf(1, "1a-%x-%x",//1a
+      BootMode,//4
+      Status//frist time: 0//second time: 80000014
     );
     mn_6_delay_s(2);
 
@@ -318,8 +318,8 @@ PeimInitializeDxeIpl (
                );
                
     mde_6_edkii_vga_sprintf(1, "1b-%x-%x",
-      BootMode,
-      Status
+      BootMode,//4
+      Status//0
     );
     mn_6_delay_s(2);
 
@@ -408,7 +408,7 @@ InstallIplPermanentMemoryPpis (
   
   mde_6_edkii_vga_clear();
   mde_6_edkii_vga_sprintf(0, "DxePPIa-%x",
-    0
+    0//0
   );
   mn_6_delay_s(2);
 
@@ -418,11 +418,11 @@ InstallIplPermanentMemoryPpis (
   ExtractHandlerNumber = ExtractGuidedSectionGetGuidList (&ExtractHandlerGuidTable);
 
   mde_6_edkii_vga_sprintf(0, "DxePPIb-%x-%x-%x-%x-%x",
-    ExtractHandlerNumber,
-    ExtractHandlerGuidTable->Data1,
-    ExtractHandlerGuidTable->Data2,
-    ExtractHandlerGuidTable->Data3,
-    ExtractHandlerGuidTable->Data4
+    ExtractHandlerNumber,//0
+    ExtractHandlerGuidTable->Data1,//0
+    ExtractHandlerGuidTable->Data2,//0
+    ExtractHandlerGuidTable->Data3,//0
+    ExtractHandlerGuidTable->Data4//5f52170c
   );
   mn_6_delay_s(2);
 
@@ -561,8 +561,8 @@ DxeLoadCore (
   mde_6_edkii_vga_sprintf(0, "DxeLoadCorea-%x-%x",
     // This->Entry,
     // PeiServices,
-    HobList.Guid->Header.HobType,
-    HobList.Header->HobType
+    HobList.Guid->Header.HobType,//1
+    HobList.Header->HobType//1
   );
   mn_6_delay_s(2);
 
@@ -571,11 +571,11 @@ DxeLoadCore (
   //
   BootMode = GetBootModeHob ();
 
-  mde_6_edkii_vga_sprintf(0, "DxeLoadCorea-%x-%x",
+  mde_6_edkii_vga_sprintf(0, "DxeLoadCoreb-%x-%x",
     // This,
     // PeiServices,
-    HobList.Guid->Header.HobType,
-    BootMode
+    HobList.Guid->Header.HobType,//
+    BootMode//4
   );
   mn_6_delay_s(2);
 
@@ -756,7 +756,7 @@ DxeLoadCore (
 
   
   mde_6_edkii_vga_sprintf(4, "4a-%x",
-    BootMode
+    BootMode//4
   );
   mn_6_delay_s(2);
 
@@ -807,7 +807,7 @@ DxeLoadCore (
 
 
   mde_6_edkii_vga_sprintf(6, "6a-%x",
-    BootMode
+    BootMode//4
   );
   mn_6_delay_s(2);
   
@@ -816,7 +816,7 @@ DxeLoadCore (
   FileHandle = DxeIplFindDxeCore ();
 
   mde_6_edkii_vga_sprintf(6, "6b-%x",
-    BootMode
+    BootMode//4
   );
   mn_6_delay_s(2);
 
@@ -827,16 +827,16 @@ DxeLoadCore (
   do {
     
     mde_6_edkii_vga_sprintf(7, "7a-%x-%x",
-      Status,
-      Instance
+      Status,  //0
+      Instance //0
     );
     mn_6_delay_s(2);
 
     Status = PeiServicesLocatePpi (&gEfiPeiLoadFilePpiGuid, Instance++, NULL, (VOID **)&LoadFile);
     
     mde_6_edkii_vga_sprintf(7, "7b-%x-%x",
-      Status,
-      Instance
+      Status, //0
+      Instance//1
     );
     mn_6_delay_s(2);
     //
@@ -854,14 +854,14 @@ DxeLoadCore (
                          );
                          
     mde_6_edkii_vga_sprintf(7, "7c-%x-%x",
-      Status,
-      Instance
+      Status, //0
+      Instance//1
     );
   } while (EFI_ERROR (Status));
 
   
   mde_6_edkii_vga_sprintf(8, "8a-%x",
-    0
+    0//0
   );
   mn_6_delay_s(2);
   
@@ -870,7 +870,7 @@ DxeLoadCore (
   Status = PeiServicesFfsGetFileInfo (FileHandle, &DxeCoreFileInfo);
   
   mde_6_edkii_vga_sprintf(8, "8b-%x",
-    Status
+    Status//0
   );
   mn_6_delay_s(2);
   ASSERT_EFI_ERROR (Status);
@@ -886,10 +886,10 @@ DxeLoadCore (
     );
 
   mde_6_edkii_vga_sprintf(8, "8c-%x-%x-%x-%x",
-    Status,
-    DxeCoreFileInfo.FileName.Data1,
-    (unsigned int)DxeCoreAddress,
-    (unsigned int)DxeCoreEntryPoint
+    Status,//0
+    DxeCoreFileInfo.FileName.Data1,//d6a2cb7f
+    (unsigned int)DxeCoreAddress,//63463000
+    (unsigned int)DxeCoreEntryPoint//6347e3ee
   );
   mn_6_delay_s(2);
   
@@ -899,6 +899,10 @@ DxeLoadCore (
 
   DEBUG ((DEBUG_INFO | DEBUG_LOAD, "Loading DXE CORE at 0x%11p EntryPoint=0x%11p\n", (VOID *)(UINTN)DxeCoreAddress, FUNCTION_ENTRY_POINT (DxeCoreEntryPoint)));
 
+  mde_6_edkii_vga_sprintf(8, "8d",
+    0
+  );
+  mn_6_delay_s(2);
   //
   // Transfer control to the DXE Core
   // The hand off state is simply a pointer to the HOB list
@@ -942,15 +946,15 @@ DxeIplFindDxeCore (
 
   
   mde_6_edkii_vga_sprintf(9, "FindDxeCore-9a-%x",
-    0
+    0//0
   );
   mn_6_delay_s(2);
 
   Instance = 0;
   while (TRUE) {
     mde_6_edkii_vga_sprintf(9, "FindDxeCore-9b-%x-%x",
-      Status,
-      Instance
+      Status, //0  //8000000e
+      Instance//0  //1
     );
     mn_6_delay_s(2);
 
@@ -960,8 +964,8 @@ DxeIplFindDxeCore (
     Status = PeiServicesFfsFindNextVolume (Instance, &VolumeHandle);
       
     mde_6_edkii_vga_sprintf(9, "FindDxeCore-9c-%x-%x",
-      Status,
-      Instance
+      Status, //0  //0
+      Instance//0  //1
     );
     mn_6_delay_s(2);
 
@@ -982,8 +986,8 @@ DxeIplFindDxeCore (
     Status     = PeiServicesFfsFindNextFile (EFI_FV_FILETYPE_DXE_CORE, VolumeHandle, &FileHandle);
     
     mde_6_edkii_vga_sprintf(9, "FindDxeCore-9d-%x-%x",
-      Status,
-      Instance
+      Status,//8000000e // 0
+      Instance//0       // 1
     );
     mn_6_delay_s(2);
 

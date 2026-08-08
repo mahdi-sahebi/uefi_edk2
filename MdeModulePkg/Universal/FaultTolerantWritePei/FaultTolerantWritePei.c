@@ -177,13 +177,13 @@ static void delay_s(int n)
 
   while (x--) {
     for (unsigned long i1 = 0; i1 < 1000UL; ++i1) {
-        for (int i = 0; i < 10; ++i) {
+        for (int i = 0; i < 200; ++i) {
             t = t * 14823424UL + x + 1UL;
         }
     }
   }
 
-  mde_4_edkii_vga_sprintf(23, "%x", t);
+  mde_4_edkii_vga_sprintf(24, "%x", t);
 }
 
 
@@ -440,10 +440,10 @@ PeimFaultTolerantWriteInitialize (
       mde_4_edkii_vga_sprintf(1, "HOB-NOTFOUND");
     } else {
       DirectInfo = (VARIABLE_FLASH_INFO *)GET_GUID_HOB_DATA (DirectHob);
-      mde_4_edkii_vga_sprintf(1, "HOB-FOUND-%x-%x-%x-%x-%x", 
+      mde_4_edkii_vga_sprintf(1, "HOB-FOUND-%x-%x-%x-%x-%x", //HOB-FOUND
         (UINTN)DirectHob,//80CA0
-        (UINTN)DirectInfo->NvVariableBaseAddress,//
-        (UINTN)DirectInfo->NvVariableLength,//
+        (UINTN)DirectInfo->NvVariableBaseAddress,//ff000000
+        (UINTN)DirectInfo->NvVariableLength,//10000
         (UINTN)DirectInfo->FtwWorkingBaseAddress,//FF010000
         (UINTN)DirectInfo->FtwSpareBaseAddress);//FF020000
     }
@@ -455,7 +455,7 @@ PeimFaultTolerantWriteInitialize (
   Status = GetVariableFlashFtwWorkingInfo (&WorkSpaceAddress, &Size);
   mde_4_edkii_vga_sprintf(3, "FTWb-%x-%x-%x",
     Status,//0
-    WorkSpaceAddress,//0
+    WorkSpaceAddress,//ff010000
     Size);//0
 
   // ASSERT_EFI_ERROR (Status);
@@ -464,21 +464,21 @@ PeimFaultTolerantWriteInitialize (
   // This driver currently assumes the size will be UINTN so assert the value is safe for now.
   mde_4_edkii_vga_sprintf(4, "4a-%x-%x",
     Status,//0
-    WorkSpaceLength);//0
+    WorkSpaceLength);//10000
   // ASSERT_EFI_ERROR (Status);
 
   Status = GetVariableFlashFtwSpareInfo (&SpareAreaAddress, &Size);
   mde_4_edkii_vga_sprintf(5, "5a-%x-%x-%x",
     Status,//0
-    SpareAreaAddress,//0
+    SpareAreaAddress,//ff020000
     Size);//0
   // ASSERT_EFI_ERROR (Status);
 
   Status = SafeUint64ToUintn (Size, &SpareAreaLength);
-  mde_4_edkii_vga_sprintf(6, "6a",
-    Status,//0
-    SpareAreaLength,//0
-    Size);//0
+  mde_4_edkii_vga_sprintf(6, "6a-%x-%x-%x",
+    Status,//
+    SpareAreaLength,//
+    Size);//
   // This driver currently assumes the size will be UINTN so assert the value is safe for now.
   // ASSERT_EFI_ERROR (Status);
 
@@ -490,11 +490,11 @@ PeimFaultTolerantWriteInitialize (
   
   mde_4_edkii_vga_sprintf(7, "7a-%x-%x-%x,%x,%x",
     Status,//0
-    SpareAreaLength,//0
-    Size,
-    WorkSpaceAddress,
-    SpareAreaAddress
-  );//0
+    SpareAreaLength,//20000
+    Size,//20000
+    WorkSpaceAddress,//0
+    SpareAreaAddress//ff010000
+  );
 
 
 
