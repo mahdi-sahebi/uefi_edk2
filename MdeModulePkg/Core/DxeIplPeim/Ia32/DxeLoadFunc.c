@@ -11,6 +11,159 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include "DxeIpl.h"
 #include "VirtualMemory.h"
 
+
+
+/////////////////////////////////////////////////////
+
+#include <stdarg.h> 
+
+#include <Library/IoLib.h>
+#include <Library/PrintLib.h>
+#include <Library/BaseLib.h>
+#include <Library/DebugLib.h>
+#include <Library/BaseMemoryLib.h>
+#include <Library/PcdLib.h>
+// #include <Library/CpuLib.h>
+// #include <Library/PeCoffGetEntryPointLib.h>
+// #include <Library/PeCoffExtraActionLib.h>
+#include <Library/DebugAgentLib.h>
+
+#define mde_9__VGA_FB 0xB8000
+#define mde_9__VGA_COLUMNS 80
+
+char mde_8_g_buffer[80];
+
+void mde_9_vga_clear(void);
+void mde_9_vga_sprintf(unsigned int row, const char* format, ...);
+void mde_9_vga_print(unsigned int line, const char *string);
+void mde_9_vga_write_at_offset(unsigned int line, unsigned int offset, const char *string);
+void mde_9_delay_s(int n);
+
+void mde_9_vga_write_at_offset(unsigned int line, unsigned int offset, const char *string)
+{
+	if (!string)
+		return;
+
+	unsigned short *p = (unsigned short *)mde_9__VGA_FB + (mde_9__VGA_COLUMNS * line) + offset;
+	unsigned int i, len = AsciiStrLen(string);
+
+	for (i = 0; i < (mde_9__VGA_COLUMNS - offset); i++) {
+		if (i < len)
+			p[i] = 0x0F00 | (unsigned char)string[i];
+		else
+			p[i] = 0x0F00;
+	}
+}
+
+
+void mde_9_vga_print(unsigned int line, const char *string)
+{
+	mde_9_vga_write_at_offset(line, 0, string);
+}
+
+void mde_9_vga_sprintf(
+  unsigned int row,
+  const char* format,
+  ...)
+{
+  VA_LIST  marker;
+  
+  VA_START (marker, format);
+  AsciiVSPrint(mde_8_g_buffer, sizeof(mde_8_g_buffer), format, marker);
+  VA_END (marker);
+  
+  mde_9_vga_print (row, mde_8_g_buffer);
+}
+
+void mde_9_vga_clear()
+{
+  for (unsigned int index = 0; index <= 24; index++) {
+    mde_9_vga_print(index, "                                                                                                    ");
+  }
+}
+
+void mde_9_vga_hex_dump(const unsigned char *addr, unsigned int len, int start_row) 
+{
+    unsigned int i;
+    
+    for (i = 0; i < len; i += 16) {
+        unsigned int j;
+        int row = start_row + (i / 16);
+        int offset_pos = 0;
+        
+        // Write offset character by character
+        unsigned long ptr_val = (unsigned long)(addr + i);
+        for (j = 28; j > 0; j -= 4) {
+            char nibble = (ptr_val >> j) & 0x0F;
+            char c = (nibble < 10) ? ('0' + nibble) : ('A' + nibble - 10);
+            char buf[2] = {c, '\0'};
+            mde_9_vga_write_at_offset(row, offset_pos++, buf);
+        }
+        {
+            char last_nibble = ptr_val & 0x0F;
+            char c = (last_nibble < 10) ? ('0' + last_nibble) : ('A' + last_nibble - 10);
+            char buf[2] = {c, '\0'};
+            mde_9_vga_write_at_offset(row, offset_pos++, buf);
+        }
+        mde_9_vga_write_at_offset(row, offset_pos++, ": ");
+        
+        // Write hex bytes
+        for (j = 0; j < 16 && (i + j < len); j++) {
+            unsigned char byte = addr[i + j];
+            // Write high nibble
+            char high = (byte >> 4) & 0x0F;
+            char c1 = (high < 10) ? ('0' + high) : ('A' + high - 10);
+            char buf1[2] = {c1, '\0'};
+            mde_9_vga_write_at_offset(row, offset_pos++, buf1);
+            // Write low nibble
+            char low = byte & 0x0F;
+            char c2 = (low < 10) ? ('0' + low) : ('A' + low - 10);
+            char buf2[2] = {c2, '\0'};
+            mde_9_vga_write_at_offset(row, offset_pos++, buf2);
+            // Write space
+            mde_9_vga_write_at_offset(row, offset_pos++, " ");
+        }
+        
+        // Pad remaining hex spaces
+        for (; j < 16; j++) {
+            mde_9_vga_write_at_offset(row, offset_pos++, "   ");
+        }
+        
+        // Write ASCII representation
+        mde_9_vga_write_at_offset(row, offset_pos++, "  ");
+        
+        for (j = 0; j < 16 && (i + j < len); j++) {
+            unsigned char byte = addr[i + j];
+            char c = (byte >= 0x20 && byte <= 0x7e) ? (char)byte : '.';
+            char buf[2] = {c, '\0'};
+            mde_9_vga_write_at_offset(row, offset_pos + j, buf);
+        }
+    }
+}
+
+
+void mde_9_delay_s(int n)
+{
+  volatile unsigned long t = 25;
+  volatile unsigned long x = (unsigned long)n * 10000UL;
+
+  while (x--) {
+    for (unsigned long i1 = 0; i1 < 1000UL; ++i1) {
+        for (int i = 0; i < 10; ++i) {
+            t = t * 14823424UL + x + 1UL;
+        }
+    }
+  }
+
+  mde_9_vga_sprintf(23, "%x", t);
+}
+
+
+/////////////////////////////////////////////////////
+
+
+
+
 #define IDT_ENTRY_COUNT  32
 
 typedef struct _X64_IDT_TABLE {
@@ -265,15 +418,53 @@ HandOffToDxeCore (
   EFI_PEI_VECTOR_HANDOFF_INFO_PPI  *VectorHandoffInfoPpi;
   BOOLEAN                          BuildPageTablesIa32Pae;
 
+
+  mde_9_vga_clear();
+  mde_9_vga_sprintf(0, "HOFIa32-a-%x-%x",
+    DxeCoreEntryPoint,
+    HobList
+  );
+  mde_9_delay_s(2);
+
+
   //
   // Clear page 0 and mark it as allocated if NULL pointer detection is enabled.
   //
   if (IsNullDetectionEnabled ()) {
+    mde_9_vga_sprintf(0, "HOFIa32-b-%x-%x",
+      DxeCoreEntryPoint,
+      HobList
+    );
+    mde_9_delay_s(2);
     ClearFirst4KPage (HobList.Raw);
+    
+    mde_9_vga_sprintf(0, "HOFIa32-c-%x-%x",
+      DxeCoreEntryPoint,
+      HobList
+    );
+    mde_9_delay_s(2);
     BuildMemoryAllocationHob (0, EFI_PAGES_TO_SIZE (1), EfiBootServicesData);
+    
+    mde_9_vga_sprintf(0, "HOFIa32-d-%x-%x",
+      DxeCoreEntryPoint,
+      HobList
+    );
+    mde_9_delay_s(2);
   }
+  
+  mde_9_vga_sprintf(1, "DHOF32a-%x-%x",
+    DxeCoreEntryPoint,
+    HobList
+  );
+  mde_9_delay_s(2);
 
   Status = PeiServicesAllocatePages (EfiBootServicesData, EFI_SIZE_TO_PAGES (STACK_SIZE), &BaseOfStack);
+  
+  mde_9_vga_sprintf(1, "DHOF32b-%x-%x",
+    Status,
+    BaseOfStack
+  );
+  mde_9_delay_s(2);
   ASSERT_EFI_ERROR (Status);
 
   if (FeaturePcdGet (PcdDxeIplSwitchToLongMode)) {
@@ -293,21 +484,65 @@ HandOffToDxeCore (
     //
     TopOfStack = (EFI_PHYSICAL_ADDRESS)(UINTN)ALIGN_POINTER (TopOfStack, 16);
 
+    mde_9_vga_sprintf(2, "DH-2a-%x-%x",
+      TopOfStack,
+      STACK_SIZE
+    );
+    mde_9_delay_s(2);
+
     //
     // Load the GDT of Go64. Since the GDT of 32-bit Tiano locates in the BS_DATA
     // memory, it may be corrupted when copying FV to high-end memory
     //
     AsmWriteGdtr (&gGdt);
+    
+    mde_9_vga_sprintf(2, "DH-2b-%x-%x-%x-%x",
+      TopOfStack,
+      STACK_SIZE,
+      gGdt.Base,
+      gGdt.Limit
+    );
+    mde_9_delay_s(2);
+
     //
     // Create page table and save PageMapLevel4 to CR3
     //
     PageTables = CreateIdentityMappingPageTables (BaseOfStack, STACK_SIZE, 0, 0);
 
+    mde_9_vga_sprintf(2, "DH-2c-%x-%x-%x-%x,%x",
+      TopOfStack,
+      STACK_SIZE,
+      gGdt.Base,
+      gGdt.Limit,
+      PageTables
+    );
+    mde_9_delay_s(2);
+
     //
     // End of PEI phase signal
     //
     PERF_EVENT_SIGNAL_BEGIN (gEndOfPeiSignalPpi.Guid);
+    
+    mde_9_vga_sprintf(2, "DH-2d-%x-%x-%x-%x,%x",
+      TopOfStack,
+      STACK_SIZE,
+      gGdt.Base,
+      gGdt.Limit,
+      PageTables
+    );
+    mde_9_delay_s(2);
+
     Status = PeiServicesInstallPpi (&gEndOfPeiSignalPpi);
+    
+    mde_9_vga_sprintf(2, "DH-2e-%x-%x-%x-%x,%x",
+      TopOfStack,
+      STACK_SIZE,
+      gGdt.Base,
+      gGdt.Limit,
+      PageTables
+    );
+    mde_9_delay_s(2);
+
     PERF_EVENT_SIGNAL_END (gEndOfPeiSignalPpi.Guid);
     ASSERT_EFI_ERROR (Status);
 
@@ -316,20 +551,61 @@ HandOffToDxeCore (
     // disable paging first anyway.
     //
     AsmWriteCr0 (AsmReadCr0 () & (~BIT31));
+    
+    mde_9_vga_sprintf(2, "DH-2f-%x-%x-%x-%x,%x",
+      TopOfStack,
+      STACK_SIZE,
+      gGdt.Base,
+      gGdt.Limit,
+      PageTables
+    );
+    mde_9_delay_s(2);
+
     AsmWriteCr3 (PageTables);
+
+    mde_9_vga_sprintf(2, "DH-2g-%x-%x-%x-%x,%x",
+      TopOfStack,
+      STACK_SIZE,
+      gGdt.Base,
+      gGdt.Limit,
+      PageTables
+    );
+    mde_9_delay_s(2);
 
     //
     // Update the contents of BSP stack HOB to reflect the real stack info passed to DxeCore.
     //
     UpdateStackHob (BaseOfStack, STACK_SIZE);
 
+    mde_9_vga_sprintf(2, "DI-2c-%x-%x-%x-%x,%x",
+      TopOfStack,
+      STACK_SIZE,
+      gGdt.Base,
+      gGdt.Limit,
+      PageTables
+    );
+    mde_9_delay_s(2);
+
     SizeOfTemplate = AsmGetVectorTemplatInfo (&TemplateBase);
+
+    mde_9_vga_sprintf(2, "DJ-2c-%x-%x",
+      SizeOfTemplate,
+      TemplateBase
+    );
+    mde_9_delay_s(2);
 
     Status = PeiServicesAllocatePages (
                EfiBootServicesData,
                EFI_SIZE_TO_PAGES (sizeof (X64_IDT_TABLE) + SizeOfTemplate * IDT_ENTRY_COUNT),
                &VectorAddress
                );
+               
+    mde_9_vga_sprintf(3, "DJ-3a-%x-%x",
+      Status,
+      VectorAddress
+    );
+    mde_9_delay_s(2);
+
     ASSERT_EFI_ERROR (Status);
 
     //
@@ -351,6 +627,14 @@ HandOffToDxeCore (
       IdtTable[Index].Offset32To63                 = (UINT32)(RShiftU64 (VectorAddress, 32));
       IdtTable[Index].Reserved                     = 0;
 
+      
+      mde_9_vga_sprintf(3, "DJ-3b-%x-%x,%x",
+        Status,
+        VectorAddress,
+        Index
+      );
+      mde_9_delay_s(1);
+      
       CopyMem ((VOID *)(UINTN)VectorAddress, TemplateBase, SizeOfTemplate);
       AsmVectorFixup ((VOID *)(UINTN)VectorAddress, (UINT8)Index);
 
@@ -359,13 +643,31 @@ HandOffToDxeCore (
 
     gLidtDescriptor.Base = (UINTN)IdtTable;
 
+    mde_9_vga_sprintf(4, "DJ-4a-%x",
+      gLidtDescriptor.Base
+    );
+    mde_9_delay_s(2);
+    
     //
     // Disable interrupt of Debug timer, since new IDT table cannot handle it.
     //
     SaveAndSetDebugTimerInterrupt (FALSE);
 
+    mde_9_vga_sprintf(4, "DJ-4b-%x",
+      gLidtDescriptor.Base
+    );
+    mde_9_delay_s(2);
+    
     AsmWriteIdtr (&gLidtDescriptor);
 
+    mde_9_vga_sprintf(4, "DJ-4c-%x-%x,%x-%x",
+      gLidtDescriptor.Base,
+      gLidtDescriptor.Limit,
+      BaseOfStack,
+      STACK_SIZE
+    );
+    mde_9_delay_s(2);
+    
     DEBUG ((
       DEBUG_INFO,
       "%a() Stack Base: 0x%lx, Stack Size: 0x%x\n",
@@ -386,7 +688,21 @@ HandOffToDxeCore (
       0,
       TopOfStack
       );
+      
+    mde_9_vga_sprintf(4, "DJ-4d-%x-%x,%x-%x,%x",
+      gLidtDescriptor.Base,
+      gLidtDescriptor.Limit,
+      BaseOfStack,
+      STACK_SIZE,
+      DxeCoreEntryPoint
+    );
+    mde_9_delay_s(2);
   } else {
+    
+    mde_9_vga_sprintf(5, "DJ-5a-%x",
+      0
+    );
+    mde_9_delay_s(2);
     //
     // Get Vector Hand-off Info PPI and build Guided HOB
     //
@@ -396,6 +712,19 @@ HandOffToDxeCore (
                NULL,
                (VOID **)&VectorHandoffInfoPpi
                );
+               
+    mde_9_vga_sprintf(5, "DJ-5b-%x,%x-%x-%x-%x,-%x-%x-%x",
+      Status,
+      gEfiVectorHandoffInfoPpiGuid.Data1,
+      gEfiVectorHandoffInfoPpiGuid.Data2,
+      gEfiVectorHandoffInfoPpiGuid.Data3,
+      gEfiVectorHandoffInfoPpiGuid.Data4,
+      VectorHandoffInfoPpi->Info->Attribute,
+      VectorHandoffInfoPpi->Info->Owner.Data1,
+      VectorHandoffInfoPpi->Info->VectorNumber
+    );
+    mde_9_delay_s(2);
+
     if (Status == EFI_SUCCESS) {
       DEBUG ((DEBUG_INFO, "Vector Hand-off Info PPI is gotten, GUIDed HOB is created!\n"));
       VectorInfo = VectorHandoffInfoPpi->Info;
@@ -404,12 +733,29 @@ HandOffToDxeCore (
         VectorInfo++;
         Index++;
       }
-
+           
+      mde_9_vga_sprintf(6, "DJ-6a-%x",
+        Index
+      );
+      mde_9_delay_s(2);
+      
       BuildGuidDataHob (
         &gEfiVectorHandoffInfoPpiGuid,
         VectorHandoffInfoPpi->Info,
         sizeof (EFI_VECTOR_HANDOFF_INFO) * Index
         );
+        
+      mde_9_vga_sprintf(6, "DJ-6b-%x,-%x-%x-%x-%x,-%x-%x",
+        Index,
+        gEfiVectorHandoffInfoPpiGuid.Data1,
+        gEfiVectorHandoffInfoPpiGuid.Data2,
+        gEfiVectorHandoffInfoPpiGuid.Data3,
+        gEfiVectorHandoffInfoPpiGuid.Data4,
+        VectorHandoffInfoPpi->Info->Attribute,
+        VectorHandoffInfoPpi->Info->VectorNumber
+      );
+      mde_9_delay_s(2);
+      
     }
 
     //
@@ -428,11 +774,27 @@ HandOffToDxeCore (
       }
     }
 
+    mde_9_vga_sprintf(7, "DJ-7a-%x,-%x-%x",
+      PageTables,
+      BuildPageTablesIa32Pae,
+      TopOfStack
+    );
+    mde_9_delay_s(2);
+      
     //
     // End of PEI phase signal
     //
     PERF_EVENT_SIGNAL_BEGIN (gEndOfPeiSignalPpi.Guid);
     Status = PeiServicesInstallPpi (&gEndOfPeiSignalPpi);
+    
+    mde_9_vga_sprintf(7, "DJ-7b-%x-%x,-%x-%x",
+      Status,
+      PageTables,
+      BuildPageTablesIa32Pae,
+      TopOfStack
+    );
+    mde_9_delay_s(2);
+
     PERF_EVENT_SIGNAL_END (gEndOfPeiSignalPpi.Guid);
     ASSERT_EFI_ERROR (Status);
 
@@ -447,12 +809,32 @@ HandOffToDxeCore (
       // Set Physical Address Extension (bit 5 of CR4).
       //
       AsmWriteCr4 (AsmReadCr4 () | BIT5);
+      
+      mde_9_vga_sprintf(7, "DJ-7c-%x-%x,-%x-%x",
+        Status,
+        PageTables,
+        BuildPageTablesIa32Pae,
+        TopOfStack
+      );
+      mde_9_delay_s(2);
     }
 
+    
+    mde_9_vga_sprintf(8, "DJ-8a-%x-%x",
+      BaseOfStack,
+      STACK_SIZE
+    );
+    mde_9_delay_s(2);
     //
     // Update the contents of BSP stack HOB to reflect the real stack info passed to DxeCore.
     //
     UpdateStackHob (BaseOfStack, STACK_SIZE);
+
+    mde_9_vga_sprintf(8, "DJ-8b-%x-%x",
+      BaseOfStack,
+      STACK_SIZE
+    );
+    mde_9_delay_s(2);
 
     DEBUG ((
       DEBUG_INFO,
@@ -466,19 +848,51 @@ HandOffToDxeCore (
     // Transfer the control to the entry point of DxeCore.
     //
     if (BuildPageTablesIa32Pae) {
+      
+      mde_9_vga_sprintf(9, "DJ-9a-%x",
+        0
+      );
+      mde_9_delay_s(2);
+
       AsmEnablePaging32 (
         (SWITCH_STACK_ENTRY_POINT)(UINTN)DxeCoreEntryPoint,
         HobList.Raw,
         NULL,
         (VOID *)(UINTN)TopOfStack
         );
+        
+      mde_9_vga_sprintf(9, "DJ-9b-%x-%x",
+        DxeCoreEntryPoint,
+        *(unsigned int*)HobList.Raw
+      );
+      mde_9_delay_s(2);
+
     } else {
+      
+      mde_9_vga_sprintf(9, "DJ-9c-%x",
+        0
+      );
+      mde_9_delay_s(2);
+
       SwitchStack (
         (SWITCH_STACK_ENTRY_POINT)(UINTN)DxeCoreEntryPoint,
         HobList.Raw,
         NULL,
         (VOID *)(UINTN)TopOfStack
         );
+        
+      mde_9_vga_sprintf(9, "DJ-9d-%x-%x",
+        DxeCoreEntryPoint,
+        *(unsigned int*)HobList.Raw
+      );
+      mde_9_delay_s(2);
+
     }
+
+    mde_9_vga_sprintf(9, "DJ-9z-%x",
+      0
+    );
+    mde_9_delay_s(2);
+
   }
 }

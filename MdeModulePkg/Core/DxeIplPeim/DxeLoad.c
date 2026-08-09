@@ -899,8 +899,8 @@ DxeLoadCore (
 
   DEBUG ((DEBUG_INFO | DEBUG_LOAD, "Loading DXE CORE at 0x%11p EntryPoint=0x%11p\n", (VOID *)(UINTN)DxeCoreAddress, FUNCTION_ENTRY_POINT (DxeCoreEntryPoint)));
 
-  mde_6_edkii_vga_sprintf(8, "8d",
-    0
+  mde_6_edkii_vga_sprintf(8, "8dd-%x",
+    HandOffToDxeCore
   );
   mn_6_delay_s(2);
   //
