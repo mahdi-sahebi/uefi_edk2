@@ -164,7 +164,7 @@ static void delay_s(int n)
 
   while (x--) {
     for (unsigned long i1 = 0; i1 < 1000UL; ++i1) {
-        for (int i = 0; i < 200; ++i) {
+        for (int i = 0; i < 20; ++i) {
             t = t * 14823424UL + x + 1UL;
         }
     }
