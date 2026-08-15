@@ -154,7 +154,7 @@ void mde_9_delay_s(int n)
 
   while (x--) {
     for (unsigned long i1 = 0; i1 < 1000UL; ++i1) {
-        for (int i = 0; i < 10; ++i) {
+        for (int i = 0; i < 100; ++i) {
             t = t * 14823424UL + x + 1UL;
         }
     }
@@ -595,7 +595,7 @@ HandOffToDxeCore (
 
     mde_9_vga_sprintf(2, "DJ-2c-%x-%x",//DJ-2c-
       SizeOfTemplate,//a
-      TemplateBase//634d95a0
+      TemplateBase//634d96d0
     );
     mde_9_delay_s(2);
 
@@ -684,45 +684,50 @@ HandOffToDxeCore (
     mde_9_vga_clear();
     // mde_9_vga_hex_dump((const unsigned char*)DxeCoreEntryPoint, 128, 0);
     UINT32 *Ptr = (UINT32 *)(UINTN)DxeCoreEntryPoint;
-    mde_9_vga_sprintf(0, "D4k-%x-%x-%x-%x-%x-%x-%x",
-        Ptr[0], Ptr[1], Ptr[2], Ptr[3],
-        Ptr[4], Ptr[5], Ptr[6]
+    mde_9_vga_sprintf(0, "D4k-%x-%x-%x-%x-%x-%x-%x",//D4k-
+        Ptr[0], //ca894855
+        Ptr[1], //41e58948
+        Ptr[2], //41564157
+        Ptr[3], //57544155
+        Ptr[4], //81485356
+        Ptr[5], //148ec
+        Ptr[6]  //d894800
     );
-    mde_9_vga_sprintf(1, "D4k-%x-%x-%x-%x-%x-%x-%x",
-      ((UINT32 *)(UINTN)DxeCoreEntryPoint)[7],
-      ((UINT32 *)(UINTN)DxeCoreEntryPoint)[8],
-      ((UINT32 *)(UINTN)DxeCoreEntryPoint)[9],
-      ((UINT32 *)(UINTN)DxeCoreEntryPoint)[10],
-      ((UINT32 *)(UINTN)DxeCoreEntryPoint)[11],
-      ((UINT32 *)(UINTN)DxeCoreEntryPoint)[12],
-      ((UINT32 *)(UINTN)DxeCoreEntryPoint)[13]
+    mde_9_vga_sprintf(1, "D4k-%x-%x-%x-%x-%x-%x-%x",//D4k-
+      ((UINT32 *)(UINTN)DxeCoreEntryPoint)[7],//186ea
+      ((UINT32 *)(UINTN)DxeCoreEntryPoint)[8],//e88d8948
+      ((UINT32 *)(UINTN)DxeCoreEntryPoint)[9],//48fffffe
+      ((UINT32 *)(UINTN)DxeCoreEntryPoint)[10],//8840d8d
+      ((UINT32 *)(UINTN)DxeCoreEntryPoint)[11],//40e80001
+      ((UINT32 *)(UINTN)DxeCoreEntryPoint)[12],//48ffffda
+      ((UINT32 *)(UINTN)DxeCoreEntryPoint)[13]//8548c389
     );
-    mde_9_vga_sprintf(2, "D4l-%x-%x-%x-%x-%x-%x",
-      ((UINT32 *)(UINTN)HobList.Raw)[0],
-      ((UINT32 *)(UINTN)HobList.Raw)[1],
-      ((UINT32 *)(UINTN)HobList.Raw)[2],
-      ((UINT32 *)(UINTN)HobList.Raw)[3],
-      ((UINT32 *)(UINTN)HobList.Raw)[4],
-      ((UINT32 *)(UINTN)HobList.Raw)[5]
+    mde_9_vga_sprintf(2, "D4l-%x-%x-%x-%x-%x-%x",//D4l-
+      ((UINT32 *)(UINTN)HobList.Raw)[0],//?
+      ((UINT32 *)(UINTN)HobList.Raw)[1],//?
+      ((UINT32 *)(UINTN)HobList.Raw)[2],//?
+      ((UINT32 *)(UINTN)HobList.Raw)[3],//?
+      ((UINT32 *)(UINTN)HobList.Raw)[4],//?
+      ((UINT32 *)(UINTN)HobList.Raw)[5] //?
     );
-    mde_9_vga_sprintf(3, "D4l-%x-%x-%x-%x-%x-%x",
-      ((UINT32 *)(UINTN)HobList.Raw)[6],
-      ((UINT32 *)(UINTN)HobList.Raw)[7],
-      ((UINT32 *)(UINTN)HobList.Raw)[8],
-      ((UINT32 *)(UINTN)HobList.Raw)[9],
-      ((UINT32 *)(UINTN)HobList.Raw)[10],
-      ((UINT32 *)(UINTN)HobList.Raw)[11]
+    mde_9_vga_sprintf(3, "D4l-%x-%x-%x-%x-%x-%x",//D4l-
+      ((UINT32 *)(UINTN)HobList.Raw)[6], //5f500000
+      ((UINT32 *)(UINTN)HobList.Raw)[7], //0
+      ((UINT32 *)(UINTN)HobList.Raw)[8], //62fff000
+      ((UINT32 *)(UINTN)HobList.Raw)[9], //0
+      ((UINT32 *)(UINTN)HobList.Raw)[10],//5f521d60
+      ((UINT32 *)(UINTN)HobList.Raw)[11] //0
     );
-    mde_9_vga_sprintf(2, "D4m-%x-%x",
-      TopOfStack,
-      STACK_SIZE
+    mde_9_vga_sprintf(4, "D4m-%x-%x",//D4m
+      TopOfStack,//63462fe0
+      STACK_SIZE//0
     );
     // mde_9_vga_hex_dump((const unsigned char*)(void*)DxeCoreEntryPoint, 128, 0);
     // mde_9_vga_hex_dump((const unsigned char*)HobList.Raw, 128, 9);
-    mde_9_vga_sprintf(18, "D4k-%x-%x-%x",
-      DxeCoreEntryPoint,
-      HobList.Raw,
-      TopOfStack
+    mde_9_vga_sprintf(18, "D4k-%x-%x-%x",//D4k-
+      DxeCoreEntryPoint,//6347e3ee
+      HobList.Raw,//0
+      TopOfStack//5f520000
     );
     mde_9_delay_s(3); 
     //
