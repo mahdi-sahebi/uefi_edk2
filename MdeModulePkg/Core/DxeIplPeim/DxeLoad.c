@@ -558,13 +558,20 @@ DxeLoadCore (
   VOID                             *CapsuleOnDiskModePpi;
 
   mde_6_edkii_vga_clear();
-  mde_6_edkii_vga_sprintf(0, "DxeLoadCorea-%x-%x",
+  mde_6_edkii_vga_sprintf(0, "DxeLoadCorea-%x-%x-%x-%x-%x-%x",
     // This->Entry,
     // PeiServices,
+    (UINTN)HobList.Raw,
+    HobList.Capsule->BaseAddress,
+    HobList.Capsule->Length,
+    HobList.Capsule->Header,
     HobList.Guid->Header.HobType,//1
     HobList.Header->HobType//1
   );
-  mn_6_delay_s(2);
+
+  // mde_6_edkii_vga_hex_dump(HobList.Raw, 128, 1);
+  mn_6_delay_s(5);
+  mde_6_edkii_vga_clear();
 
   //
   // if in S3 Resume, restore configure
@@ -853,9 +860,14 @@ DxeLoadCore (
                          &AuthenticationState
                          );
                          
-    mde_6_edkii_vga_sprintf(7, "7c-%x-%x",
+    mde_6_edkii_vga_sprintf(7, "7c-%x-%x,%x-%x-%x-%x",
       Status, //0
-      Instance//1
+      Instance,//1
+      (UINTN)DxeCoreAddress,
+      (UINTN)DxeCoreSize,
+      (UINTN)DxeCoreEntryPoint,
+      (UINTN)AuthenticationState,
+      (UINTN)LoadFile
     );
   } while (EFI_ERROR (Status));
 
@@ -899,8 +911,9 @@ DxeLoadCore (
 
   DEBUG ((DEBUG_INFO | DEBUG_LOAD, "Loading DXE CORE at 0x%11p EntryPoint=0x%11p\n", (VOID *)(UINTN)DxeCoreAddress, FUNCTION_ENTRY_POINT (DxeCoreEntryPoint)));
 
-  mde_6_edkii_vga_sprintf(8, "8dd-%x",
-    HandOffToDxeCore
+  mde_6_edkii_vga_sprintf(8, "8dd-%x-%x",
+    (UINTN)HandOffToDxeCore,//634d7924,
+    (UINTN)HobList.Raw
   );
   mn_6_delay_s(2);
   //
