@@ -564,7 +564,7 @@ DxeLoadCore (
     (UINTN)HobList.Raw,
     HobList.Capsule->BaseAddress,
     HobList.Capsule->Length,
-    HobList.Capsule->Header,
+    HobList.Capsule->Header.HobLength,
     HobList.Guid->Header.HobType,//1
     HobList.Header->HobType//1
   );

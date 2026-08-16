@@ -14,7 +14,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 
 /////////////////////////////////////////////////////
-#include <stdint.h>
+// #include <stdint.h>
 #include <stdarg.h> 
 
 #include <Library/IoLib.h>
@@ -422,15 +422,13 @@ HandOffToDxeCore (
   EFI_VECTOR_HANDOFF_INFO          *VectorInfo;
   EFI_PEI_VECTOR_HANDOFF_INFO_PPI  *VectorHandoffInfoPpi;
   BOOLEAN                          BuildPageTablesIa32Pae;
+  UINT32 stack_size = STACK_SIZE;
 
 
   mde_9_vga_clear();
-  mde_9_vga_sprintf(0, "HOFIa32-a-%x-%x-%x-%x-%x-%x-%x",//HOFIa32-a-
+  mde_9_vga_sprintf(0, "HOFIa32-a-%x-%x-%x-%x",//HOFIa32-a-
     (UINTN)DxeCoreEntryPoint,//6347e3ee
     (UINTN)HobList.Raw,//0
-    HobList.Capsule->BaseAddress,
-    HobList.Capsule->Header.HobLength,
-    HobList.Capsule->Length,
     HobList.Cpu->Header.HobLength,
     HobList.Cpu->Header.HobType
   );
@@ -439,7 +437,7 @@ HandOffToDxeCore (
     HobList.Cpu->SizeOfMemorySpace,
     HobList.FirmwareVolume2->BaseAddress,
     HobList.FirmwareVolume2->FileName.Data1,
-    HobList.FirmwareVolume2->Header,
+    HobList.FirmwareVolume2->Header.HobLength,
     HobList.FirmwareVolume2->Length,
     HobList.Guid->Header.HobLength
   );
@@ -514,7 +512,6 @@ HandOffToDxeCore (
     //
     TopOfStack = (EFI_PHYSICAL_ADDRESS)(UINTN)ALIGN_POINTER (TopOfStack, 16);
 
-    UINT32 stack_size = STACK_SIZE;
     mde_9_vga_sprintf(2, "DH-2a-%x-%x",//DH-2a-
       TopOfStack,//63462fe0
       stack_size//?
@@ -751,7 +748,7 @@ HandOffToDxeCore (
     );
     // mde_9_vga_hex_dump((const unsigned char*)(void*)DxeCoreEntryPoint, 128, 0);
     // mde_9_vga_hex_dump((const unsigned char*)HobList.Raw, 128, 9);
-    mde_9_vga_sprintf(18, "D4k-%llx-%llx-%llx",//D4k-
+    mde_9_vga_sprintf(18, "D4k-%x-%x-%x",//D4k-
       DxeCoreEntryPoint,//6347e3ee?
       (UINTN)HobList.Raw,//0?
       (UINTN)TopOfStack//5f520000?
