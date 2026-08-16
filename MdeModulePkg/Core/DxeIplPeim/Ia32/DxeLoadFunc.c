@@ -450,7 +450,7 @@ HandOffToDxeCore (
     HobList.HandoffInformationTable->EfiMemoryTop,
     HobList.HandoffInformationTable->Header.HobLength
   );
-  // mde_9_vga_hex_dump(HobList.Raw, 128, 4);
+  mde_9_vga_hex_dump(HobList.Raw, 128, 4);
   mde_9_delay_s(5);
   mde_9_vga_clear();
 
@@ -705,7 +705,7 @@ HandOffToDxeCore (
       ));
 
     mde_9_vga_clear();
-    // mde_9_vga_hex_dump((const unsigned char*)DxeCoreEntryPoint, 128, 0);
+    mde_9_vga_hex_dump((const unsigned char*)(UINTN)DxeCoreEntryPoint, 128, 0);
     UINT32 *Ptr = (UINT32 *)(UINTN)DxeCoreEntryPoint;
     mde_9_vga_sprintf(0, "D4k-%x-%x-%x-%x-%x-%x-%x",//D4k-
         Ptr[0], //ca894855
@@ -746,8 +746,8 @@ HandOffToDxeCore (
       (UINTN)HobList.Raw,//?
       (UINTN)STACK_SIZE//0?
     );
-    // mde_9_vga_hex_dump((const unsigned char*)(void*)DxeCoreEntryPoint, 128, 0);
-    // mde_9_vga_hex_dump((const unsigned char*)HobList.Raw, 128, 9);
+    mde_9_vga_hex_dump((const unsigned char*)(void*)(UINTN)DxeCoreEntryPoint, 128, 0);
+    mde_9_vga_hex_dump((const unsigned char*)(UINTN)HobList.Raw, 128, 9);
     mde_9_vga_sprintf(18, "D4k-%x-%x-%x",//D4k-
       DxeCoreEntryPoint,//6347e3ee?
       (UINTN)HobList.Raw,//0?

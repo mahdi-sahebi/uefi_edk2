@@ -569,7 +569,7 @@ DxeLoadCore (
     HobList.Header->HobType//1
   );
 
-  // mde_6_edkii_vga_hex_dump(HobList.Raw, 128, 1);
+  mde_6_edkii_vga_hex_dump(HobList.Raw, 128, 1);
   mn_6_delay_s(5);
   mde_6_edkii_vga_clear();
 
