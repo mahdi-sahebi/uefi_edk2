@@ -490,7 +490,7 @@ HandOffToDxeCore (
   
   mde_9_vga_sprintf(1, "DHOF32b-%x-%x",//DHOF32b-
     Status,//0
-    BaseOfStack//63443000
+    BaseOfStack//63443000//63442000
   );
   mde_9_delay_s(2);
   ASSERT_EFI_ERROR (Status);
@@ -618,7 +618,7 @@ HandOffToDxeCore (
 
     mde_9_vga_sprintf(2, "DJ-2c-%x-%x",//DJ-2c-
       SizeOfTemplate,//a
-      TemplateBase//634d96d0
+      TemplateBase//634d96d0//634d8c40
     );
     mde_9_delay_s(2);
 
@@ -657,9 +657,9 @@ HandOffToDxeCore (
 
       
       mde_9_vga_sprintf(3, "DJ-3b-%x-%x,%x",//DJ-3b-
-        Status,       //0         //0         //0
-        VectorAddress,//62fff208  //62fff212  //62fff21c //62fff226 //62fff230//62fff23a//62fff244//...
-        Index         //0         //0         //00
+        Status,       //0         
+        VectorAddress,////62fff33e
+        Index         //0
       );
       mde_9_delay_s(1);
       
@@ -705,7 +705,13 @@ HandOffToDxeCore (
       ));
 
     mde_9_vga_clear();
+
+
+/*
+*/
     mde_9_vga_hex_dump((const unsigned char*)(UINTN)DxeCoreEntryPoint, 128, 0);
+    mde_9_delay_s(3);
+
     UINT32 *Ptr = (UINT32 *)(UINTN)DxeCoreEntryPoint;
     mde_9_vga_sprintf(0, "D4k-%x-%x-%x-%x-%x-%x-%x",//D4k-
         Ptr[0], //ca894855
@@ -746,6 +752,9 @@ HandOffToDxeCore (
       (UINTN)HobList.Raw,//?
       (UINTN)STACK_SIZE//0?
     );
+    mde_9_delay_s(3); 
+
+    mde_9_vga_clear();
     mde_9_vga_hex_dump((const unsigned char*)(void*)(UINTN)DxeCoreEntryPoint, 128, 0);
     mde_9_vga_hex_dump((const unsigned char*)(UINTN)HobList.Raw, 128, 9);
     mde_9_vga_sprintf(18, "D4k-%x-%x-%x",//D4k-
