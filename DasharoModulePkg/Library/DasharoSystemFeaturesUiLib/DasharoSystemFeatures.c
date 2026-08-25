@@ -191,7 +191,6 @@ DasharoSystemFeaturesUiLibConstructor (
   PRIVATE_DATA(S3SupportExperimental) = FixedPcdGetBool (PcdS3SupportExperimental);
   PRIVATE_DATA(ShowLockBios) = FixedPcdGetBool (PcdShowLockBios);
   PRIVATE_DATA(ShowSmmBwp) = FixedPcdGetBool (PcdShowSmmBwp);
-  PRIVATE_DATA(ShowFum) = FixedPcdGetBool (PcdShowFum);
   PRIVATE_DATA(ShowPs2Option) = FixedPcdGetBool (PcdShowPs2Option);
   PRIVATE_DATA(Have2ndUart) = FixedPcdGetBool (PcdHave2ndUart);
   PRIVATE_DATA(ShowCpuThrottlingThreshold) = FixedPcdGetBool (PcdShowCpuThrottlingThreshold);
@@ -228,8 +227,7 @@ DasharoSystemFeaturesUiLibConstructor (
                                      FixedPcdGetBool (PcdSecurityShowWiFiBtOption) ||
                                      FixedPcdGetBool (PcdSecurityShowCameraOption) ||
                                      FixedPcdGetBool (PcdShowLockBios) ||
-                                     FixedPcdGetBool (PcdShowSmmBwp) ||
-                                     FixedPcdGetBool (PcdShowFum);
+                                     FixedPcdGetBool (PcdShowSmmBwp);
 
   if (PRIVATE_DATA(ShowChipsetMenu))
     PRIVATE_DATA(ShowChipsetMenu) = FixedPcdGetBool (PcdShowOcWdtOptions) ||
@@ -663,10 +661,7 @@ DasharoSystemFeaturesCallback (
   )
 {
   EFI_STATUS                                 Status;
-  EFI_INPUT_KEY                              Key;
   DASHARO_SYSTEM_FEATURES_PRIVATE_DATA       *Private;
-  CONST CHAR16                               *PressEnterMsg;
-  CONST CHAR16                               *VariableLines[3];
 
   Status = EFI_SUCCESS;
   Private = DASHARO_SYSTEM_FEATURES_PRIVATE_DATA_FROM_THIS (This);
@@ -753,54 +748,6 @@ DasharoSystemFeaturesCallback (
       }
       break;
     }
-  case EFI_BROWSER_ACTION_CHANGED:
-    {
-      if (QuestionId == FIRMWARE_UPDATE_MODE_QUESTION_ID) {
-        if (!FixedPcdGetBool(PcdShowFum))
-          return EFI_UNSUPPORTED;
-
-        PressEnterMsg = L"Press ENTER to continue and reboot or ESC to cancel...";
-        if (PcdGetBool (PcdFumAutoIpxeBoot)) {
-          VariableLines[0] = L"DTS will be started automatically through iPXE, please";
-          VariableLines[1] = L"make sure an Ethernet cable is connected before continuing.";
-          VariableLines[2] = L"";
-        } else {
-          VariableLines[0] = PressEnterMsg;
-          VariableLines[1] = L"";
-          /* This terminates list of lines. */
-          VariableLines[2] = NULL;
-        }
-
-        do {
-          CreatePopUp (
-            EFI_BLACK | EFI_BACKGROUND_RED,
-            &Key,
-            L"",
-            L"You are about to enable Firmware Update Mode.",
-            L"This will turn off all flash protection mechanisms",
-            L"for the duration of the next boot.",
-            L"",
-            VariableLines[0],
-            VariableLines[1],
-            VariableLines[2],
-            PressEnterMsg,
-            L"",
-            NULL
-            );
-        } while ((Key.ScanCode != SCAN_ESC) && (Key.UnicodeChar != CHAR_CARRIAGE_RETURN));
-
-        if (Key.UnicodeChar == CHAR_CARRIAGE_RETURN) {
-          Status = DasharoEnableFUM ();
-          if (EFI_ERROR (Status)) {
-            return Status;
-          }
-          gRT->ResetSystem (EfiResetCold, EFI_SUCCESS, 0, NULL);
-        }
-      } else {
-        Status = EFI_UNSUPPORTED;
-      }
-    }
-    break;
   default:
     Status = EFI_UNSUPPORTED;
     break;

@@ -1,0 +1,28 @@
+/** @file
+The Dasharo Firmware Update Mode setup menu
+
+Copyright (c) 2026, 3mdeb Sp. z o.o. All rights reserved.<BR>
+SPDX-License-Identifier: BSD-2-Clause
+
+**/
+
+#include "DasharoFumDxeHii.h"
+
+formset
+  guid      = DASHARO_FUM_FORMSET_GUID,
+  title     = STRING_TOKEN(STR_FUM_TITLE),
+  help      = STRING_TOKEN(STR_FUM_HELP),
+  classguid = gEfiIfrFrontPageGuid,
+
+  form formid = DASHARO_FUM_FORM_ID,
+       title  = STRING_TOKEN(STR_FUM_TITLE);
+
+    text
+      help  = STRING_TOKEN(STR_FUM_HELP),
+      text  = STRING_TOKEN(STR_FUM_PROMPT),
+      flags = INTERACTIVE,
+      key   = FIRMWARE_UPDATE_MODE_QUESTION_ID;
+
+  endform;
+
+endformset;

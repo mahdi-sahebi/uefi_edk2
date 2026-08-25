@@ -1,0 +1,9 @@
+///** @file
+//  String definitions for the Dasharo Firmware Update Mode setup menu.
+//**/
+
+#langdef   en-US "English"
+
+#string STR_FUM_TITLE    #language en-US  "Firmware Update Mode"
+#string STR_FUM_PROMPT   #language en-US  "> Enter Firmware Update Mode"
+#string STR_FUM_HELP     #language en-US  "Disables all firmware protections for the duration of next boot."

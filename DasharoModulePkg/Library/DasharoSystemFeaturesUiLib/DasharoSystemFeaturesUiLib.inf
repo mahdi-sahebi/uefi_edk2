@@ -87,7 +87,6 @@
   gDasharoSystemFeaturesTokenSpaceGuid.PcdS3SupportExperimental
   gDasharoSystemFeaturesTokenSpaceGuid.PcdShowLockBios
   gDasharoSystemFeaturesTokenSpaceGuid.PcdShowSmmBwp
-  gDasharoSystemFeaturesTokenSpaceGuid.PcdShowFum
   gDasharoSystemFeaturesTokenSpaceGuid.PcdShowPs2Option
   gDasharoSystemFeaturesTokenSpaceGuid.PcdHave2ndUart
   gDasharoSystemFeaturesTokenSpaceGuid.PcdShowCpuThrottlingThreshold
@@ -102,5 +101,4 @@
   gDasharoSystemFeaturesTokenSpaceGuid.PcdIntelMeMenuShowCbntStatus
   gDasharoSystemFeaturesTokenSpaceGuid.PcdShowMemorySpdProfileOption
   gDasharoSystemFeaturesTokenSpaceGuid.PcdShowMemoryIbeccOption
-  gDasharoSystemFeaturesTokenSpaceGuid.PcdFumAutoIpxeBoot
   gEfiMdeModulePkgTokenSpaceGuid.PcdCapsuleOnDiskSupport

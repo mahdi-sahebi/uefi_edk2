@@ -1,0 +1,60 @@
+## @file
+#  Firmware Update Mode (FUM) setup menu.
+#
+#  Registers a "Firmware Update Mode" entry on the EDK2 setup front page.
+#  Selecting it enables FUM for the next boot and reboots.
+#
+#  Copyright (c) 2026, 3mdeb Sp. z o.o. All rights reserved.<BR>
+#  SPDX-License-Identifier: BSD-2-Clause
+#
+##
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = DasharoFumDxe
+  FILE_GUID                      = 92228F92-53F9-4298-A898-D4C856D9F753
+  MODULE_TYPE                    = DXE_DRIVER
+  VERSION_STRING                 = 1.0
+  ENTRY_POINT                    = DasharoFumDxeEntryPoint
+  UNLOAD_IMAGE                   = DasharoFumDxeUnload
+
+[Sources]
+  DasharoFumDxe.c
+  DasharoFumDxeHii.h
+  DasharoFumDxeVfr.Vfr
+  DasharoFumDxeStrings.uni
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  DasharoModulePkg/DasharoModulePkg.dec
+
+[LibraryClasses]
+  BaseLib
+  DebugLib
+  DevicePathLib
+  HiiLib
+  MemoryAllocationLib
+  PcdLib
+  UefiHiiServicesLib
+  UefiLib
+  UefiBootServicesTableLib
+  UefiRuntimeServicesTableLib
+  UefiDriverEntryPoint
+
+[Guids]
+  gEfiIfrFrontPageGuid                          ## CONSUMES ## GUID (Indicate the formset in this module need to display in which page)
+  gDasharoSystemFeaturesGuid                    ## CONSUMES
+
+[Protocols]
+  gEfiDevicePathProtocolGuid        ## PRODUCES
+  gEfiHiiConfigAccessProtocolGuid   ## PRODUCES
+
+[Pcd]
+  gDasharoSystemFeaturesTokenSpaceGuid.PcdShowMenu
+  gDasharoSystemFeaturesTokenSpaceGuid.PcdShowFum
+  gDasharoSystemFeaturesTokenSpaceGuid.PcdFumAutoIpxeBoot
+
+[Depex]
+  gEfiVariableArchProtocolGuid  AND
+  gEfiVariableWriteArchProtocolGuid

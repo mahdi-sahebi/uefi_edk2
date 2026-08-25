@@ -118,6 +118,7 @@ INF UefiCpuPkg/CpuDxe/CpuDxe.inf
 INF MdeModulePkg/Universal/DriverHealthManagerDxe/DriverHealthManagerDxe.inf
 INF MdeModulePkg/Universal/BdsDxe/BdsDxe.inf
 INF DasharoPayloadPkg/CfrSetupMenuDxe/CfrSetupMenuDxe.inf
+INF DasharoModulePkg/DasharoFumDxe/DasharoFumDxe.inf
 INF MdeModulePkg/Application/UiApp/UiApp.inf
 INF MdeModulePkg/Application/BootManagerMenuApp/BootManagerMenuApp.inf
 !if $(RAM_DISK_ENABLE) == TRUE

@@ -141,7 +141,6 @@ typedef struct {
   BOOLEAN  ShowCpuMenu;
   BOOLEAN  ShowLockBios;
   BOOLEAN  ShowSmmBwp;
-  BOOLEAN  ShowFum;
   BOOLEAN  ShowPs2Option;
   BOOLEAN  PowerMenuShowFanCurve;
   BOOLEAN  PowerMenuShowSleepType;
@@ -261,7 +260,6 @@ typedef struct {
 #define NETWORK_BOOT_QUESTION_ID             0x8000
 #define WATCHDOG_ENABLE_QUESTION_ID          0x8001
 #define WATCHDOG_TIMEOUT_QUESTION_ID         0x8002
-#define FIRMWARE_UPDATE_MODE_QUESTION_ID     0x8003
 #define POWER_FAILURE_STATE_QUESTION_ID      0x8004
 #define OPTION_ROM_STATE_QUESTION_ID         0x8005
 #define SERIAL_PORT_REDIR_QUESTION_ID        0x8006
