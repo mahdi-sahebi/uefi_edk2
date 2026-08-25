@@ -32,25 +32,40 @@ InitializeBootPolicies (
 {
   EFI_STATUS Status;
   UINTN VarSize;
-  DASHARO_IOMMU_CONFIG *IommuConfig;
+  UINT32 *EfiVar;
+  UINT32 IommuEnable = FALSE;
+  UINT32 IommuHandoff = FALSE;
   UINT8 PcdVal = 0;
 
   gBS = SystemTable->BootServices;
   gRT = SystemTable->RuntimeServices;
 
-  VarSize = sizeof(*IommuConfig);
+  VarSize = sizeof(*EfiVar);
   Status = GetVariable2 (
-           L"IommuConfig",
+           DASHARO_VAR_IOMMU_ENABLE,
            &gDasharoSystemFeaturesGuid,
-           (VOID **) &IommuConfig,
+           (VOID **) &EfiVar,
            &VarSize
            );
 
-  if ((Status == EFI_SUCCESS) && (VarSize == sizeof(*IommuConfig))){
+  if ((Status == EFI_SUCCESS) && (VarSize == sizeof(*EfiVar))) {
+    IommuEnable = *EfiVar;
+
+    VarSize = sizeof(*EfiVar);
+    Status = GetVariable2 (
+             DASHARO_VAR_IOMMU_HANDOFF,
+             &gDasharoSystemFeaturesGuid,
+             (VOID **) &EfiVar,
+             &VarSize
+             );
+
+    if ((Status == EFI_SUCCESS) && (VarSize == sizeof(*EfiVar)))
+      IommuHandoff = *EfiVar;
+
     PcdVal = PcdGet8(PcdVTdPolicyPropertyMask);
-    if (IommuConfig->IommuEnable){
+    if (IommuEnable){
       PcdVal |= 0x01;
-      if (IommuConfig->IommuHandoff){
+      if (IommuHandoff){
         PcdVal |= 0x02;
         DEBUG ((EFI_D_INFO, "Boot Policy: IOMMU will be kept enabled on ExitBootServices\n"));
       }

@@ -272,19 +272,19 @@ DasharoSystemFeaturesUiLibConstructor (
     if (EFI_ERROR (Status))                                                     \
       PRIVATE_DATA(field) = _Generic(PRIVATE_DATA(field),                       \
                                 UINT8: DasharoGetVariableDefault(var).Uint8,    \
-              DASHARO_WATCHDOG_CONFIG: DasharoGetVariableDefault(var).Watchdog, \
-                 DASHARO_IOMMU_CONFIG: DasharoGetVariableDefault(var).Iommu,    \
-               DASHARO_BATTERY_CONFIG: DasharoGetVariableDefault(var).Battery   \
+                               UINT16: DasharoGetVariableDefault(var).Uint16    \
     );                                                                          \
   } while (FALSE)
 
-  LOAD_VAR (DASHARO_VAR_BATTERY_CONFIG, BatteryConfig);
+  LOAD_VAR (DASHARO_VAR_BATTERY_START_THRESHOLD, BatteryConfig.StartThreshold);
+  LOAD_VAR (DASHARO_VAR_BATTERY_STOP_THRESHOLD, BatteryConfig.StopThreshold);
   LOAD_VAR (DASHARO_VAR_BOOT_MANAGER_ENABLED, BootManagerEnabled);
   LOAD_VAR (DASHARO_VAR_CPU_THROTTLING_OFFSET, CpuThrottlingOffset);
   LOAD_VAR (DASHARO_VAR_ENABLE_CAMERA, EnableCamera);
   LOAD_VAR (DASHARO_VAR_ENABLE_WIFI_BT, EnableWifiBt);
   LOAD_VAR (DASHARO_VAR_FAN_CURVE_OPTION, FanCurveOption);
-  LOAD_VAR (DASHARO_VAR_IOMMU_CONFIG, IommuConfig);
+  LOAD_VAR (DASHARO_VAR_IOMMU_ENABLE, IommuConfig.IommuEnable);
+  LOAD_VAR (DASHARO_VAR_IOMMU_HANDOFF, IommuConfig.IommuHandoff);
   LOAD_VAR (DASHARO_VAR_LOCK_BIOS, LockBios);
   LOAD_VAR (DASHARO_VAR_MEMORY_PROFILE, MemoryProfile);
   LOAD_VAR (DASHARO_VAR_IBECC, MemoryIbecc);
@@ -300,7 +300,8 @@ DasharoSystemFeaturesUiLibConstructor (
   LOAD_VAR (DASHARO_VAR_SMM_BWP, SmmBwp);
   LOAD_VAR (DASHARO_VAR_USB_MASS_STORAGE, UsbMassStorage);
   LOAD_VAR (DASHARO_VAR_USB_STACK, UsbStack);
-  LOAD_VAR (DASHARO_VAR_WATCHDOG, WatchdogConfig);
+  LOAD_VAR (DASHARO_VAR_WATCHDOG_ENABLE, WatchdogConfig.WatchdogEnable);
+  LOAD_VAR (DASHARO_VAR_WATCHDOG_TIMEOUT, WatchdogConfig.WatchdogTimeout);
   LOAD_VAR (DASHARO_VAR_SMALL_CORE_ACTIVE_COUNT, SmallCoreActiveCount);
   LOAD_VAR (DASHARO_VAR_CORE_ACTIVE_COUNT, BigCoreActiveCount);
   LOAD_VAR (DASHARO_VAR_CORE_ACTIVE_COUNT, CoreActiveCount);
@@ -564,7 +565,8 @@ DasharoSystemFeaturesRouteConfig (
       STORE_VAR_IF (DASHARO_VAR_BOOT_MANAGER_ENABLED, BootManagerEnabled, FixedPcdGetBool (PcdDasharoEnterprise));
       STORE_VAR_IF (DASHARO_VAR_ENABLE_CAMERA, EnableCamera, FixedPcdGetBool (PcdSecurityShowCameraOption));
       STORE_VAR_IF (DASHARO_VAR_ENABLE_WIFI_BT, EnableWifiBt, FixedPcdGetBool (PcdSecurityShowWiFiBtOption));
-      STORE_VAR_IF (DASHARO_VAR_IOMMU_CONFIG, IommuConfig, FixedPcdGetBool (PcdShowIommuOptions));
+      STORE_VAR_IF (DASHARO_VAR_IOMMU_ENABLE, IommuConfig.IommuEnable, FixedPcdGetBool (PcdShowIommuOptions));
+      STORE_VAR_IF (DASHARO_VAR_IOMMU_HANDOFF, IommuConfig.IommuHandoff, FixedPcdGetBool (PcdShowIommuOptions));
       STORE_VAR_IF (DASHARO_VAR_LOCK_BIOS, LockBios, FixedPcdGetBool (PcdShowLockBios));
       STORE_VAR_IF (DASHARO_VAR_SMM_BWP, SmmBwp, FixedPcdGetBool (PcdShowSmmBwp));
   }
@@ -582,7 +584,10 @@ DasharoSystemFeaturesRouteConfig (
     STORE_VAR_IF (DASHARO_VAR_POWER_FAILURE_STATE, PowerFailureState,
                   FixedPcdGet8 (PcdDefaultPowerFailureState) != POWER_FAILURE_STATE_HIDDEN);
     STORE_VAR_IF (DASHARO_VAR_FAN_CURVE_OPTION, FanCurveOption, FixedPcdGetBool (PcdPowerMenuShowFanCurve));
-    STORE_VAR_IF (DASHARO_VAR_BATTERY_CONFIG, BatteryConfig, FixedPcdGetBool (PcdPowerMenuShowBatteryThresholds));
+    STORE_VAR_IF (DASHARO_VAR_BATTERY_START_THRESHOLD, BatteryConfig.StartThreshold,
+                  FixedPcdGetBool (PcdPowerMenuShowBatteryThresholds));
+    STORE_VAR_IF (DASHARO_VAR_BATTERY_STOP_THRESHOLD, BatteryConfig.StopThreshold,
+                  FixedPcdGetBool (PcdPowerMenuShowBatteryThresholds));
     STORE_VAR_IF (DASHARO_VAR_CPU_THROTTLING_OFFSET, CpuThrottlingOffset, FixedPcdGetBool (PcdShowCpuThrottlingThreshold));
     STORE_VAR_IF (DASHARO_VAR_USB_PORT_POWER, UsbPortPower, FixedPcdGetBool (PcdPowerMenuShowUsbPowerOption));
     STORE_VAR_IF (DASHARO_VAR_DGPU_STATE, DGPUState, FixedPcdGetBool (PcdPowerMenuShowDGPUPowerOption));
@@ -604,7 +609,10 @@ DasharoSystemFeaturesRouteConfig (
   }
 
   if (FixedPcdGetBool (PcdShowChipsetMenu)) {
-    STORE_VAR_IF (DASHARO_VAR_WATCHDOG, WatchdogConfig, FixedPcdGetBool (PcdShowOcWdtOptions));
+    STORE_VAR_IF (DASHARO_VAR_WATCHDOG_ENABLE, WatchdogConfig.WatchdogEnable,
+                  FixedPcdGetBool (PcdShowOcWdtOptions));
+    STORE_VAR_IF (DASHARO_VAR_WATCHDOG_TIMEOUT, WatchdogConfig.WatchdogTimeout,
+                  FixedPcdGetBool (PcdShowOcWdtOptions));
     STORE_VAR_IF (DASHARO_VAR_PS2_CONTROLLER, Ps2Controller, FixedPcdGetBool (PcdShowPs2Option));
   }
 
@@ -704,10 +712,10 @@ DasharoSystemFeaturesCallback (
         Value->b = DasharoGetVariableDefault (DASHARO_VAR_NETWORK_BOOT).Boolean;
         break;
       case WATCHDOG_ENABLE_QUESTION_ID:
-        Value->b = DasharoGetVariableDefault (DASHARO_VAR_WATCHDOG).Watchdog.WatchdogEnable;
+        Value->b = DasharoGetVariableDefault (DASHARO_VAR_WATCHDOG_ENABLE).Boolean;
         break;
       case WATCHDOG_TIMEOUT_QUESTION_ID:
-        Value->u16 = DasharoGetVariableDefault (DASHARO_VAR_WATCHDOG).Watchdog.WatchdogTimeout;
+        Value->u16 = DasharoGetVariableDefault (DASHARO_VAR_WATCHDOG_TIMEOUT).Uint16;
         break;
       case POWER_FAILURE_STATE_QUESTION_ID:
         Value->u8 = DasharoGetVariableDefault (DASHARO_VAR_POWER_FAILURE_STATE).Boolean;
@@ -722,10 +730,10 @@ DasharoSystemFeaturesCallback (
         Value->b = DasharoGetVariableDefault (DASHARO_VAR_SERIAL_REDIRECTION2).Boolean;
         break;
       case BATTERY_START_THRESHOLD_QUESTION_ID:
-        Value->u8 = DasharoGetVariableDefault (DASHARO_VAR_BATTERY_CONFIG).Battery.StartThreshold;
+        Value->u8 = DasharoGetVariableDefault (DASHARO_VAR_BATTERY_START_THRESHOLD).Uint8;
         break;
       case BATTERY_STOP_THRESHOLD_QUESTION_ID:
-        Value->u8 = DasharoGetVariableDefault (DASHARO_VAR_BATTERY_CONFIG).Battery.StopThreshold;
+        Value->u8 = DasharoGetVariableDefault (DASHARO_VAR_BATTERY_STOP_THRESHOLD).Uint8;
         break;
       case INTEL_ME_MODE_QUESTION_ID:
         Value->u8 = DasharoGetVariableDefault (DASHARO_VAR_ME_MODE).Uint8;

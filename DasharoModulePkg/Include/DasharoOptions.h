@@ -15,38 +15,41 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 //
 
 // Settings
-#define DASHARO_VAR_BATTERY_CONFIG                L"BatteryConfig"
-#define DASHARO_VAR_BOOT_MANAGER_ENABLED          L"BootManagerEnabled"
-#define DASHARO_VAR_CORE_ACTIVE_COUNT             L"CoreActiveCount"
-#define DASHARO_VAR_CPU_THROTTLING_OFFSET         L"CpuThrottlingOffset"
+#define DASHARO_VAR_BATTERY_START_THRESHOLD       L"battery_start_threshold"
+#define DASHARO_VAR_BATTERY_STOP_THRESHOLD        L"battery_stop_threshold"
+#define DASHARO_VAR_BOOT_MANAGER_ENABLED          L"boot_manager_enabled"
+#define DASHARO_VAR_CORE_ACTIVE_COUNT             L"core_active_count"
+#define DASHARO_VAR_CPU_THROTTLING_OFFSET         L"throttle_offset"
 #define DASHARO_VAR_DESCRIPTOR_WRITEABLE          L"DescriptorWriteable"
-#define DASHARO_VAR_DGPU_STATE                    L"DGPUState"
+#define DASHARO_VAR_DGPU_STATE                    L"dgpu_state"
 #define DASHARO_VAR_DISK_CAPSULES_BOOT            L"DiskCapsulesBoot"
-#define DASHARO_VAR_ENABLE_CAMERA                 L"EnableCamera"
-#define DASHARO_VAR_ENABLE_WIFI_BT                L"EnableWifiBt"
-#define DASHARO_VAR_FAN_CURVE_OPTION              L"FanCurveOption"
+#define DASHARO_VAR_ENABLE_CAMERA                 L"enable_camera"
+#define DASHARO_VAR_ENABLE_WIFI_BT                L"enable_wifi_bt"
+#define DASHARO_VAR_FAN_CURVE_OPTION              L"fan_curve"
 #define DASHARO_VAR_FIRMWARE_UPDATE_MODE_REQUEST  L"FirmwareUpdateModeRequest"
 #define DASHARO_VAR_FIRMWARE_UPDATE_MODE_ACTIVE   L"FirmwareUpdateMode"
 #define DASHARO_VAR_HYPER_THREADING               L"hyper_threading"
-#define DASHARO_VAR_IBECC                         L"IBECC"
-#define DASHARO_VAR_IOMMU_CONFIG                  L"IommuConfig"
+#define DASHARO_VAR_IBECC                         L"ibecc"
+#define DASHARO_VAR_IOMMU_ENABLE                  L"iommu_enable"
+#define DASHARO_VAR_IOMMU_HANDOFF                 L"iommu_handoff"
 #define DASHARO_VAR_LOCK_BIOS                     L"lock_bios"
-#define DASHARO_VAR_MEMORY_PROFILE                L"MemoryProfile"
+#define DASHARO_VAR_MEMORY_PROFILE                L"memory_profile"
 #define DASHARO_VAR_ME_MODE                       L"me_mode"
 #define DASHARO_VAR_NETWORK_BOOT                  L"network_boot"
-#define DASHARO_VAR_OPTION_ROM_POLICY             L"OptionRomPolicy"
-#define DASHARO_VAR_POWER_FAILURE_STATE           L"PowerFailureState"
+#define DASHARO_VAR_OPTION_ROM_POLICY             L"option_rom_policy"
+#define DASHARO_VAR_POWER_FAILURE_STATE           L"power_on_after_fail"
 #define DASHARO_VAR_PS2_CONTROLLER                L"ps2_enable"
-#define DASHARO_VAR_RESIZEABLE_BARS_ENABLED       L"PCIeResizeableBarsEnabled"
+#define DASHARO_VAR_RESIZEABLE_BARS_ENABLED       L"pcie_resizeable_bars"
 #define DASHARO_VAR_SERIAL_REDIRECTION            L"com0_redirection"
-#define DASHARO_VAR_SERIAL_REDIRECTION2           L"SerialRedirection2"
-#define DASHARO_VAR_SLEEP_TYPE                    L"SleepType"
-#define DASHARO_VAR_SMALL_CORE_ACTIVE_COUNT       L"SmallCoreActiveCount"
-#define DASHARO_VAR_SMM_BWP                       L"SmmBwp"
+#define DASHARO_VAR_SERIAL_REDIRECTION2           L"com1_redirection"
+#define DASHARO_VAR_SLEEP_TYPE                    L"sleep_type"
+#define DASHARO_VAR_SMALL_CORE_ACTIVE_COUNT       L"small_core_active_count"
+#define DASHARO_VAR_SMM_BWP                       L"smm_bwp"
 #define DASHARO_VAR_USB_MASS_STORAGE              L"uefi_usb_msc"
-#define DASHARO_VAR_USB_PORT_POWER                L"UsbPortPower"
+#define DASHARO_VAR_USB_PORT_POWER                L"usb_port_power"
 #define DASHARO_VAR_USB_STACK                     L"uefi_usb_stack"
-#define DASHARO_VAR_WATCHDOG                      L"WatchdogConfig"
+#define DASHARO_VAR_WATCHDOG_ENABLE               L"watchdog_enable"
+#define DASHARO_VAR_WATCHDOG_TIMEOUT              L"watchdog_timeout"
 #define DASHARO_VAR_WATCHDOG_AVAILABLE            L"WatchdogAvailable"
 
 // Other
@@ -96,8 +99,8 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 #define DASHARO_CPU_CORES_ENABLE_ALL           0xff
 //
-// Structures describing format of some of the above EFI variables.  Must be
-// packed.
+// Layout of the HII varstore fields which correspond to more than one of the
+// above EFI variables.  Must be packed.
 //
 
 #pragma pack(push,1)
@@ -122,11 +125,8 @@ typedef struct {
 // Set of possible values of Dasharo variables.
 typedef union {
   UINT32  Boolean;
-  UINT8    Uint8;
-
-  DASHARO_WATCHDOG_CONFIG  Watchdog;
-  DASHARO_IOMMU_CONFIG     Iommu;
-  DASHARO_BATTERY_CONFIG   Battery;
+  UINT8   Uint8;
+  UINT16  Uint16;
 } DASHARO_VAR_DATA;
 
 #endif

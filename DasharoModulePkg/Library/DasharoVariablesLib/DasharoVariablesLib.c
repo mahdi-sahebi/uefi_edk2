@@ -46,13 +46,15 @@ typedef struct {
 // used to determine whether the variable should be created or not.
 
 STATIC CONST AUTO_VARIABLE mAutoCreatedVariables[] = {
-  { DASHARO_VAR_BATTERY_CONFIG, FixedPcdGetBool (PcdShowPowerMenu) && FixedPcdGetBool (PcdPowerMenuShowBatteryThresholds) },
+  { DASHARO_VAR_BATTERY_START_THRESHOLD, FixedPcdGetBool (PcdShowPowerMenu) && FixedPcdGetBool (PcdPowerMenuShowBatteryThresholds) },
+  { DASHARO_VAR_BATTERY_STOP_THRESHOLD, FixedPcdGetBool (PcdShowPowerMenu) && FixedPcdGetBool (PcdPowerMenuShowBatteryThresholds) },
   { DASHARO_VAR_BOOT_MANAGER_ENABLED, FixedPcdGetBool (PcdShowSecurityMenu) && FixedPcdGetBool (PcdDasharoEnterprise) },
   { DASHARO_VAR_CPU_THROTTLING_OFFSET, FixedPcdGetBool (PcdShowPowerMenu) && FixedPcdGetBool (PcdShowCpuThrottlingThreshold) },
   { DASHARO_VAR_ENABLE_CAMERA, FixedPcdGetBool (PcdShowSecurityMenu) && FixedPcdGetBool (PcdSecurityShowCameraOption) },
   { DASHARO_VAR_ENABLE_WIFI_BT, FixedPcdGetBool (PcdShowSecurityMenu) && FixedPcdGetBool (PcdSecurityShowWiFiBtOption) },
   { DASHARO_VAR_FAN_CURVE_OPTION, FixedPcdGetBool (PcdShowPowerMenu) && FixedPcdGetBool (PcdPowerMenuShowFanCurve) },
-  { DASHARO_VAR_IOMMU_CONFIG, FixedPcdGetBool (PcdShowSecurityMenu) && FixedPcdGetBool (PcdShowIommuOptions) },
+  { DASHARO_VAR_IOMMU_ENABLE, FixedPcdGetBool (PcdShowSecurityMenu) && FixedPcdGetBool (PcdShowIommuOptions) },
+  { DASHARO_VAR_IOMMU_HANDOFF, FixedPcdGetBool (PcdShowSecurityMenu) && FixedPcdGetBool (PcdShowIommuOptions) },
   { DASHARO_VAR_LOCK_BIOS, FixedPcdGetBool (PcdShowSecurityMenu) && FixedPcdGetBool (PcdShowLockBios) },
   { DASHARO_VAR_MEMORY_PROFILE, FixedPcdGetBool (PcdShowMemoryMenu) && FixedPcdGetBool (PcdShowMemorySpdProfileOption) },
   { DASHARO_VAR_IBECC, FixedPcdGetBool (PcdShowMemoryMenu) && FixedPcdGetBool (PcdShowMemoryIbeccOption) },
@@ -68,7 +70,8 @@ STATIC CONST AUTO_VARIABLE mAutoCreatedVariables[] = {
   { DASHARO_VAR_SMM_BWP, FixedPcdGetBool (PcdShowSecurityMenu) && FixedPcdGetBool (PcdShowSmmBwp) },
   { DASHARO_VAR_USB_MASS_STORAGE, FixedPcdGetBool (PcdShowUsbMenu) },
   { DASHARO_VAR_USB_STACK, FixedPcdGetBool (PcdShowUsbMenu) },
-  { DASHARO_VAR_WATCHDOG, FixedPcdGetBool (PcdShowChipsetMenu) && FixedPcdGetBool (PcdShowOcWdtOptions) },
+  { DASHARO_VAR_WATCHDOG_ENABLE, FixedPcdGetBool (PcdShowChipsetMenu) && FixedPcdGetBool (PcdShowOcWdtOptions) },
+  { DASHARO_VAR_WATCHDOG_TIMEOUT, FixedPcdGetBool (PcdShowChipsetMenu) && FixedPcdGetBool (PcdShowOcWdtOptions) },
   { DASHARO_VAR_SMALL_CORE_ACTIVE_COUNT, FixedPcdGetBool (PcdShowCpuMenu) && FixedPcdGetBool (PcdShowCpuCoreDisable) },
   { DASHARO_VAR_CORE_ACTIVE_COUNT, FixedPcdGetBool (PcdShowCpuMenu) && FixedPcdGetBool (PcdShowCpuCoreDisable) },
   { DASHARO_VAR_HYPER_THREADING, FixedPcdGetBool (PcdShowCpuMenu) && FixedPcdGetBool (PcdShowCpuHyperThreading) },
@@ -100,10 +103,12 @@ GetVariableInfo (
   Size = 0;
   ExtraAttrs = 0;
 
-  if (StrCmp (VarName, DASHARO_VAR_BATTERY_CONFIG) == 0) {
-    Data.Battery.StartThreshold = 95;
-    Data.Battery.StopThreshold = 98;
-    Size = sizeof (Data.Battery);
+  if (StrCmp (VarName, DASHARO_VAR_BATTERY_START_THRESHOLD) == 0) {
+    Data.Uint8 = 95;
+    Size = sizeof (Data.Uint8);
+  } else if (StrCmp (VarName, DASHARO_VAR_BATTERY_STOP_THRESHOLD) == 0) {
+    Data.Uint8 = 98;
+    Size = sizeof (Data.Uint8);
   } else if (StrCmp (VarName, DASHARO_VAR_BOOT_MANAGER_ENABLED) == 0) {
     Data.Boolean = TRUE;
     Size = sizeof (Data.Boolean);
@@ -119,10 +124,12 @@ GetVariableInfo (
   } else if (StrCmp (VarName, DASHARO_VAR_FAN_CURVE_OPTION) == 0) {
     Data.Uint8 = DASHARO_FAN_CURVE_OPTION_SILENT;
     Size = sizeof (Data.Uint8);
-  } else if (StrCmp (VarName, DASHARO_VAR_IOMMU_CONFIG) == 0) {
-    Data.Iommu.IommuEnable = FALSE;
-    Data.Iommu.IommuHandoff = FALSE;
-    Size = sizeof (Data.Iommu);
+  } else if (StrCmp (VarName, DASHARO_VAR_IOMMU_ENABLE) == 0) {
+    Data.Boolean = FALSE;
+    Size = sizeof (Data.Boolean);
+  } else if (StrCmp (VarName, DASHARO_VAR_IOMMU_HANDOFF) == 0) {
+    Data.Boolean = FALSE;
+    Size = sizeof (Data.Boolean);
   } else if (StrCmp (VarName, DASHARO_VAR_LOCK_BIOS) == 0) {
     Data.Boolean = TRUE;
     Size = sizeof (Data.Boolean);
@@ -173,10 +180,12 @@ GetVariableInfo (
   } else if (StrCmp (VarName, DASHARO_VAR_USB_STACK) == 0) {
     Data.Boolean = TRUE;
     Size = sizeof (Data.Boolean);
-  } else if (StrCmp (VarName, DASHARO_VAR_WATCHDOG) == 0) {
-    Data.Watchdog.WatchdogEnable = FixedPcdGetBool (PcdOcWdtEnableDefault);
-    Data.Watchdog.WatchdogTimeout = FixedPcdGet16 (PcdOcWdtTimeoutDefault);
-    Size = sizeof (Data.Watchdog);
+  } else if (StrCmp (VarName, DASHARO_VAR_WATCHDOG_ENABLE) == 0) {
+    Data.Boolean = FixedPcdGetBool (PcdOcWdtEnableDefault);
+    Size = sizeof (Data.Boolean);
+  } else if (StrCmp (VarName, DASHARO_VAR_WATCHDOG_TIMEOUT) == 0) {
+    Data.Uint16 = FixedPcdGet16 (PcdOcWdtTimeoutDefault);
+    Size = sizeof (Data.Uint16);
   } else if (StrCmp (VarName, DASHARO_VAR_WATCHDOG_AVAILABLE) == 0) {
     Data.Boolean = FixedPcdGetBool (PcdShowOcWdtOptions);
     Size = sizeof (Data.Boolean);
