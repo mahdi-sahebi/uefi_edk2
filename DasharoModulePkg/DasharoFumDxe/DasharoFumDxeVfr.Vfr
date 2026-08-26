@@ -29,34 +29,36 @@ formset
        title  = STRING_TOKEN(STR_FUM_TITLE);
 
     //
-    // Warnings (non-interactive) describing what FUM does.
+    // Warnings (grayed out, non-interactive) describing what FUM does.
     //
-    text
-      help = STRING_TOKEN(STR_FUM_HELP),
-      text = STRING_TOKEN(STR_FUM_WARN_1);
-    text
-      help = STRING_TOKEN(STR_FUM_HELP),
-      text = STRING_TOKEN(STR_FUM_WARN_2);
-    text
-      help = STRING_TOKEN(STR_FUM_HELP),
-      text = STRING_TOKEN(STR_FUM_WARN_3);
-    text
-      help = STRING_TOKEN(STR_FUM_HELP),
-      text = STRING_TOKEN(STR_FUM_BLANK);
-
-    //
-    // iPXE note, shown only when the firmware auto-boots through iPXE.
-    //
-    suppressif ideqval DASHARO_FUM_INFO.IpxeAutoBoot == 0;
+    grayoutif TRUE;
       text
         help = STRING_TOKEN(STR_FUM_HELP),
-        text = STRING_TOKEN(STR_FUM_IPXE_1);
+        text = STRING_TOKEN(STR_FUM_WARN_1);
       text
         help = STRING_TOKEN(STR_FUM_HELP),
-        text = STRING_TOKEN(STR_FUM_IPXE_2);
+        text = STRING_TOKEN(STR_FUM_WARN_2);
+      text
+        help = STRING_TOKEN(STR_FUM_HELP),
+        text = STRING_TOKEN(STR_FUM_WARN_3);
       text
         help = STRING_TOKEN(STR_FUM_HELP),
         text = STRING_TOKEN(STR_FUM_BLANK);
+
+      //
+      // iPXE note, shown only when the firmware auto-boots through iPXE.
+      //
+      suppressif ideqval DASHARO_FUM_INFO.IpxeAutoBoot == 0;
+        text
+          help = STRING_TOKEN(STR_FUM_HELP),
+          text = STRING_TOKEN(STR_FUM_IPXE_1);
+        text
+          help = STRING_TOKEN(STR_FUM_HELP),
+          text = STRING_TOKEN(STR_FUM_IPXE_2);
+        text
+          help = STRING_TOKEN(STR_FUM_HELP),
+          text = STRING_TOKEN(STR_FUM_BLANK);
+      endif;
     endif;
 
     //
