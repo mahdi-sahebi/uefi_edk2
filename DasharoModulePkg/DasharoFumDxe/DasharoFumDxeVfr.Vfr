@@ -14,9 +14,55 @@ formset
   help      = STRING_TOKEN(STR_FUM_HELP),
   classguid = gEfiIfrFrontPageGuid,
 
+  //
+  // Build-time FUM options, published by the driver as a boot-service
+  // variable. The HII database reads the variable directly when
+  // evaluating form conditions (same pattern as Tcg2Config.vfr).
+  //
+  efivarstore DASHARO_FUM_INFO,
+    varid     = DASHARO_FUM_INFO_VARSTORE_ID,
+    attribute = 0x02,   // EFI_VARIABLE_BOOTSERVICE_ACCESS
+    name      = DASHARO_FUM_INFO,
+    guid      = DASHARO_FUM_FORMSET_GUID;
+
   form formid = DASHARO_FUM_FORM_ID,
        title  = STRING_TOKEN(STR_FUM_TITLE);
 
+    //
+    // Warnings (non-interactive) describing what FUM does.
+    //
+    text
+      help = STRING_TOKEN(STR_FUM_HELP),
+      text = STRING_TOKEN(STR_FUM_WARN_1);
+    text
+      help = STRING_TOKEN(STR_FUM_HELP),
+      text = STRING_TOKEN(STR_FUM_WARN_2);
+    text
+      help = STRING_TOKEN(STR_FUM_HELP),
+      text = STRING_TOKEN(STR_FUM_WARN_3);
+    text
+      help = STRING_TOKEN(STR_FUM_HELP),
+      text = STRING_TOKEN(STR_FUM_BLANK);
+
+    //
+    // iPXE note, shown only when the firmware auto-boots through iPXE.
+    //
+    suppressif ideqval DASHARO_FUM_INFO.IpxeAutoBoot == 0;
+      text
+        help = STRING_TOKEN(STR_FUM_HELP),
+        text = STRING_TOKEN(STR_FUM_IPXE_1);
+      text
+        help = STRING_TOKEN(STR_FUM_HELP),
+        text = STRING_TOKEN(STR_FUM_IPXE_2);
+      text
+        help = STRING_TOKEN(STR_FUM_HELP),
+        text = STRING_TOKEN(STR_FUM_BLANK);
+    endif;
+
+    //
+    // The only interactive element: selecting it enables FUM for the
+    // next boot and resets the system immediately.
+    //
     text
       help  = STRING_TOKEN(STR_FUM_HELP),
       text  = STRING_TOKEN(STR_FUM_PROMPT),

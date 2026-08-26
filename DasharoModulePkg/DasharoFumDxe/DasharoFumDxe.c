@@ -9,23 +9,22 @@ SPDX-License-Identifier: BSD-2-Clause
 
 **/
 
-#include "DasharoFumDxeHii.h"
+#include <Uefi.h>
 
 #include <Library/BaseLib.h>
 #include <Library/DebugLib.h>
 #include <Library/DevicePathLib.h>
 #include <Library/HiiLib.h>
-#include <Library/MemoryAllocationLib.h>
 #include <Library/PcdLib.h>
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/UefiDriverEntryPoint.h>
 #include <Library/UefiHiiServicesLib.h>
-#include <Library/UefiLib.h>
 #include <Library/UefiRuntimeServicesTableLib.h>
 #include <Protocol/DevicePath.h>
 #include <Protocol/HiiConfigAccess.h>
-#include <Protocol/SimpleTextIn.h>
 #include <DasharoOptions.h>
+
+#include "DasharoFumDxeHii.h"
 
 #define DASHARO_FUM_PRIVATE_DATA_SIGNATURE  SIGNATURE_32 ('D', 'F', 'U', 'p')
 
@@ -156,8 +155,9 @@ EnableFirmwareUpdateMode (
 
 /**
   This function allows a caller to extract the current configuration for one
-  or more named elements from the target driver. This formset has no varstore,
-  so there is nothing to extract.
+  or more named elements from the target driver. The only varstore in this
+  formset is an efivarstore, which the HII database manages directly, so
+  there is nothing for this driver to extract.
 
 **/
 EFI_STATUS
@@ -178,8 +178,9 @@ DasharoFumExtractConfig (
 }
 
 /**
-  This function processes the results of changes in configuration. This
-  formset has no varstore, so there is nothing to route.
+  This function processes the results of changes in configuration. The only
+  varstore in this formset is an efivarstore, which the HII database manages
+  directly, so there is nothing for this driver to route.
 
 **/
 EFI_STATUS
@@ -200,8 +201,10 @@ DasharoFumRouteConfig (
 
 /**
   This function is invoked if user selected an interactive opcode from the
-  Firmware Update Mode formset. It asks for confirmation, enables FUM for the
-  next boot and reboots the system.
+  Firmware Update Mode formset. The form itself presents the FUM warnings
+  (as non-interactive text), so selecting the interactive option means the
+  user has accepted them: enable FUM for the next boot and reboot the
+  system.
 
 **/
 EFI_STATUS
@@ -215,59 +218,21 @@ DasharoFumCallback (
   OUT EFI_BROWSER_ACTION_REQUEST             *ActionRequest
   )
 {
-  EFI_STATUS                         Status;
-  EFI_INPUT_KEY                      Key;
-  CONST CHAR16                       *PressEnterMsg;
-  CONST CHAR16                       *VariableLines[3];
-  DASHARO_FUM_PRIVATE_DATA           *Private;
+  EFI_STATUS  Status;
 
-  Status  = EFI_SUCCESS;
-  Private = DASHARO_FUM_PRIVATE_DATA_FROM_THIS (This);
+  Status = EFI_SUCCESS;
 
   switch (Action) {
   case EFI_BROWSER_ACTION_CHANGED:
-    {
-      if (QuestionId == FIRMWARE_UPDATE_MODE_QUESTION_ID) {
-        PressEnterMsg = L"Press ENTER to continue and reboot or ESC to cancel...";
-        if (FixedPcdGetBool (PcdFumAutoIpxeBoot)) {
-          VariableLines[0] = L"DTS will be started automatically through iPXE, please";
-          VariableLines[1] = L"make sure an Ethernet cable is connected before continuing.";
-          VariableLines[2] = L"";
-        } else {
-          VariableLines[0] = PressEnterMsg;
-          VariableLines[1] = L"";
-          /* This terminates list of lines. */
-          VariableLines[2] = NULL;
-        }
-
-        do {
-          CreatePopUp (
-            EFI_BLACK | EFI_BACKGROUND_RED,
-            &Key,
-            L"",
-            L"You are about to enable Firmware Update Mode.",
-            L"This will turn off all flash protection mechanisms",
-            L"for the duration of the next boot.",
-            L"",
-            VariableLines[0],
-            VariableLines[1],
-            VariableLines[2],
-            PressEnterMsg,
-            L"",
-            NULL
-            );
-        } while ((Key.ScanCode != SCAN_ESC) && (Key.UnicodeChar != CHAR_CARRIAGE_RETURN));
-
-        if (Key.UnicodeChar == CHAR_CARRIAGE_RETURN) {
-          Status = EnableFirmwareUpdateMode ();
-          if (EFI_ERROR (Status)) {
-            return Status;
-          }
-          gRT->ResetSystem (EfiResetCold, EFI_SUCCESS, 0, NULL);
-        }
-      } else {
-        Status = EFI_UNSUPPORTED;
+    if (QuestionId == FIRMWARE_UPDATE_MODE_QUESTION_ID) {
+      Status = EnableFirmwareUpdateMode ();
+      if (EFI_ERROR (Status)) {
+        return Status;
       }
+
+      gRT->ResetSystem (EfiResetCold, EFI_SUCCESS, 0, NULL);
+    } else {
+      Status = EFI_UNSUPPORTED;
     }
     break;
   default:
@@ -303,6 +268,33 @@ DasharoFumDxeEntryPoint (
   //
   if (!FixedPcdGetBool (PcdShowMenu) || !FixedPcdGetBool (PcdShowFum)) {
     return EFI_SUCCESS;
+  }
+
+  //
+  // VFR cannot read PCDs directly, so publish the build-time FUM options
+  // as a boot-service EFI variable. The form binds to it with an
+  // efivarstore (see DasharoFumDxeVfr.Vfr) and the HII database reads it
+  // when evaluating form conditions.
+  //
+  DASHARO_FUM_INFO  FumInfo;
+
+  FumInfo.IpxeAutoBoot = (UINT8) (FixedPcdGetBool (PcdFumAutoIpxeBoot) ? 1 : 0);
+
+  Status = gRT->SetVariable (
+                  DASHARO_FUM_INFO_VARIABLE_NAME,
+                  &mDasharoFumFormsetGuid,
+                  EFI_VARIABLE_BOOTSERVICE_ACCESS,
+                  sizeof (FumInfo),
+                  &FumInfo
+                  );
+  if (EFI_ERROR (Status)) {
+    DEBUG (
+      (
+        DEBUG_ERROR,
+        "DasharoFumDxe: failed to publish FUM options variable: %r\n",
+        Status
+        )
+      );
   }
 
   mDasharoFumPrivate.DriverHandle = NULL;

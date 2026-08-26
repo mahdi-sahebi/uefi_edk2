@@ -22,4 +22,21 @@ SPDX-License-Identifier: BSD-2-Clause
 
 #define FIRMWARE_UPDATE_MODE_QUESTION_ID  0x0001
 
+//
+// Build-time FUM options, published by the driver as the
+// DASHARO_FUM_INFO_VARIABLE_NAME boot-service EFI variable (see
+// DasharoFumDxe.c). The VFR binds to it with an efivarstore so form
+// conditions can react to PCD values (VFR cannot read PCDs directly).
+//
+
+#define DASHARO_FUM_INFO_VARSTORE_ID     0x0002
+
+#define DASHARO_FUM_INFO_VARIABLE_NAME   L"DASHARO_FUM_INFO"
+
+#pragma pack (1)
+typedef struct {
+  UINT8  IpxeAutoBoot;
+} DASHARO_FUM_INFO;
+#pragma pack ()
+
 #endif
