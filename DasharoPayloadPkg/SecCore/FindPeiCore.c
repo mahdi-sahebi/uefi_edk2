@@ -169,16 +169,20 @@ FindAndReportEntryPoints (
   //
   // Report SEC Core debug information when remote debug is enabled
   //
+  // if (0 != SecCoreImageBase) {
   ImageContext.ImageAddress = SecCoreImageBase;
   ImageContext.PdbPointer = PeCoffLoaderGetPdbPointer ((VOID*) (UINTN) ImageContext.ImageAddress);
   PeCoffLoaderRelocateImageExtraAction (&ImageContext);
+// }
 
   //
   // Report PEI Core debug information when remote debug is enabled
   //
+  // if (0 != PeiCoreImageBase) {
   ImageContext.ImageAddress = PeiCoreImageBase;
   ImageContext.PdbPointer = PeCoffLoaderGetPdbPointer ((VOID*) (UINTN) ImageContext.ImageAddress);
   PeCoffLoaderRelocateImageExtraAction (&ImageContext);
+  // }
 
   //
   // Find PEI Core entry point
