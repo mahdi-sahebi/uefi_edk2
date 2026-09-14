@@ -345,13 +345,15 @@ MemInfoCallback (
         );
     } else if (Type == EFI_RESOURCE_SYSTEM_MEMORY) {
       if (Base < BASE_4GB) {
-        //
-        // Skip regions smaller than PEI_MEM_SIZE, the highest non-reserved
-        // region may be too small.
-        //
-        if (Size >= PEI_MEM_SIZE) {
+        // Track the highest low-RAM region top regardless of individual size.
+        // Skipping regions < PEI_MEM_SIZE caused UsableLowMemTop=0 on Xeon SP
+        // when low RAM is fragmented into many sub-64MB pieces, leading to
+        // PeiMemBase underflow (0 - 64MB = 0xFFFFFFFFFC000000) and PeiCore crash.
+        if ((Base + Size) > *UsableLowMemTop) {
           *UsableLowMemTop = Base + Size;
         }
+      } else {
+        Attribute &= ~EFI_RESOURCE_ATTRIBUTE_TESTED;
       }
       BuildResourceDescriptorHob (
         EFI_RESOURCE_SYSTEM_MEMORY,
