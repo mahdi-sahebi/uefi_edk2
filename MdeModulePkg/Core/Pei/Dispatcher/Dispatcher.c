@@ -1990,11 +1990,19 @@ PeiDispatcher (
                   // PEIM_STATE_NOT_DISPATCHED move to PEIM_STATE_DISPATCHED
                   //
                   Private->Fv[FvCount].PeimState[PeimCount]++;
+
                   //
                   // Call the PEIM entry point for PEIM driver
                   //
                   PeimEntryPoint = (EFI_PEIM_ENTRY_POINT2)(UINTN)EntryPoint;
+
+                  EFI_FV_FILE_INFO  DebugFileInfo;
+                  Status = CoreFvHandle->FvPpi->GetFileInfo (CoreFvHandle->FvPpi, PeimFileHandle, &DebugFileInfo);
+                  if (!EFI_ERROR (Status)) {
+                  }
+
                   PeimEntryPoint (PeimFileHandle, (const EFI_PEI_SERVICES **)PeiServices);
+
                   Private->PeimDispatchOnThisPass = TRUE;
                 } else {
                   //
