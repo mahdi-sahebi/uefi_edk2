@@ -226,6 +226,26 @@ PeimFaultTolerantWriteInitialize (
   WorkSpaceAddress = 0;
   WorkSpaceLength  = 0;
 
+  //
+  // Direct HOB probe - bypasses VariableFlashInfoLib entirely so we can
+  // tell, independent of what the library/PCD-fallback reports, whether
+  // gVariableFlashInfoHobGuid actually exists in the HOB list at the
+  // moment FtwPei dispatches. If this prints "NOTFOUND", SmmStorePei's
+  // HOB genuinely is not visible here (real dispatch-order or HOB-list
+  // problem). If it prints a non-null pointer, the HOB exists and the
+  // bug is specifically inside VariableFlashInfoLib's consumption of it.
+  //
+  {
+    VARIABLE_FLASH_INFO  *DirectInfo;
+    extern EFI_GUID     gVariableFlashInfoHobGuid;
+
+    EFI_HOB_GUID_TYPE  *DirectHob = GetFirstGuidHob (&gVariableFlashInfoHobGuid);
+    if (DirectHob == NULL) {
+    } else {
+      DirectInfo = (VARIABLE_FLASH_INFO *)GET_GUID_HOB_DATA (DirectHob);
+    }
+  }
+
   Status = GetVariableFlashFtwWorkingInfo (&WorkSpaceAddress, &Size);
   ASSERT_EFI_ERROR (Status);
 
