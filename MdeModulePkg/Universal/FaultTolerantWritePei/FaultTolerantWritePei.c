@@ -19,6 +19,10 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Library/SafeIntLib.h>
 #include <Library/VariableFlashInfoLib.h>
 
+#include <Guid/VariableFlashInfo.h>   // if not already pulled in via the library header
+
+extern EFI_GUID gVariableFlashInfoHobGuid;
+
 EFI_PEI_PPI_DESCRIPTOR  mPpiListVariable = {
   (EFI_PEI_PPI_DESCRIPTOR_PPI | EFI_PEI_PPI_DESCRIPTOR_TERMINATE_LIST),
   &gEdkiiFaultTolerantWriteGuid,
@@ -236,13 +240,13 @@ PeimFaultTolerantWriteInitialize (
   // bug is specifically inside VariableFlashInfoLib's consumption of it.
   //
   {
-    VARIABLE_FLASH_INFO  *DirectInfo;
-    extern EFI_GUID     gVariableFlashInfoHobGuid;
-
-    EFI_HOB_GUID_TYPE  *DirectHob = GetFirstGuidHob (&gVariableFlashInfoHobGuid);
+    EFI_HOB_GUID_TYPE *DirectHob = GetFirstGuidHob (&gVariableFlashInfoHobGuid);
     if (DirectHob == NULL) {
+      DEBUG ((DEBUG_ERROR, "FtwPei: gVariableFlashInfoHobGuid NOTFOUND\n"));
     } else {
-      DirectInfo = (VARIABLE_FLASH_INFO *)GET_GUID_HOB_DATA (DirectHob);
+      VARIABLE_FLASH_INFO *DirectInfo = (VARIABLE_FLASH_INFO *)GET_GUID_HOB_DATA (DirectHob);
+      DEBUG ((DEBUG_INFO, "FtwPei: gVariableFlashInfoHobGuid found @ %p, Version=%u\n",
+              (VOID *)DirectHob, DirectInfo->Version));
     }
   }
 

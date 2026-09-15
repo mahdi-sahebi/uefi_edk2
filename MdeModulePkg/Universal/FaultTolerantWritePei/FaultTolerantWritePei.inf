@@ -48,6 +48,7 @@
   gEdkiiFaultTolerantWriteGuid
   gEdkiiWorkingBlockSignatureGuid               ## SOMETIMES_CONSUMES   ## GUID
   gEfiSystemNvDataFvGuid                        ## SOMETIMES_CONSUMES   ## GUID
+  gVariableFlashInfoHobGuid                     ## SOMETIMES_CONSUMES   ## GUID
 
 [Depex]
   TRUE
