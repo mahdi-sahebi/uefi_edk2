@@ -953,6 +953,8 @@ PlatformBootManagerBeforeConsole (
   BOOLEAN                        BootMenuEnable;
   UINTN                          VarSize;
 
+  DEBUG ((DEBUG_INFO, "G4DELDBG: PlatformBootManagerBeforeConsole entry\n"));
+
   //
   // This variable communicates EDK's intent to coreboot and shouldn't exist
   // longer than a single boot.
@@ -2033,6 +2035,8 @@ PlatformBootManagerAfterConsole (
   UINTN                          VarSize;
   EFI_EVENT                      Event;
   EFI_INPUT_KEY                  Enter;
+
+  DEBUG ((DEBUG_INFO, "G4DELDBG: PlatformBootManagerAfterConsole entry\n"));
 
   Black.Blue = Black.Green = Black.Red = Black.Reserved = 0;
   White.Blue = White.Green = White.Red = White.Reserved = 0xFF;

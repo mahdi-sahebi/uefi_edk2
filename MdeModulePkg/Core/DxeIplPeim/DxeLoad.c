@@ -272,6 +272,7 @@ DxeLoadCore (
   // if in S3 Resume, restore configure
   //
   BootMode = GetBootModeHob ();
+  DEBUG ((DEBUG_INFO, "G4DELDBG: DXE IPL DxeLoadCore entry BootMode=0x%x HobList=0x%p\n", BootMode, HobList.Raw));
 
   if (BootMode == BOOT_ON_S3_RESUME) {
     Status = PeiServicesLocatePpi (
@@ -398,6 +399,7 @@ DxeLoadCore (
   // Look in all the FVs present in PEI and find the DXE Core FileHandle
   //
   FileHandle = DxeIplFindDxeCore ();
+  DEBUG ((DEBUG_INFO, "G4DELDBG: DXE IPL DxeCore FileHandle=0x%p\n", FileHandle));
 
   //
   // Load the DXE Core from a Firmware Volume.
@@ -405,6 +407,7 @@ DxeLoadCore (
   Instance = 0;
   do {
     Status = PeiServicesLocatePpi (&gEfiPeiLoadFilePpiGuid, Instance++, NULL, (VOID **)&LoadFile);
+    DEBUG ((DEBUG_INFO, "G4DELDBG: DXE IPL Locate LoadFilePpi Instance=%u Status=%r LoadFile=0x%p\n", (UINT32)(Instance - 1), Status, LoadFile));
     //
     // These must exist an instance of EFI_PEI_LOAD_FILE_PPI to support to load DxeCore file handle successfully.
     //
@@ -418,6 +421,7 @@ DxeLoadCore (
                          &DxeCoreEntryPoint,
                          &AuthenticationState
                          );
+    DEBUG ((DEBUG_INFO, "G4DELDBG: DXE IPL LoadFile Status=%r Address=0x%lx Size=0x%lx Entry=0x%lx Auth=0x%x\n", Status, DxeCoreAddress, DxeCoreSize, DxeCoreEntryPoint, AuthenticationState));
   } while (EFI_ERROR (Status));
 
   //
@@ -442,6 +446,7 @@ DxeLoadCore (
   REPORT_STATUS_CODE (EFI_PROGRESS_CODE, (EFI_SOFTWARE_PEI_CORE | EFI_SW_PEI_CORE_PC_HANDOFF_TO_NEXT));
 
   DEBUG ((DEBUG_INFO | DEBUG_LOAD, "Loading DXE CORE at 0x%11p EntryPoint=0x%11p\n", (VOID *)(UINTN)DxeCoreAddress, FUNCTION_ENTRY_POINT (DxeCoreEntryPoint)));
+  DEBUG ((DEBUG_INFO, "G4DELDBG: DXE IPL handoff to DXE Core Entry=0x%p HobList=0x%p\n", FUNCTION_ENTRY_POINT (DxeCoreEntryPoint), HobList.Raw));
 
   //
   // Transfer control to the DXE Core
