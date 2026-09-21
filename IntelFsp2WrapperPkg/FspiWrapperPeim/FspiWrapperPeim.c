@@ -49,13 +49,16 @@ FspiWrapperInitApiMode (
   UINTN              *SourceData;
 
   DEBUG ((DEBUG_INFO, "PeiFspSmmInit enter\n"));
+  DEBUG ((DEBUG_INFO, "G4DELDBG: FSP-I SMM init entry FspiBase=0x%x\n", PcdGet32 (PcdFspiBaseAddress)));
 
   FspHobListPtr  = NULL;
   FspiUpdDataPtr = NULL;
 
   FspiHeaderPtr = (FSP_INFO_HEADER *)FspFindFspHeader (PcdGet32 (PcdFspiBaseAddress));
   DEBUG ((DEBUG_INFO, "FspiHeaderPtr - 0x%x\n", FspiHeaderPtr));
+  DEBUG ((DEBUG_INFO, "G4DELDBG: FSP-I header=0x%p\n", FspiHeaderPtr));
   if (FspiHeaderPtr == NULL) {
+    DEBUG ((DEBUG_ERROR, "G4DELDBG: FSP-I header not found\n"));
     return EFI_DEVICE_ERROR;
   }
 
@@ -86,12 +89,15 @@ FspiWrapperInitApiMode (
   // Get FspHobList
   //
   GuidHob = GetFirstGuidHob (&gFspHobGuid);
+  DEBUG ((DEBUG_INFO, "G4DELDBG: FSP-I GetFirstGuidHob(gFspHobGuid)=0x%p\n", GuidHob));
   ASSERT (GuidHob != NULL);
   FspHobListPtr = *(VOID **)GET_GUID_HOB_DATA (GuidHob);
   DEBUG ((DEBUG_INFO, "  HobListPtr          - 0x%x\n", &FspHobListPtr));
 
   TimeStampCounterStart = AsmReadTsc ();
+  DEBUG ((DEBUG_INFO, "G4DELDBG: calling FspSmmInit Upd=0x%p FspHobList=0x%p\n", FspiUpdDataPtr, FspHobListPtr));
   Status                = CallFspSmmInit (FspiUpdDataPtr);
+  DEBUG ((DEBUG_INFO, "G4DELDBG: FspSmmInit returned Status=%r\n", Status));
 
   //
   // Reset the system if FSP API returned FSP_STATUS_RESET_REQUIRED status
@@ -122,7 +128,9 @@ FspiWrapperInitApiMode (
   DEBUG ((DEBUG_INFO, "  FspHobListPtr (returned) - 0x%x\n", FspHobListPtr));
   ASSERT (FspHobListPtr != NULL);
 
+  DEBUG ((DEBUG_INFO, "G4DELDBG: entering PostFspiHobProcess FspHobList=0x%p\n", FspHobListPtr));
   PostFspiHobProcess (FspHobListPtr);
+  DEBUG ((DEBUG_INFO, "G4DELDBG: leaving PostFspiHobProcess\n"));
 
   return Status;
 }
@@ -255,8 +263,10 @@ FspiWrapperPeimEntryPoint (
   EFI_STATUS  Status;
 
   DEBUG ((DEBUG_INFO, "FspiWrapperPeimEntryPoint\n"));
+  DEBUG ((DEBUG_INFO, "G4DELDBG: FspiWrapperPeimEntryPoint FileHandle=0x%p Mode=%u\n", FileHandle, PcdGet8 (PcdFspModeSelection)));
 
   Status = PeiServicesNotifyPpi (&mTcgPpiNotifyDesc);
+  DEBUG ((DEBUG_INFO, "G4DELDBG: FspiWrapperPeim Notify TCG PPI Status=%r\n", Status));
   ASSERT_EFI_ERROR (Status);
 
   if (PcdGet8 (PcdFspModeSelection) == 1) {
@@ -265,5 +275,6 @@ FspiWrapperPeimEntryPoint (
     Status = FspiWrapperInitDispatchMode ();
   }
 
+  DEBUG ((DEBUG_INFO, "G4DELDBG: FspiWrapperPeim exit Status=%r\n", Status));
   return Status;
 }
