@@ -78,13 +78,16 @@ PeiFspMemoryInit (
   UINTN            *SourceData;
 
   DEBUG ((DEBUG_INFO, "PeiFspMemoryInit enter\n"));
+  DEBUG ((DEBUG_INFO, "G4DELDBG: FSP-M memory init entry FspmBase=0x%x\n", PcdGet32 (PcdFspmBaseAddress)));
 
   FspHobListPtr  = NULL;
   FspmUpdDataPtr = NULL;
 
   FspmHeaderPtr = (FSP_INFO_HEADER *)FspFindFspHeader (PcdGet32 (PcdFspmBaseAddress));
   DEBUG ((DEBUG_INFO, "FspmHeaderPtr - 0x%x\n", FspmHeaderPtr));
+  DEBUG ((DEBUG_INFO, "G4DELDBG: FSP-M header=0x%p\n", FspmHeaderPtr));
   if (FspmHeaderPtr == NULL) {
+    DEBUG ((DEBUG_ERROR, "G4DELDBG: FSP-M header not found\n"));
     return EFI_DEVICE_ERROR;
   }
 
@@ -122,7 +125,9 @@ PeiFspMemoryInit (
   DEBUG ((DEBUG_INFO, "  HobListPtr          - 0x%x\n", &FspHobListPtr));
 
   TimeStampCounterStart = AsmReadTsc ();
+  DEBUG ((DEBUG_INFO, "G4DELDBG: calling FspMemoryInit Upd=0x%p HobListPtrAddr=0x%p\n", FspmUpdDataPtr, &FspHobListPtr));
   Status                = CallFspMemoryInit (FspmUpdDataPtr, &FspHobListPtr);
+  DEBUG ((DEBUG_INFO, "G4DELDBG: FspMemoryInit returned Status=%r FspHobList=0x%p\n", Status, FspHobListPtr));
 
   //
   // FspHobList is not complete at this moment.
@@ -160,6 +165,7 @@ PeiFspMemoryInit (
   // See if MultiPhase process is required or not
   //
   FspWrapperMultiPhaseHandler (&FspHobListPtr, FspMultiPhaseMemInitApiIndex);    // FspM MultiPhase
+  DEBUG ((DEBUG_INFO, "G4DELDBG: FSP-M multiphase complete FspHobList=0x%p\n", FspHobListPtr));
 
   //
   // Create hobs after memory initialization and not in temp RAM. Hence passing the recorded timestamp here
@@ -176,7 +182,9 @@ PeiFspMemoryInit (
   DEBUG ((DEBUG_INFO, "  FspHobListPtr (returned) - 0x%x\n", FspHobListPtr));
   ASSERT (FspHobListPtr != NULL);
 
+  DEBUG ((DEBUG_INFO, "G4DELDBG: entering PostFspmHobProcess FspHobList=0x%p\n", FspHobListPtr));
   PostFspmHobProcess (FspHobListPtr);
+  DEBUG ((DEBUG_INFO, "G4DELDBG: leaving PostFspmHobProcess\n"));
 
   return Status;
 }

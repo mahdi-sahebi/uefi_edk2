@@ -432,6 +432,7 @@ AcpiExitBootServicesEventNotify (
 
   cbRsdp = NULL;
   Rsdp = NULL;
+  DEBUG ((DEBUG_INFO, "G4DELDBG: ACPI ExitBootServices callback entry\n"));
 
   /* Find coreboot RSDP. */
   for (Ptr = 0xe0000; Ptr < 0xfffff; Ptr += 16) {

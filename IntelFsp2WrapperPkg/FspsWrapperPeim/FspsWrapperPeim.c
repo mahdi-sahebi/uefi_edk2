@@ -298,7 +298,9 @@ PeiMemoryDiscoveredNotify (
 
   FspsHeaderPtr = (FSP_INFO_HEADER *)FspFindFspHeader (PcdGet32 (PcdFspsBaseAddress));
   DEBUG ((DEBUG_INFO, "FspsHeaderPtr - 0x%x\n", FspsHeaderPtr));
+  DEBUG ((DEBUG_INFO, "G4DELDBG: FSP-S silicon init entry FspsBase=0x%x Header=0x%p\n", PcdGet32 (PcdFspsBaseAddress), FspsHeaderPtr));
   if (FspsHeaderPtr == NULL) {
+    DEBUG ((DEBUG_ERROR, "G4DELDBG: FSP-S header not found\n"));
     return EFI_DEVICE_ERROR;
   }
 
@@ -319,7 +321,9 @@ PeiMemoryDiscoveredNotify (
 
   TimeStampCounterStart = AsmReadTsc ();
   PERF_START_EX (&gFspApiPerformanceGuid, "EventRec", NULL, 0, FSP_STATUS_CODE_SILICON_INIT | FSP_STATUS_CODE_COMMON_CODE | FSP_STATUS_CODE_API_ENTRY);
+  DEBUG ((DEBUG_INFO, "G4DELDBG: calling FspSiliconInit Upd=0x%p\n", FspsUpdDataPtr));
   Status = CallFspSiliconInit ((VOID *)FspsUpdDataPtr);
+  DEBUG ((DEBUG_INFO, "G4DELDBG: FspSiliconInit returned Status=%r\n", Status));
 
   //
   // Reset the system if FSP API returned FSP_STATUS_RESET_REQUIRED status
@@ -340,9 +344,11 @@ PeiMemoryDiscoveredNotify (
   // Get FspHobList
   //
   GuidHob = GetFirstGuidHob (&gFspHobGuid);
+  DEBUG ((DEBUG_INFO, "G4DELDBG: FSP-S GetFirstGuidHob(gFspHobGuid)=0x%p\n", GuidHob));
   ASSERT (GuidHob != NULL);
   FspHobListPtr = *(VOID **)GET_GUID_HOB_DATA (GuidHob);
   DEBUG ((DEBUG_INFO, "FspHobListPtr - 0x%x\n", FspHobListPtr));
+  DEBUG ((DEBUG_INFO, "G4DELDBG: FSP-S recovered FspHobList=0x%p\n", FspHobListPtr));
 
   if (Status == FSP_STATUS_VARIABLE_REQUEST) {
     //
@@ -355,6 +361,7 @@ PeiMemoryDiscoveredNotify (
   // See if MultiPhase process is required or not
   //
   FspWrapperMultiPhaseHandler (&FspHobListPtr, FspMultiPhaseSiInitApiIndex);    // FspS MultiPhase
+  DEBUG ((DEBUG_INFO, "G4DELDBG: FSP-S multiphase complete FspHobList=0x%p\n", FspHobListPtr));
 
   PERF_END_EX (&gFspApiPerformanceGuid, "EventRec", NULL, 0, FSP_STATUS_CODE_SILICON_INIT | FSP_STATUS_CODE_COMMON_CODE | FSP_STATUS_CODE_API_EXIT);
   DEBUG ((DEBUG_INFO, "Total time spent executing FspSiliconInitApi: %d millisecond\n", DivU64x32 (GetTimeInNanoSecond (AsmReadTsc () - TimeStampCounterStart), 1000000)));
@@ -364,12 +371,15 @@ PeiMemoryDiscoveredNotify (
     DEBUG ((DEBUG_ERROR, "ERROR - TestFspSiliconInitApiOutput () fail, Status = %r\n", Status));
   }
 
+  DEBUG ((DEBUG_INFO, "G4DELDBG: entering PostFspsHobProcess FspHobList=0x%p\n", FspHobListPtr));
   PostFspsHobProcess (FspHobListPtr);
+  DEBUG ((DEBUG_INFO, "G4DELDBG: leaving PostFspsHobProcess\n"));
 
   //
   // Install FspSiliconInitDonePpi so that any other driver can consume this info.
   //
   Status = PeiServicesInstallPpi (&mPeiFspSiliconInitDonePpi);
+  DEBUG ((DEBUG_INFO, "G4DELDBG: Install FspSiliconInitDonePpi Status=%r\n", Status));
   ASSERT_EFI_ERROR (Status);
 
   return Status;

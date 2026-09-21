@@ -408,6 +408,7 @@ BootBootOptions (
   // Report Status Code to indicate BDS starts attempting booting from the UEFI BootOrder list.
   //
   REPORT_STATUS_CODE (EFI_PROGRESS_CODE, (EFI_SOFTWARE_DXE_BS_DRIVER | EFI_SW_DXE_BS_PC_ATTEMPT_BOOT_ORDER_EVENT));
+  DEBUG ((DEBUG_INFO, "G4DELDBG: BDS BootBootOptions count=%u BootManagerMenu=0x%p\n", (UINT32)BootOptionCount, BootManagerMenu));
 
   //
   // Attempt boot each boot option
@@ -435,7 +436,9 @@ BootBootOptions (
     // All the driver options should have been processed since
     // now boot will be performed.
     //
+    DEBUG ((DEBUG_INFO, "G4DELDBG: BDS boot option start Index=%u OptionNumber=%u Description=\"%s\"\n", (UINT32)Index, BootOptions[Index].OptionNumber, (BootOptions[Index].Description == NULL) ? L"<null>" : BootOptions[Index].Description));
     EfiBootManagerBoot (&BootOptions[Index]);
+    DEBUG ((DEBUG_INFO, "G4DELDBG: BDS boot option returned Index=%u OptionNumber=%u Status=%r\n", (UINT32)Index, BootOptions[Index].OptionNumber, BootOptions[Index].Status));
 
     //
     // If the boot via Boot#### returns with a status of EFI_SUCCESS, platform firmware

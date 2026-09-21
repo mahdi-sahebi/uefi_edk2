@@ -221,21 +221,27 @@ PciHostBridgeGetRootBridges (
   // Find Universal Payload PCI Root Bridge Info hob
   //
   GuidHob = GetFirstGuidHob (&gUniversalPayloadPciRootBridgeInfoGuid);
+  DEBUG ((DEBUG_INFO, "G4DELDBG: PciHostBridgeGetRootBridges GuidHob=0x%p\n", GuidHob));
   if (GuidHob != NULL) {
+    DEBUG ((DEBUG_INFO, "G4DELDBG: PCI root bridge HOB DataSize=0x%x\n", GET_GUID_HOB_DATA_SIZE (GuidHob)));
     GenericHeader = (UNIVERSAL_PAYLOAD_GENERIC_HEADER *)GET_GUID_HOB_DATA (GuidHob);
     if ((sizeof (UNIVERSAL_PAYLOAD_GENERIC_HEADER) <= GET_GUID_HOB_DATA_SIZE (GuidHob)) && (GenericHeader->Length <= GET_GUID_HOB_DATA_SIZE (GuidHob))) {
+      DEBUG ((DEBUG_INFO, "G4DELDBG: PCI root bridge HOB HeaderLength=0x%x Revision=0x%x\n", GenericHeader->Length, GenericHeader->Revision));
       if ((GenericHeader->Revision == UNIVERSAL_PAYLOAD_PCI_ROOT_BRIDGES_REVISION) && (GenericHeader->Length >= sizeof (UNIVERSAL_PAYLOAD_PCI_ROOT_BRIDGES))) {
         //
         // UNIVERSAL_PAYLOAD_PCI_ROOT_BRIDGES structure is used when Revision equals to UNIVERSAL_PAYLOAD_PCI_ROOT_BRIDGES_REVISION
         //
         PciRootBridgeInfo = (UNIVERSAL_PAYLOAD_PCI_ROOT_BRIDGES *)GET_GUID_HOB_DATA (GuidHob);
+        DEBUG ((DEBUG_INFO, "G4DELDBG: PCI root bridge HOB Count=%u MaxCountFromSize=%u\n", PciRootBridgeInfo->Count, (UINT32)((GET_GUID_HOB_DATA_SIZE (GuidHob) - sizeof (UNIVERSAL_PAYLOAD_PCI_ROOT_BRIDGES)) / sizeof (UNIVERSAL_PAYLOAD_PCI_ROOT_BRIDGE))));
         if (PciRootBridgeInfo->Count <= (GET_GUID_HOB_DATA_SIZE (GuidHob) - sizeof (UNIVERSAL_PAYLOAD_PCI_ROOT_BRIDGES)) / sizeof (UNIVERSAL_PAYLOAD_PCI_ROOT_BRIDGE)) {
           return RetrieveRootBridgeInfoFromHob (PciRootBridgeInfo, Count);
         }
+        DEBUG ((DEBUG_ERROR, "G4DELDBG: PCI root bridge HOB Count exceeds HOB payload capacity\n"));
       }
     }
   }
 
+  DEBUG ((DEBUG_INFO, "G4DELDBG: PCI root bridge HOB unavailable/invalid, scanning root bridges\n"));
   return ScanForRootBridges (Count);
 }
 

@@ -71,6 +71,7 @@ PciBusEntryPoint (
   //
   // Initializes PCI devices pool
   //
+  DEBUG ((DEBUG_INFO, "G4DELDBG: PciBusEntryPoint ImageHandle=0x%p\n", ImageHandle));
   InitializePciDevicePool ();
 
   //
@@ -85,6 +86,7 @@ PciBusEntryPoint (
              &gPciBusComponentName2
              );
   ASSERT_EFI_ERROR (Status);
+  DEBUG ((DEBUG_INFO, "G4DELDBG: PciBus driver binding install Status=%r\n", Status));
 
   if (FeaturePcdGet (PcdPciBusHotplugDeviceSupport)) {
     //
@@ -99,6 +101,7 @@ PciBusEntryPoint (
                     );
   }
 
+  DEBUG ((DEBUG_INFO, "G4DELDBG: PciBusEntryPoint exit Status=%r Hotplug=%u\n", Status, FeaturePcdGet (PcdPciBusHotplugDeviceSupport)));
   return Status;
 }
 
@@ -243,6 +246,7 @@ PciBusDriverBindingStart (
   // Initialize PciRootBridgeIo to suppress incorrect compiler warning.
   //
   PciRootBridgeIo = NULL;
+  DEBUG ((DEBUG_INFO, "G4DELDBG: PciBusStart Controller=0x%p RemainingDevicePath=0x%p\n", Controller, RemainingDevicePath));
 
   //
   // Check RemainingDevicePath validation
@@ -273,6 +277,7 @@ PciBusDriverBindingStart (
          NULL,
          (VOID **)&gPciPlatformProtocol
          );
+  DEBUG ((DEBUG_INFO, "G4DELDBG: PciPlatformProtocol=0x%p\n", gPciPlatformProtocol));
 
   //
   // If PCI Platform protocol doesn't exist, try to Pci Override Protocol.
@@ -301,12 +306,14 @@ PciBusDriverBindingStart (
            (VOID **)&mDeviceSecurityProtocol
            );
   }
+  DEBUG ((DEBUG_INFO, "G4DELDBG: IoMmuProtocol=0x%p DeviceSecurityProtocol=0x%p\n", mIoMmuProtocol, mDeviceSecurityProtocol));
 
   if (PcdGetBool (PcdPciDisableBusEnumeration)) {
     gFullEnumeration = FALSE;
   } else {
     gFullEnumeration = (BOOLEAN)((SearchHostBridgeHandle (Controller) ? FALSE : TRUE));
   }
+  DEBUG ((DEBUG_INFO, "G4DELDBG: PciBus enumeration mode Full=%u DisablePcd=%u\n", gFullEnumeration, PcdGetBool (PcdPciDisableBusEnumeration)));
 
   //
   // Open Device Path Protocol for PCI root bridge
@@ -348,25 +355,33 @@ PciBusDriverBindingStart (
                     Controller,
                     EFI_OPEN_PROTOCOL_GET_PROTOCOL
                     );
+    DEBUG ((DEBUG_INFO, "G4DELDBG: Open PciRootBridgeIo Status=%r PciRootBridgeIo=0x%p Parent=0x%p\n", Status, PciRootBridgeIo, (PciRootBridgeIo == NULL) ? NULL : PciRootBridgeIo->ParentHandle));
 
     if (!EFI_ERROR (Status)) {
+      DEBUG ((DEBUG_INFO, "G4DELDBG: PciEnumerator begin Controller=0x%p HostBridge=0x%p\n", Controller, PciRootBridgeIo->ParentHandle));
       Status = PciEnumerator (Controller, PciRootBridgeIo->ParentHandle);
+      DEBUG ((DEBUG_INFO, "G4DELDBG: PciEnumerator end Status=%r\n", Status));
     }
   } else {
     //
     // If PCI bus has already done the full enumeration, never do it again
     //
+    DEBUG ((DEBUG_INFO, "G4DELDBG: PciEnumeratorLight begin Controller=0x%p\n", Controller));
     Status = PciEnumeratorLight (Controller);
+    DEBUG ((DEBUG_INFO, "G4DELDBG: PciEnumeratorLight end Status=%r\n", Status));
   }
 
   if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "G4DELDBG: PCI enumeration failed Status=%r\n", Status));
     return Status;
   }
 
   //
   // Start all the devices under the entire host bridge.
   //
+  DEBUG ((DEBUG_INFO, "G4DELDBG: StartPciDevices begin Controller=0x%p\n", Controller));
   StartPciDevices (Controller);
+  DEBUG ((DEBUG_INFO, "G4DELDBG: StartPciDevices end Controller=0x%p\n", Controller));
 
   if (gFullEnumeration) {
     gFullEnumeration = FALSE;
@@ -378,6 +393,7 @@ PciBusDriverBindingStart (
                     NULL
                     );
     ASSERT_EFI_ERROR (Status);
+    DEBUG ((DEBUG_INFO, "G4DELDBG: Install PciEnumerationComplete Status=%r HostBridge=0x%p\n", Status, PciRootBridgeIo->ParentHandle));
   }
 
   return Status;

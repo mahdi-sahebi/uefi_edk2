@@ -152,13 +152,22 @@ SecStartupPhase2(
   EFI_PEI_CORE_ENTRY_POINT    PeiCoreEntryPoint;
 
   SecCoreData = (EFI_SEC_PEI_HAND_OFF *) Context;
+  DEBUG ((DEBUG_INFO, "G4DELDBG: SEC phase2 entry SecCoreData=0x%p BFV=0x%p Size=0x%x TempRam=0x%p Stack=0x%p\n",
+    SecCoreData,
+    (VOID *)(UINTN)SecCoreData->BootFirmwareVolumeBase,
+    SecCoreData->BootFirmwareVolumeSize,
+    (VOID *)(UINTN)SecCoreData->TemporaryRamBase,
+    (VOID *)(UINTN)SecCoreData->StackBase
+    ));
   //
   // Find Pei Core entry point. It will report SEC and Pei Core debug information if remote debug
   // is enabled.
   //
   FindAndReportEntryPoints ((EFI_FIRMWARE_VOLUME_HEADER *) SecCoreData->BootFirmwareVolumeBase, &PeiCoreEntryPoint);
+  DEBUG ((DEBUG_INFO, "G4DELDBG: SEC located PeiCoreEntryPoint=0x%p\n", (VOID *)(UINTN)PeiCoreEntryPoint));
   if (PeiCoreEntryPoint == NULL)
   {
+    DEBUG ((DEBUG_ERROR, "G4DELDBG: SEC failed to locate PEI core, entering CpuDeadLoop\n"));
     CpuDeadLoop ();
   }
 
@@ -166,6 +175,7 @@ SecStartupPhase2(
   // Transfer the control to the PEI core
   //
   ASSERT (PeiCoreEntryPoint != NULL);
+  DEBUG ((DEBUG_INFO, "G4DELDBG: SEC handoff to PEI core\n"));
   (*PeiCoreEntryPoint) (SecCoreData, (EFI_PEI_PPI_DESCRIPTOR *)&mPeiSecPlatformInformationPpi);
 
   //
