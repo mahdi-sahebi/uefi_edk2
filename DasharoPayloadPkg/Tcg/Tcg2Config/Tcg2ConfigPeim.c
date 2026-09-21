@@ -189,11 +189,15 @@ Tcg2ConfigPeimEntryPoint (
   UINTN                           Size;
   EFI_STATUS                      Status;
 
+  DEBUG ((DEBUG_INFO, "G4DELDBG: Tcg2ConfigPei entry FileHandle=0x%p\n", FileHandle));
+
   if (CheckAmdFTpmPresence()) {
+    DEBUG ((DEBUG_INFO, "G4DELDBG: Tcg2ConfigPei AMD fTPM presence path\n"));
     PcdSet8S(PcdActiveTpmInterfaceType, Tpm2PtpInterfaceAmdCrb);
     PcdSet8S(PcdCRBIdleByPass, 1);
 
     Status = Tpm2RequestUseTpm ();
+    DEBUG ((DEBUG_INFO, "G4DELDBG: Tcg2ConfigPei Tpm2RequestUseTpm(AMD) Status=%r\n", Status));
     if (!EFI_ERROR (Status)) {
       DEBUG ((DEBUG_INFO, "%a: AMD fTPM 2.0 detected\n", __FUNCTION__));
       Size = sizeof (gEfiTpmDeviceInstanceTpm20DtpmGuid);
@@ -213,10 +217,12 @@ Tcg2ConfigPeimEntryPoint (
       // PEIMs.
       //
       Status = PeiServicesInstallPpi (&mTpmInitializationDonePpiList);
+      DEBUG ((DEBUG_INFO, "G4DELDBG: Tcg2ConfigPei Install TpmInitializationDonePpi Status=%r\n", Status));
       ASSERT_EFI_ERROR (Status);
     }
   } else {
     Status = Tpm12RequestUseTpm ();
+    DEBUG ((DEBUG_INFO, "G4DELDBG: Tcg2ConfigPei Tpm12RequestUseTpm Status=%r\n", Status));
     if (!EFI_ERROR (Status) && !EFI_ERROR (TestTpm12 ())) {
       DEBUG ((DEBUG_INFO, "%a: TPM1.2 detected\n", __FUNCTION__));
       Size = sizeof (gEfiTpmDeviceInstanceTpm12Guid);
@@ -228,6 +234,7 @@ Tcg2ConfigPeimEntryPoint (
       ASSERT_EFI_ERROR (Status);
     } else {
       Status = Tpm2RequestUseTpm ();
+      DEBUG ((DEBUG_INFO, "G4DELDBG: Tcg2ConfigPei Tpm2RequestUseTpm Status=%r\n", Status));
       if (!EFI_ERROR (Status)) {
         DEBUG ((DEBUG_INFO, "%a: TPM2 detected\n", __FUNCTION__));
         Size = sizeof (gEfiTpmDeviceInstanceTpm20DtpmGuid);
@@ -247,6 +254,7 @@ Tcg2ConfigPeimEntryPoint (
         // PEIMs.
         //
         Status = PeiServicesInstallPpi (&mTpmInitializationDonePpiList);
+        DEBUG ((DEBUG_INFO, "G4DELDBG: Tcg2ConfigPei Install TpmInitializationDonePpi Status=%r\n", Status));
         ASSERT_EFI_ERROR (Status);
       }
     }
@@ -256,7 +264,9 @@ Tcg2ConfigPeimEntryPoint (
   // Selection done
   //
   Status = PeiServicesInstallPpi (&mTpmSelectedPpi);
+  DEBUG ((DEBUG_INFO, "G4DELDBG: Tcg2ConfigPei Install TpmSelectedPpi Status=%r\n", Status));
   ASSERT_EFI_ERROR (Status);
 
+  DEBUG ((DEBUG_INFO, "G4DELDBG: Tcg2ConfigPei exit Status=%r\n", Status));
   return Status;
 }

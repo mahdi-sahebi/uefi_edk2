@@ -14,6 +14,9 @@ The suspicious part is that `PcieInfo` entries after port 20 contain garbage-lik
   - Intel FSP-S silicon init, FSP HOB lookup, and post-FSP-S HOB processing.
   - DXE IPL load and handoff to DXE Core.
   - Dasharo PCI host bridge root bridge discovery.
+  - SMM Store PEI, SMM Store runtime library, SMM Store FVB runtime setup, and FTW recovery handoff.
+  - Fault Tolerant Write PEI working/spare region lookup, workspace validation, last-write HOB creation, and completion PPI install.
+  - DXE IPL PEIM entry/shadow/PPI install and TCG2 config PEIM TPM-selection status.
   - PCI bus entry, full/light enumeration, device start, and enumeration-complete protocol install.
   - Dasharo ACPI ExitBootServices callback.
   - Dasharo and generic BDS boot manager phases and boot option attempts.

@@ -355,11 +355,14 @@ FspmWrapperPeimEntryPoint (
   EFI_STATUS  Status;
 
   DEBUG ((DEBUG_INFO, "FspmWrapperPeimEntryPoint\n"));
+  DEBUG ((DEBUG_INFO, "G4DELDBG: FspmWrapperPeimEntryPoint FileHandle=0x%p\n", FileHandle));
 
   Status = PeiServicesNotifyPpi (&mTcgPpiNotifyDesc);
+  DEBUG ((DEBUG_INFO, "G4DELDBG: FspmWrapperPeim Notify TCG PPI Status=%r\n", Status));
   ASSERT_EFI_ERROR (Status);
 
   FspmWrapperInit ();
+  DEBUG ((DEBUG_INFO, "G4DELDBG: FspmWrapperPeim exit\n"));
 
   return EFI_SUCCESS;
 }

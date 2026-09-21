@@ -49,7 +49,10 @@ SmmStorePeiInitialize (
   UINT32               FtwWorkingSize;
   UINT32               FtwSpareSize;
 
+  DEBUG ((DEBUG_INFO, "G4DELDBG: SmmStorePei entry FileHandle=0x%p\n", FileHandle));
+
   Status = ParseSMMSTOREInfo (&SmmStoreInfo);
+  DEBUG ((DEBUG_INFO, "G4DELDBG: SmmStorePei ParseSMMSTOREInfo Status=%r\n", Status));
   if (EFI_ERROR (Status)) {
     DEBUG ((
       DEBUG_ERROR,
@@ -61,6 +64,13 @@ SmmStorePeiInitialize (
 
   NvStorageSize = SmmStoreInfo.NumBlocks * SmmStoreInfo.BlockSize;
   NvStorageBase = SmmStoreInfo.MmioAddress;
+  DEBUG ((DEBUG_INFO, "G4DELDBG: SmmStorePei Info Mmio=0x%x Blocks=0x%x BlockSize=0x%x ComBuffer=0x%lx ComBufferSize=0x%x\n",
+    SmmStoreInfo.MmioAddress,
+    SmmStoreInfo.NumBlocks,
+    SmmStoreInfo.BlockSize,
+    SmmStoreInfo.ComBuffer,
+    SmmStoreInfo.ComBufferSize
+    ));
   DEBUG ((
     DEBUG_INFO,
     "SmmStorePei: NvStorageBase: 0x%x, NvStorageSize: 0x%x\n",
@@ -71,6 +81,14 @@ SmmStorePeiInitialize (
   FtwSpareSize   = (SmmStoreInfo.NumBlocks / 2) * SmmStoreInfo.BlockSize;
   FtwWorkingSize = SmmStoreInfo.BlockSize;
   NvVariableSize = NvStorageSize - FtwSpareSize - FtwWorkingSize;
+  DEBUG ((DEBUG_INFO, "G4DELDBG: SmmStorePei geometry VarBase=0x%x VarSize=0x%x FtwWorkBase=0x%x FtwWorkSize=0x%x FtwSpareBase=0x%x FtwSpareSize=0x%x\n",
+    NvStorageBase,
+    NvVariableSize,
+    NvStorageBase + NvVariableSize,
+    FtwWorkingSize,
+    NvStorageBase + NvVariableSize + FtwWorkingSize,
+    FtwSpareSize
+    ));
   if (NvVariableSize >= 0x80000000) {
     DEBUG ((
       DEBUG_ERROR,
@@ -91,5 +109,7 @@ SmmStorePeiInitialize (
   VariableFlashInfo.FtwWorkingLength      = FtwWorkingSize;
 
   BuildGuidDataHob (&gVariableFlashInfoHobGuid, &VariableFlashInfo, sizeof (VariableFlashInfo));
-  return PeiServicesInstallPpi (&mPpiListVariable);
+  Status = PeiServicesInstallPpi (&mPpiListVariable);
+  DEBUG ((DEBUG_INFO, "G4DELDBG: SmmStorePei Install VariableFlashInfo PPI Status=%r\n", Status));
+  return Status;
 }

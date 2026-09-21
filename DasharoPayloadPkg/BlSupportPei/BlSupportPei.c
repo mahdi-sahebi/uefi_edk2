@@ -666,6 +666,8 @@ BlPeiEntryPoint (
   EFI_PEI_GRAPHICS_DEVICE_INFO_HOB *NewGfxDeviceInfo;
   FIRMWARE_SEC_PERFORMANCE         Performance;
 
+  DEBUG ((DEBUG_INFO, "G4DELDBG: BlSupportPei entry FileHandle=0x%p\n", FileHandle));
+
   // Report lower 640KB of RAM.
   // Mark memory as reserved to keep coreboot header in place.
   //
@@ -720,6 +722,7 @@ BlPeiEntryPoint (
   // to root bridge scanning if the HOB is not found.
   //
   Status = ParseRootBridgeInfo ();
+  DEBUG ((DEBUG_INFO, "G4DELDBG: BlSupportPei ParseRootBridgeInfo Status=%r\n", Status));
   if (EFI_ERROR(Status)) {
     DEBUG ((DEBUG_INFO, "Payload Root Bridge HOB not created: %r\n", Status));
   }
@@ -728,6 +731,7 @@ BlPeiEntryPoint (
   // Parse memory info
   //
   Status = ParseMemoryInfo (MemInfoCallback, &UsableLowMemTop);
+  DEBUG ((DEBUG_INFO, "G4DELDBG: BlSupportPei ParseMemoryInfo Status=%r UsableLowMemTop=0x%lx\n", Status, UsableLowMemTop));
   if (EFI_ERROR(Status)) {
     return Status;
   }
@@ -741,6 +745,7 @@ BlPeiEntryPoint (
   DEBUG ((DEBUG_INFO, "PeiMemBase: 0x%lx.\n", PeiMemBase));
   DEBUG ((DEBUG_INFO, "PeiMemSize: 0x%lx.\n", PEI_MEM_SIZE));
   Status = PeiServicesInstallPeiMemory (PeiMemBase, PEI_MEM_SIZE);
+  DEBUG ((DEBUG_INFO, "G4DELDBG: BlSupportPei InstallPeiMemory Base=0x%lx Size=0x%lx Status=%r\n", PeiMemBase, (UINT64)PEI_MEM_SIZE, Status));
   ASSERT_EFI_ERROR (Status);
 
   //
@@ -788,9 +793,11 @@ BlPeiEntryPoint (
   // Boot mode
   //
   Status = PeiServicesSetBootMode (BOOT_WITH_FULL_CONFIGURATION);
+  DEBUG ((DEBUG_INFO, "G4DELDBG: BlSupportPei SetBootMode FULL Status=%r\n", Status));
   ASSERT_EFI_ERROR (Status);
 
   Status = PeiServicesInstallPpi (mPpiBootMode);
+  DEBUG ((DEBUG_INFO, "G4DELDBG: BlSupportPei Install BootMode PPI Status=%r\n", Status));
   ASSERT_EFI_ERROR (Status);
 
   //
@@ -817,13 +824,22 @@ BlPeiEntryPoint (
   // Create guid hob for SMMSTORE
   //
   Status = ParseSMMSTOREInfo (&SMMSTOREInfo);
+  DEBUG ((DEBUG_INFO, "G4DELDBG: BlSupportPei ParseSMMSTOREInfo Status=%r\n", Status));
   if (!EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_INFO, "G4DELDBG: BlSupportPei SMMSTORE Mmio=0x%x Blocks=0x%x BlockSize=0x%x ComBuffer=0x%lx Size=0x%x\n",
+      SMMSTOREInfo.MmioAddress,
+      SMMSTOREInfo.NumBlocks,
+      SMMSTOREInfo.BlockSize,
+      SMMSTOREInfo.ComBuffer,
+      SMMSTOREInfo.ComBufferSize
+      ));
     NewSMMSTOREInfo = BuildGuidHob (&gEfiSmmStoreInfoHobGuid, sizeof (SMMSTOREInfo));
     ASSERT (NewSMMSTOREInfo != NULL);
     CopyMem (NewSMMSTOREInfo, &SMMSTOREInfo, sizeof (SMMSTOREInfo));
     DEBUG ((DEBUG_INFO, "Created SMMSTORE info hob\n"));
 
     Status = ValidateFvHeader (&SMMSTOREInfo);
+    DEBUG ((DEBUG_INFO, "G4DELDBG: BlSupportPei ValidateFvHeader Status=%r FtwHob=0x%p\n", Status, GetFirstGuidHob (&gEdkiiFaultTolerantWriteGuid)));
     //
     // gEdkiiFaultTolerantWriteGuid HOB doesn't exist if both working and spare
     // parts of the variable store are invalid, this is when we need to
@@ -831,10 +847,12 @@ BlPeiEntryPoint (
     //
     if (EFI_ERROR (Status) && GetFirstGuidHob (&gEdkiiFaultTolerantWriteGuid) == NULL) {
       Status = PeiServicesSetBootMode (BOOT_WITH_DEFAULT_SETTINGS);
+      DEBUG ((DEBUG_INFO, "G4DELDBG: BlSupportPei SetBootMode DEFAULT Status=%r\n", Status));
       DEBUG ((DEBUG_INFO, "BootMode: Boot with default settings\n"));
       ASSERT_EFI_ERROR (Status);
     } else {
       Status = PeiServicesSetBootMode (BOOT_ASSUMING_NO_CONFIGURATION_CHANGES);
+      DEBUG ((DEBUG_INFO, "G4DELDBG: BlSupportPei SetBootMode NO_CONFIG_CHANGES Status=%r\n", Status));
       DEBUG ((DEBUG_INFO, "BootMode: Boot boot assuming no configuration changes\n"));
       ASSERT_EFI_ERROR (Status);
     }

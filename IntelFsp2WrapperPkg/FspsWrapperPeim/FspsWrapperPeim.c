@@ -550,8 +550,10 @@ FspsWrapperPeimEntryPoint (
   EFI_STATUS  Status;
 
   DEBUG ((DEBUG_INFO, "FspsWrapperPeimEntryPoint\n"));
+  DEBUG ((DEBUG_INFO, "G4DELDBG: FspsWrapperPeimEntryPoint FileHandle=0x%p Mode=%u\n", FileHandle, PcdGet8 (PcdFspModeSelection)));
 
   Status = PeiServicesNotifyPpi (&mTcgPpiNotifyDesc);
+  DEBUG ((DEBUG_INFO, "G4DELDBG: FspsWrapperPeim Notify TCG PPI Status=%r\n", Status));
   ASSERT_EFI_ERROR (Status);
 
   if (PcdGet8 (PcdFspModeSelection) == 1) {
@@ -560,5 +562,6 @@ FspsWrapperPeimEntryPoint (
     FspsWrapperInitDispatchMode ();
   }
 
+  DEBUG ((DEBUG_INFO, "G4DELDBG: FspsWrapperPeim exit\n"));
   return EFI_SUCCESS;
 }

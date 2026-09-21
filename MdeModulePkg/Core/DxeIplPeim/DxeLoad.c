@@ -75,9 +75,11 @@ PeimInitializeDxeIpl (
   VOID           *Dummy;
 
   BootMode = GetBootModeHob ();
+  DEBUG ((DEBUG_INFO, "G4DELDBG: DxeIplPeim entry FileHandle=0x%p BootMode=0x%x\n", FileHandle, BootMode));
 
   if (BootMode != BOOT_ON_S3_RESUME) {
     Status = PeiServicesRegisterForShadow (FileHandle);
+    DEBUG ((DEBUG_INFO, "G4DELDBG: DxeIplPeim RegisterForShadow Status=%r\n", Status));
     if (Status == EFI_SUCCESS) {
       //
       // EFI_SUCESS means it is the first time to call register for shadow.
@@ -99,6 +101,7 @@ PeimInitializeDxeIpl (
                NULL,
                (VOID **)&Dummy
                );
+    DEBUG ((DEBUG_INFO, "G4DELDBG: DxeIplPeim Locate MemoryDiscoveredPpi Status=%r Ppi=0x%p\n", Status, Dummy));
     ASSERT_EFI_ERROR (Status);
     if (EFI_ERROR (Status)) {
       return Status;
@@ -109,6 +112,7 @@ PeimInitializeDxeIpl (
     // and section extraction.
     //
     Status = InstallIplPermanentMemoryPpis (NULL, NULL, NULL);
+    DEBUG ((DEBUG_INFO, "G4DELDBG: DxeIplPeim InstallIplPermanentMemoryPpis Status=%r\n", Status));
     ASSERT_EFI_ERROR (Status);
   } else {
     //
@@ -116,6 +120,7 @@ PeimInitializeDxeIpl (
     // decompression and section extraction.
     //
     Status = PeiServicesNotifyPpi (&mMemoryDiscoveredNotifyList);
+    DEBUG ((DEBUG_INFO, "G4DELDBG: DxeIplPeim Notify MemoryDiscovered Status=%r\n", Status));
     ASSERT_EFI_ERROR (Status);
   }
 
@@ -123,8 +128,10 @@ PeimInitializeDxeIpl (
   // Install DxeIpl PPI.
   //
   Status = PeiServicesInstallPpi (&mDxeIplPpiList);
+  DEBUG ((DEBUG_INFO, "G4DELDBG: DxeIplPeim Install DxeIplPpi Status=%r\n", Status));
   ASSERT_EFI_ERROR (Status);
 
+  DEBUG ((DEBUG_INFO, "G4DELDBG: DxeIplPeim exit Status=%r\n", Status));
   return Status;
 }
 

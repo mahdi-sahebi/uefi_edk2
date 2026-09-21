@@ -428,10 +428,13 @@ SmmStoreLibInitialize (
   VOID                             *GuidHob;
   EFI_GCD_MEMORY_SPACE_DESCRIPTOR  GcdDescriptor;
 
+  DEBUG ((DEBUG_INFO, "G4DELDBG: SmmStoreLibInitialize entry\n"));
+
   //
   // Find the SmmStore information guid hob
   //
   GuidHob = GetFirstGuidHob (&gEfiSmmStoreInfoHobGuid);
+  DEBUG ((DEBUG_INFO, "G4DELDBG: SmmStoreLib SmmStoreInfoHob=0x%p\n", GuidHob));
   if (GuidHob == NULL) {
     DEBUG ((DEBUG_WARN, "SmmStore not supported! Skipping driver init.\n"));
     return EFI_UNSUPPORTED;
@@ -441,11 +444,20 @@ SmmStoreLibInitialize (
   // Place SmmStore information hob in a runtime buffer
   //
   mSmmStoreInfo = AllocateRuntimePool (GET_GUID_HOB_DATA_SIZE (GuidHob));
+  DEBUG ((DEBUG_INFO, "G4DELDBG: SmmStoreLib AllocateRuntimePool Size=0x%x Ptr=0x%p\n", GET_GUID_HOB_DATA_SIZE (GuidHob), mSmmStoreInfo));
   if (mSmmStoreInfo == NULL) {
     return EFI_OUT_OF_RESOURCES;
   }
 
   CopyMem (mSmmStoreInfo, GET_GUID_HOB_DATA (GuidHob), GET_GUID_HOB_DATA_SIZE (GuidHob));
+  DEBUG ((DEBUG_INFO, "G4DELDBG: SmmStoreLib Info Mmio=0x%x Blocks=0x%x BlockSize=0x%x ComBuffer=0x%lx ComBufferSize=0x%x ApmCmd=0x%x\n",
+    mSmmStoreInfo->MmioAddress,
+    mSmmStoreInfo->NumBlocks,
+    mSmmStoreInfo->BlockSize,
+    mSmmStoreInfo->ComBuffer,
+    mSmmStoreInfo->ComBufferSize,
+    mSmmStoreInfo->ApmCmd
+    ));
 
   //
   // Validate input
@@ -483,6 +495,7 @@ SmmStoreLibInitialize (
                   EFI_SIZE_TO_PAGES (sizeof (SMM_STORE_COM_BUF)),
                   &mArgComBufPhys
                   );
+  DEBUG ((DEBUG_INFO, "G4DELDBG: SmmStoreLib AllocatePages ArgComBufPhys=0x%lx Status=%r\n", mArgComBufPhys, Status));
 
   if (EFI_ERROR (Status)) {
     FreePool (mSmmStoreInfo);
@@ -496,6 +509,7 @@ SmmStoreLibInitialize (
   // Finally mark the SMM communication buffer provided by CB or SBL as runtime memory
   //
   Status = gDS->GetMemorySpaceDescriptor (mSmmStoreInfo->ComBuffer, &GcdDescriptor);
+  DEBUG ((DEBUG_INFO, "G4DELDBG: SmmStoreLib GetMemorySpaceDescriptor ComBuffer=0x%lx Status=%r Type=0x%x\n", mSmmStoreInfo->ComBuffer, Status, EFI_ERROR (Status) ? MAX_UINT32 : (UINT32)GcdDescriptor.GcdMemoryType));
   if (EFI_ERROR (Status) || (GcdDescriptor.GcdMemoryType != EfiGcdMemoryTypeReserved)) {
     DEBUG (
       (
@@ -514,6 +528,7 @@ SmmStoreLibInitialize (
                     mSmmStoreInfo->ComBufferSize,
                     EFI_MEMORY_WB | EFI_MEMORY_RUNTIME
                     );
+    DEBUG ((DEBUG_INFO, "G4DELDBG: SmmStoreLib AddMemorySpace ComBuffer Status=%r\n", Status));
     ASSERT_EFI_ERROR (Status);
   }
 
@@ -525,12 +540,14 @@ SmmStoreLibInitialize (
                   mSmmStoreInfo->ComBufferSize,
                   EFI_MEMORY_RUNTIME
                   );
+  DEBUG ((DEBUG_INFO, "G4DELDBG: SmmStoreLib SetMemorySpaceAttributes ComBuffer Status=%r\n", Status));
   ASSERT_EFI_ERROR (Status);
 
   //
   // Mark the memory mapped store as MMIO memory
   //
   Status = gDS->GetMemorySpaceDescriptor (mSmmStoreInfo->MmioAddress, &GcdDescriptor);
+  DEBUG ((DEBUG_INFO, "G4DELDBG: SmmStoreLib GetMemorySpaceDescriptor Mmio=0x%x Status=%r Type=0x%x\n", mSmmStoreInfo->MmioAddress, Status, EFI_ERROR (Status) ? MAX_UINT32 : (UINT32)GcdDescriptor.GcdMemoryType));
   if (EFI_ERROR (Status) || (GcdDescriptor.GcdMemoryType != EfiGcdMemoryTypeMemoryMappedIo)) {
     DEBUG (
       (
@@ -549,6 +566,7 @@ SmmStoreLibInitialize (
                     mSmmStoreInfo->NumBlocks * mSmmStoreInfo->BlockSize,
                     EFI_MEMORY_UC | EFI_MEMORY_RUNTIME
                     );
+    DEBUG ((DEBUG_INFO, "G4DELDBG: SmmStoreLib AddMemorySpace Mmio Status=%r\n", Status));
     ASSERT_EFI_ERROR (Status);
   }
 
@@ -560,8 +578,10 @@ SmmStoreLibInitialize (
                   mSmmStoreInfo->NumBlocks * mSmmStoreInfo->BlockSize,
                   EFI_MEMORY_RUNTIME
                   );
+  DEBUG ((DEBUG_INFO, "G4DELDBG: SmmStoreLib SetMemorySpaceAttributes Mmio Status=%r\n", Status));
   ASSERT_EFI_ERROR (Status);
 
+  DEBUG ((DEBUG_INFO, "G4DELDBG: SmmStoreLibInitialize exit EFI_SUCCESS\n"));
   return EFI_SUCCESS;
 }
 
