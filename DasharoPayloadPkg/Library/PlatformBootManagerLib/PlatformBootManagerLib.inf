@@ -57,6 +57,7 @@
   LaptopBatteryLib
   BlParseLib
   CapsuleLib
+  DebugLib
   HobLib
 
 [Guids]

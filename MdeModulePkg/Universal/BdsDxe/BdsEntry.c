@@ -13,6 +13,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 **/
 
 #include "Bds.h"
+#include <Library/DebugLib.h>
 #include "Language.h"
 #include "HwErrRecSupport.h"
 #include <Library/VariablePolicyHelperLib.h>

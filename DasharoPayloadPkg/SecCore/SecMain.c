@@ -8,6 +8,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 
 #include "SecMain.h"
+#include <Library/DebugLib.h>
 
 EFI_PEI_TEMPORARY_RAM_SUPPORT_PPI gSecTemporaryRamSupportPpi = {
   SecTemporaryRamSupport

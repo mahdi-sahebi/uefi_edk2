@@ -9,6 +9,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include "BlSupportPei.h"
 #include <Coreboot.h>
 #include <IndustryStandard/UefiTcgPlatform.h>
+#include <Library/DebugLib.h>
 
 #define PEI_MEM_SIZE                      SIZE_64MB
 

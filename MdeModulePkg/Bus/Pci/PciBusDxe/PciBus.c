@@ -14,6 +14,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 **/
 
 #include "PciBus.h"
+#include <Library/DebugLib.h>
 
 //
 // PCI Bus Driver Global Variables
