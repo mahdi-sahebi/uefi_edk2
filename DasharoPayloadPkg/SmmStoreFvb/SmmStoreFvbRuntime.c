@@ -9,6 +9,7 @@
 #include <Guid/FaultTolerantWrite.h>
 #include <Library/UefiLib.h>
 #include <Library/BaseMemoryLib.h>
+#include <Library/DebugLib.h>
 #include <Library/MemoryAllocationLib.h>
 #include <Library/DxeServicesTableLib.h>
 #include <Library/DevicePathLib.h>

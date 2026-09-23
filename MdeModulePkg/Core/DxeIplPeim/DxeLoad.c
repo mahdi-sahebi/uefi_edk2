@@ -9,6 +9,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 **/
 
 #include "DxeIpl.h"
+#include <Library/DebugLib.h>
 
 //
 // Module Globals used in the DXE to PEI hand off
