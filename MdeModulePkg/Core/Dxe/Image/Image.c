@@ -1551,6 +1551,7 @@ CoreLoadImage (
   EFI_HANDLE  Handle;
 
   PERF_LOAD_IMAGE_BEGIN (NULL);
+  DEBUG ((DEBUG_INFO, "G4DELDBG: CoreLoadImage entry BootPolicy=%u Parent=0x%p FilePath=0x%p SourceBuffer=0x%p SourceSize=0x%lx\n", BootPolicy, ParentImageHandle, FilePath, SourceBuffer, (UINT64)SourceSize));
 
   Status = CoreLoadImageCommon (
              BootPolicy,
@@ -1572,6 +1573,8 @@ CoreLoadImage (
     //
     Handle = *ImageHandle;
   }
+
+  DEBUG ((DEBUG_INFO, "G4DELDBG: CoreLoadImage exit Status=%r ImageHandle=0x%p\n", Status, Handle));
 
   PERF_LOAD_IMAGE_END (Handle);
 
@@ -1613,13 +1616,16 @@ CoreStartImage (
   EFI_HANDLE                 Handle;
 
   Handle = ImageHandle;
+  DEBUG ((DEBUG_INFO, "G4DELDBG: CoreStartImage entry ImageHandle=0x%p\n", ImageHandle));
 
   Image = CoreLoadedImageInfo (ImageHandle);
   if ((Image == NULL) ||  Image->Started) {
+    DEBUG ((DEBUG_ERROR, "G4DELDBG: CoreStartImage invalid parameter Image=0x%p Started=%u\n", Image, (Image == NULL) ? 0 : Image->Started));
     return EFI_INVALID_PARAMETER;
   }
 
   if (EFI_ERROR (Image->LoadImageStatus)) {
+    DEBUG ((DEBUG_ERROR, "G4DELDBG: CoreStartImage prior load failure Status=%r Image=0x%p\n", Image->LoadImageStatus, Image));
     return Image->LoadImageStatus;
   }
 
@@ -1635,6 +1641,7 @@ CoreStartImage (
     //
     DEBUG ((DEBUG_ERROR, "Image type %s can't be started ", GetMachineTypeName (Image->Machine)));
     DEBUG ((DEBUG_ERROR, "on %s UEFI system.\n", GetMachineTypeName (mDxeCoreImageMachineType)));
+    DEBUG ((DEBUG_ERROR, "G4DELDBG: CoreStartImage unsupported machine ImageHandle=0x%p Machine=0x%x CoreMachine=0x%x\n", ImageHandle, Image->Machine, mDxeCoreImageMachineType));
     return EFI_UNSUPPORTED;
   }
 
@@ -1651,10 +1658,12 @@ CoreStartImage (
         "CoreLoadPeImage: Failed to register foreign image with emulator - %r\n",
         Status
         ));
+      DEBUG ((DEBUG_ERROR, "G4DELDBG: CoreStartImage emulator register failed Status=%r ImageHandle=0x%p\n", Status, ImageHandle));
       return Status;
     }
   }
 
+  DEBUG ((DEBUG_INFO, "G4DELDBG: CoreStartImage call entrypoint ImageHandle=0x%p ImageBase=0x%p Entry=0x%lx Type=0x%x\n", ImageHandle, Image->Info.ImageBase, (UINT64)(UINTN)Image->EntryPoint, Image->Type));
   PERF_START_IMAGE_BEGIN (Handle);
 
   //
@@ -1678,6 +1687,7 @@ CoreStartImage (
     // Image may be unloaded after return with failure,
     // then ImageHandle may be invalid, so use NULL handle to record perf log.
     //
+    DEBUG ((DEBUG_ERROR, "G4DELDBG: CoreStartImage allocate jump buffer failed ImageHandle=0x%p\n", ImageHandle));
     PERF_START_IMAGE_END (NULL);
 
     //
@@ -1702,6 +1712,7 @@ CoreStartImage (
     //
     Image->Started = TRUE;
     Image->Status  = Image->EntryPoint (ImageHandle, Image->Info.SystemTable);
+    DEBUG ((DEBUG_INFO, "G4DELDBG: CoreStartImage entrypoint returned ImageHandle=0x%p Status=%r\n", ImageHandle, Image->Status));
 
     //
     // Add some debug information if the image returned with error.
@@ -1798,6 +1809,7 @@ CoreStartImage (
   //
   // Done
   //
+  DEBUG ((DEBUG_INFO, "G4DELDBG: CoreStartImage exit ImageHandle=0x%p Status=%r PerfHandle=0x%p\n", ImageHandle, Status, Handle));
   PERF_START_IMAGE_END (Handle);
   return Status;
 }

@@ -409,6 +409,7 @@ CoreDispatcher (
   EFI_EVENT              DxeDispatchEvent;
 
   PERF_FUNCTION_BEGIN ();
+  DEBUG ((DEBUG_INFO, "G4DELDBG: CoreDispatcher entry\n"));
 
   if (gDispatcherRunning) {
     //
@@ -428,6 +429,7 @@ CoreDispatcher (
              &DxeDispatchEvent
              );
   if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "G4DELDBG: CoreDispatcher create dispatch event failed Status=%r\n", Status));
     return Status;
   }
 
@@ -451,6 +453,7 @@ CoreDispatcher (
       //
       if ((DriverEntry->ImageHandle == NULL) && !DriverEntry->IsFvImage) {
         DEBUG ((DEBUG_INFO, "Loading driver %g\n", &DriverEntry->FileName));
+        DEBUG ((DEBUG_INFO, "G4DELDBG: DXE dispatch load begin File=%g FvHandle=0x%p DevicePath=0x%p\n", &DriverEntry->FileName, DriverEntry->FvHandle, DriverEntry->FvFileDevicePath));
         Status = CoreLoadImage (
                    FALSE,
                    gDxeCoreImageHandle,
@@ -459,6 +462,8 @@ CoreDispatcher (
                    0,
                    &DriverEntry->ImageHandle
                    );
+
+        DEBUG ((DEBUG_INFO, "G4DELDBG: DXE dispatch load end File=%g Status=%r ImageHandle=0x%p\n", &DriverEntry->FileName, Status, DriverEntry->ImageHandle));
 
         //
         // Update the driver state to reflect that it's been loaded
@@ -505,7 +510,9 @@ CoreDispatcher (
         //
         // Produce a firmware volume block protocol for FvImage so it gets dispatched from.
         //
+        DEBUG ((DEBUG_INFO, "G4DELDBG: DXE dispatch FV image begin File=%g\n", &DriverEntry->FileName));
         Status = CoreProcessFvImageFile (DriverEntry->Fv, DriverEntry->FvHandle, &DriverEntry->FileName);
+        DEBUG ((DEBUG_INFO, "G4DELDBG: DXE dispatch FV image end File=%g Status=%r\n", &DriverEntry->FileName, Status));
       } else {
         REPORT_STATUS_CODE_WITH_EXTENDED_DATA (
           EFI_PROGRESS_CODE,
@@ -515,7 +522,9 @@ CoreDispatcher (
           );
         ASSERT (DriverEntry->ImageHandle != NULL);
 
+        DEBUG ((DEBUG_INFO, "G4DELDBG: DXE dispatch start begin File=%g ImageHandle=0x%p\n", &DriverEntry->FileName, DriverEntry->ImageHandle));
         Status = CoreStartImage (DriverEntry->ImageHandle, NULL, NULL);
+        DEBUG ((DEBUG_INFO, "G4DELDBG: DXE dispatch start end File=%g Status=%r ImageHandle=0x%p\n", &DriverEntry->FileName, Status, DriverEntry->ImageHandle));
 
         REPORT_STATUS_CODE_WITH_EXTENDED_DATA (
           EFI_PROGRESS_CODE,
@@ -572,6 +581,8 @@ CoreDispatcher (
   CoreCloseEvent (DxeDispatchEvent);
 
   gDispatcherRunning = FALSE;
+
+  DEBUG ((DEBUG_INFO, "G4DELDBG: CoreDispatcher exit Status=%r\n", ReturnStatus));
 
   PERF_FUNCTION_END ();
 
