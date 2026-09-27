@@ -11,6 +11,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Library/PeCoffGetEntryPointLib.h>
 
 #include "SecMain.h"
+#include "edkii_vga.h"
 
 /**
   Find core image base.
@@ -172,6 +173,7 @@ FindAndReportEntryPoints (
   // if (0 != SecCoreImageBase) {
   ImageContext.ImageAddress = SecCoreImageBase;
   ImageContext.PdbPointer = PeCoffLoaderGetPdbPointer ((VOID*) (UINTN) ImageContext.ImageAddress);
+  edkii_vga_sprintf(5, "FEb-%x,%x", ImageContext.ImageAddress, ImageContext.PdbPointer);
   PeCoffLoaderRelocateImageExtraAction (&ImageContext);
 // }
 
@@ -181,6 +183,7 @@ FindAndReportEntryPoints (
   // if (0 != PeiCoreImageBase) {
   ImageContext.ImageAddress = PeiCoreImageBase;
   ImageContext.PdbPointer = PeCoffLoaderGetPdbPointer ((VOID*) (UINTN) ImageContext.ImageAddress);
+  edkii_vga_sprintf(6, "FEc-%x,%x", ImageContext.ImageAddress, ImageContext.PdbPointer);
   PeCoffLoaderRelocateImageExtraAction (&ImageContext);
   // }
 

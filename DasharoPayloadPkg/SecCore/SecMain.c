@@ -9,6 +9,9 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 #include "SecMain.h"
 #include <Library/DebugLib.h>
+#include "edkii_vga.h"
+#include <Library/TimerLib.h>
+#include <Library/DebugLib.h>
 
 EFI_PEI_TEMPORARY_RAM_SUPPORT_PPI gSecTemporaryRamSupportPpi = {
   SecTemporaryRamSupport
@@ -166,6 +169,7 @@ SecStartupPhase2(
   //
   FindAndReportEntryPoints ((EFI_FIRMWARE_VOLUME_HEADER *) SecCoreData->BootFirmwareVolumeBase, &PeiCoreEntryPoint);
   DEBUG ((DEBUG_INFO, "G4DELDBG: SEC located PeiCoreEntryPoint=0x%p\n", (VOID *)(UINTN)PeiCoreEntryPoint));
+  edkii_vga_sprintf(9, "SPa-%x-%x-%x,%x-%x-%x", SecCoreData, SecCoreData->BootFirmwareVolumeBase, PeiCoreEntryPoint, mPeiSecPlatformInformationPpi->Flags, mPeiSecPlatformInformationPpi->Guid, mPeiSecPlatformInformationPpi->Ppi);
   if (PeiCoreEntryPoint == NULL)
   {
     DEBUG ((DEBUG_ERROR, "G4DELDBG: SEC failed to locate PEI core, entering CpuDeadLoop\n"));
@@ -177,6 +181,7 @@ SecStartupPhase2(
   //
   ASSERT (PeiCoreEntryPoint != NULL);
   DEBUG ((DEBUG_INFO, "G4DELDBG: SEC handoff to PEI core\n"));
+  edkii_vga_sprintf(10, "SPb-%x-%x-%x,%x-%x-%x", SecCoreData, SecCoreData->BootFirmwareVolumeBase, PeiCoreEntryPoint, mPeiSecPlatformInformationPpi->Flags, mPeiSecPlatformInformationPpi->Guid, mPeiSecPlatformInformationPpi->Ppi);
   (*PeiCoreEntryPoint) (SecCoreData, (EFI_PEI_PPI_DESCRIPTOR *)&mPeiSecPlatformInformationPpi);
 
   //

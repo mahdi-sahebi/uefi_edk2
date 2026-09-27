@@ -23,6 +23,8 @@
 #
 
 [Sources]
+  edkii_vga.h
+  edkii_vga.c
   SecMain.c
   SecMain.h
   FindPeiCore.c
