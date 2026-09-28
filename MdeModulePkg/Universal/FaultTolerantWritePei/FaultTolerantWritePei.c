@@ -168,22 +168,6 @@ void mde_4_edkii_vga_hex_dump(const unsigned char *addr, unsigned int len, int s
 
 
 
-static void delay_s(int n)
-{
-  volatile unsigned long t = 25;
-  volatile unsigned long x = (unsigned long)n * 10000UL;
-
-  while (x--) {
-    for (unsigned long i1 = 0; i1 < 1000UL; ++i1) {
-        for (int i = 0; i < 200; ++i) {
-            t = t * 14823424UL + x + 1UL;
-        }
-    }
-  }
-
-  mde_4_edkii_vga_sprintf(24, "%x", t);
-}
-
 
 /////////////////////////////////////////////////////
 
@@ -417,8 +401,8 @@ PeimFaultTolerantWriteInitialize (
     } else {
       VARIABLE_FLASH_INFO *DirectInfo = (VARIABLE_FLASH_INFO *)GET_GUID_HOB_DATA (DirectHob);
       DEBUG ((DEBUG_INFO, "FtwPei: gVariableFlashInfoHobGuid found @ %p, Version=%u\n",
-      mde_4_edkii_vga_sprintf(1, "HOB-FOUND-%x-%x-%x-%x-%x", (UINTN)DirectHob, (UINTN)DirectInfo->NvVariableBaseAddress, (UINTN)DirectInfo->NvVariableLength, (UINTN)DirectInfo->FtwWorkingBaseAddress, (UINTN)DirectInfo->FtwSpareBaseAddress);
               (VOID *)DirectHob, DirectInfo->Version));
+      mde_4_edkii_vga_sprintf(1, "HOB-FOUND-%x-%x-%x-%x-%x", (UINTN)DirectHob, (UINTN)DirectInfo->NvVariableBaseAddress, (UINTN)DirectInfo->NvVariableLength, (UINTN)DirectInfo->FtwWorkingBaseAddress, (UINTN)DirectInfo->FtwSpareBaseAddress);
     }
   }
 
