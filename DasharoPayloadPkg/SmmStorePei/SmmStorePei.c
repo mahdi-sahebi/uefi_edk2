@@ -234,7 +234,6 @@ SmmStorePeiInitialize (
   FtwWorkingSize = SmmStoreInfo.BlockSize;
   NvVariableSize = NvStorageSize - FtwSpareSize - FtwWorkingSize;
   DEBUG ((DEBUG_INFO, "G4DELDBG: SmmStorePei geometry VarBase=0x%x VarSize=0x%x FtwWorkBase=0x%x FtwWorkSize=0x%x FtwSpareBase=0x%x FtwSpareSize=0x%x\n",
-  mde_5_edkii_vga_sprintf(1, "1a-%x-%x-%x-%x,%x", NvStorageSize, NvStorageBase, FtwSpareSize, FtwWorkingSize, NvVariableSize);
     NvStorageBase,
     NvVariableSize,
     NvStorageBase + NvVariableSize,
@@ -242,6 +241,7 @@ SmmStorePeiInitialize (
     NvStorageBase + NvVariableSize + FtwWorkingSize,
     FtwSpareSize
     ));
+  mde_5_edkii_vga_sprintf(1, "1a-%x-%x-%x-%x,%x", NvStorageSize, NvStorageBase, FtwSpareSize, FtwWorkingSize, NvVariableSize);
   if (NvVariableSize >= 0x80000000) {
     DEBUG ((
       DEBUG_ERROR,
