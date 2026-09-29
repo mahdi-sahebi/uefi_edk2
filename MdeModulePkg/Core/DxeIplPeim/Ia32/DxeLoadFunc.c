@@ -31,7 +31,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #define mde_9__VGA_FB 0xB8000
 #define mde_9__VGA_COLUMNS 80
 
-char mde_8_g_buffer[80];
+char mde_9_g_buffer[80];
 
 void mde_9_vga_clear(void);
 void mde_9_vga_sprintf(unsigned int row, const char* format, ...);
@@ -44,20 +44,23 @@ void mde_9_delay_s(int n);
     if (s) while (s[len]) len++;
     return len;
 }
-void mde_9_vga_write_at_offset(unsigned int line, unsigned int offset, const char *string)
+void mde_9_vga_write_at_offset (unsigned int line, unsigned int offset, const char *string)
 {
-	if (!string)
-		return;
+  UINTN Length;
 
-	unsigned short *p = (unsigned short *)mde_9__VGA_FB + (mde_9__VGA_COLUMNS * line) + offset;
-	unsigned int i, len = mde_9_vga_strlen(string);
+  if ((string == NULL) || (line >= 25) || (offset >= mde_9__VGA_COLUMNS)) {
+    return;
+  }
 
-	for (i = 0; i < (mde_9__VGA_COLUMNS - offset); i++) {
-		if (i < len)
-			p[i] = 0x0F00 | (unsigned char)string[i];
-		else
-			p[i] = 0x0F00;
-	}
+  Length = AsciiStrLen (string);
+  if (Length > (mde_9__VGA_COLUMNS - offset)) {
+    Length = mde_9__VGA_COLUMNS - offset;
+  }
+
+  for (UINTN Index = 0; Index < Length; Index++) {
+    ((UINT16 *)(UINTN)mde_9__VGA_FB)[mde_9__VGA_COLUMNS * line + offset + Index] =
+      (UINT16)(0x0F00 | (UINT8)string[Index]);
+  }
 }
 
 
@@ -74,17 +77,18 @@ void mde_9_vga_sprintf(
   VA_LIST  marker;
 
   VA_START (marker, format);
-  AsciiVSPrint(mde_8_g_buffer, sizeof(mde_8_g_buffer), format, marker);
+  AsciiVSPrint(mde_9_g_buffer, sizeof(mde_9_g_buffer), format, marker);
   VA_END (marker);
 
-  mde_9_vga_print (row, mde_8_g_buffer);
+  mde_9_vga_print (row, mde_9_g_buffer);
 }
 
-void mde_9_vga_clear()
+void mde_9_vga_clear ()
+
 {
-  for (unsigned int index = 0; index <= 24; index++) {
-    mde_9_vga_print(index, "                                                                                                    ");
-  }
+
+  // Keep breadcrumbs visible; do not erase earlier module output.
+
 }
 
 void mde_9_vga_hex_dump(const unsigned char *addr, unsigned int len, int start_row)
@@ -160,7 +164,7 @@ void mde_9_delay_s(int n)
     }
   }
 
-  mde_9_vga_sprintf(23, "%x", t);
+  mde_9_vga_sprintf(23, "[GX] %x", t);
 }
 
 
@@ -426,13 +430,13 @@ HandOffToDxeCore (
 
 
   mde_9_vga_clear();
-  mde_9_vga_sprintf(0, "HOFIa32-a-%x-%x-%x-%x",//HOFIa32-a-
+  mde_9_vga_sprintf(0, "[GX] HOFIa32-a-%x-%x-%x-%x",//HOFIa32-a-
     (UINTN)DxeCoreEntryPoint,//6347e3ee
     (UINTN)HobList.Raw,//0
     HobList.Cpu->Header.HobLength,
     HobList.Cpu->Header.HobType
   );
-  mde_9_vga_sprintf(1, "hb-%x-%x-%x-%x-%x-%x-%x",
+  mde_9_vga_sprintf(1, "[GX] hb-%x-%x-%x-%x-%x-%x-%x",
     HobList.Cpu->SizeOfIoSpace,
     HobList.Cpu->SizeOfMemorySpace,
     HobList.FirmwareVolume2->BaseAddress,
@@ -441,7 +445,7 @@ HandOffToDxeCore (
     HobList.FirmwareVolume2->Length,
     HobList.Guid->Header.HobLength
   );
-  mde_9_vga_sprintf(2, "hc-%x-%x-%x-%x-%x-%x-%x",
+  mde_9_vga_sprintf(2, "[GX] hc-%x-%x-%x-%x-%x-%x-%x",
     HobList.HandoffInformationTable->BootMode,
     HobList.HandoffInformationTable->EfiEndOfHobList,
     HobList.HandoffInformationTable->EfiFreeMemoryBottom,
@@ -459,28 +463,28 @@ HandOffToDxeCore (
   // Clear page 0 and mark it as allocated if NULL pointer detection is enabled.
   //
   if (IsNullDetectionEnabled ()) {
-    mde_9_vga_sprintf(0, "HOFIa32-b-%x-%x",
+    mde_9_vga_sprintf(0, "[GX] HOFIa32-b-%x-%x",
       DxeCoreEntryPoint,
       HobList
     );
     mde_9_delay_s(2);
     ClearFirst4KPage (HobList.Raw);
 
-    mde_9_vga_sprintf(0, "HOFIa32-c-%x-%x",
+    mde_9_vga_sprintf(0, "[GX] HOFIa32-c-%x-%x",
       DxeCoreEntryPoint,
       HobList
     );
     mde_9_delay_s(2);
     BuildMemoryAllocationHob (0, EFI_PAGES_TO_SIZE (1), EfiBootServicesData);
 
-    mde_9_vga_sprintf(0, "HOFIa32-d-%x-%x",
+    mde_9_vga_sprintf(0, "[GX] HOFIa32-d-%x-%x",
       DxeCoreEntryPoint,
       (UINTN)HobList.Raw
     );
     mde_9_delay_s(2);
   }
 
-  mde_9_vga_sprintf(1, "DHOF32a-%x-%x",//DHOF32a-
+  mde_9_vga_sprintf(1, "[GX] DHOF32a-%x-%x",//DHOF32a-
     DxeCoreEntryPoint,//6347e3ee
     HobList//0
   );
@@ -488,7 +492,7 @@ HandOffToDxeCore (
 
   Status = PeiServicesAllocatePages (EfiBootServicesData, EFI_SIZE_TO_PAGES (STACK_SIZE), &BaseOfStack);
 
-  mde_9_vga_sprintf(1, "DHOF32b-%x-%x",//DHOF32b-
+  mde_9_vga_sprintf(1, "[GX] DHOF32b-%x-%x",//DHOF32b-
     Status,//0
     BaseOfStack//63443000//63442000
   );
@@ -512,7 +516,7 @@ HandOffToDxeCore (
     //
     TopOfStack = (EFI_PHYSICAL_ADDRESS)(UINTN)ALIGN_POINTER (TopOfStack, 16);
 
-    mde_9_vga_sprintf(2, "DH-2a-%x-%x",//DH-2a-
+    mde_9_vga_sprintf(2, "[GX] DH-2a-%x-%x",//DH-2a-
       TopOfStack,//63462fe0
       stack_size//?
     );
@@ -524,7 +528,7 @@ HandOffToDxeCore (
     //
     AsmWriteGdtr (&gGdt);
 
-    mde_9_vga_sprintf(2, "DH-2b-%x-%x-%x-%x",//DH-2b-
+    mde_9_vga_sprintf(2, "[GX] DH-2b-%x-%x-%x-%x",//DH-2b-
       TopOfStack,//63462fe0
       STACK_SIZE,//0
       gGdt.Base,//20000
@@ -537,7 +541,7 @@ HandOffToDxeCore (
     //
     PageTables = CreateIdentityMappingPageTables (BaseOfStack, STACK_SIZE, 0, 0);
 
-    mde_9_vga_sprintf(2, "DH-2c-%x-%x-%x-%x,%x",//DH-2c-
+    mde_9_vga_sprintf(2, "[GX] DH-2c-%x-%x-%x-%x,%x",//DH-2c-
       TopOfStack,//63462fe0
       STACK_SIZE,//0
       gGdt.Base,//20000
@@ -551,7 +555,7 @@ HandOffToDxeCore (
     //
     PERF_EVENT_SIGNAL_BEGIN (gEndOfPeiSignalPpi.Guid);
 
-    mde_9_vga_sprintf(2, "DH-2d-%x-%x-%x-%x,%x",//DH-2d-
+    mde_9_vga_sprintf(2, "[GX] DH-2d-%x-%x-%x-%x,%x",//DH-2d-
       TopOfStack,//63462fe0
       STACK_SIZE,//0
       gGdt.Base,//20000
@@ -562,7 +566,7 @@ HandOffToDxeCore (
 
     Status = PeiServicesInstallPpi (&gEndOfPeiSignalPpi);
 
-    mde_9_vga_sprintf(2, "DH-2e-%x-%x-%x-%x,%x",//DH-2e-
+    mde_9_vga_sprintf(2, "[GX] DH-2e-%x-%x-%x-%x,%x",//DH-2e-
       TopOfStack,//63462fe0
       STACK_SIZE,//0
       gGdt.Base,//20000
@@ -580,7 +584,7 @@ HandOffToDxeCore (
     //
     AsmWriteCr0 (AsmReadCr0 () & (~BIT31));
 
-    mde_9_vga_sprintf(2, "DH-2f-%x-%x-%x-%x,%x",//DH-2f-
+    mde_9_vga_sprintf(2, "[GX] DH-2f-%x-%x-%x-%x,%x",//DH-2f-
       TopOfStack,//63462fe0
       STACK_SIZE,//0
       gGdt.Base,//20000
@@ -591,7 +595,7 @@ HandOffToDxeCore (
 
     AsmWriteCr3 (PageTables);
 
-    mde_9_vga_sprintf(2, "DH-2g-%x-%x-%x-%x,%x",//DH-2g-%
+    mde_9_vga_sprintf(2, "[GX] DH-2g-%x-%x-%x-%x,%x",//DH-2g-%
       TopOfStack,//63462fe0
       STACK_SIZE,//0
       gGdt.Base,//20000
@@ -605,7 +609,7 @@ HandOffToDxeCore (
     //
     UpdateStackHob (BaseOfStack, STACK_SIZE);
 
-    mde_9_vga_sprintf(2, "DI-2c-%x-%x-%x-%x,%x",//DI-2c-
+    mde_9_vga_sprintf(2, "[GX] DI-2c-%x-%x-%x-%x,%x",//DI-2c-
       TopOfStack,//63462fe0
       STACK_SIZE,//0
       gGdt.Base,//20000
@@ -616,7 +620,7 @@ HandOffToDxeCore (
 
     SizeOfTemplate = AsmGetVectorTemplatInfo (&TemplateBase);
 
-    mde_9_vga_sprintf(2, "DJ-2c-%x-%x",//DJ-2c-
+    mde_9_vga_sprintf(2, "[GX] DJ-2c-%x-%x",//DJ-2c-
       SizeOfTemplate,//a
       TemplateBase//634d96d0//634d8c40
     );
@@ -628,7 +632,7 @@ HandOffToDxeCore (
                &VectorAddress
                );
 
-    mde_9_vga_sprintf(3, "DJ-3a-%x-%x",//DJ-3a-
+    mde_9_vga_sprintf(3, "[GX] DJ-3a-%x-%x",//DJ-3a-
       Status,//0
       VectorAddress//62fff000
     );
@@ -656,7 +660,7 @@ HandOffToDxeCore (
       IdtTable[Index].Reserved                     = 0;
 
 
-      mde_9_vga_sprintf(3, "DJ-3b-%x-%x,%x",//DJ-3b-
+      mde_9_vga_sprintf(3, "[GX] DJ-3b-%x-%x,%x",//DJ-3b-
         Status,       //0
         VectorAddress,////62fff33e
         Index         //0
@@ -671,7 +675,7 @@ HandOffToDxeCore (
 
     gLidtDescriptor.Base = (UINTN)IdtTable;
 
-    mde_9_vga_sprintf(4, "DJ-4a-%x",//DJ-4a-
+    mde_9_vga_sprintf(4, "[GX] DJ-4a-%x",//DJ-4a-
       gLidtDescriptor.Base//62fff008
     );
     mde_9_delay_s(2);
@@ -681,14 +685,14 @@ HandOffToDxeCore (
     //
     SaveAndSetDebugTimerInterrupt (FALSE);
 
-    mde_9_vga_sprintf(4, "DJ-4b-%x",
+    mde_9_vga_sprintf(4, "[GX] DJ-4b-%x",
       gLidtDescriptor.Base//62fff008
     );
     mde_9_delay_s(2);
 
     AsmWriteIdtr (&gLidtDescriptor);
 
-    mde_9_vga_sprintf(4, "DJ-4c-%x-%x,%x-%x",//DJ-4c-
+    mde_9_vga_sprintf(4, "[GX] DJ-4c-%x-%x,%x-%x",//DJ-4c-
       gLidtDescriptor.Base,//62fff008
       gLidtDescriptor.Limit,//1ff
       BaseOfStack,//63443000
@@ -713,7 +717,7 @@ HandOffToDxeCore (
     mde_9_delay_s(3);
 
     UINT32 *Ptr = (UINT32 *)(UINTN)DxeCoreEntryPoint;
-    mde_9_vga_sprintf(0, "D4k-%x-%x-%x-%x-%x-%x-%x",//D4k-
+    mde_9_vga_sprintf(0, "[GX] D4k-%x-%x-%x-%x-%x-%x-%x",//D4k-
         Ptr[0], //ca894855
         Ptr[1], //41e58948
         Ptr[2], //41564157
@@ -722,7 +726,7 @@ HandOffToDxeCore (
         Ptr[5], //148ec
         Ptr[6]  //d894800
     );
-    mde_9_vga_sprintf(1, "D4k-%x-%x-%x-%x-%x-%x-%x",//D4k-
+    mde_9_vga_sprintf(1, "[GX] D4k-%x-%x-%x-%x-%x-%x-%x",//D4k-
       ((UINT32 *)(UINTN)DxeCoreEntryPoint)[7],//186ea
       ((UINT32 *)(UINTN)DxeCoreEntryPoint)[8],//e88d8948
       ((UINT32 *)(UINTN)DxeCoreEntryPoint)[9],//48fffffe
@@ -731,7 +735,7 @@ HandOffToDxeCore (
       ((UINT32 *)(UINTN)DxeCoreEntryPoint)[12],//48ffffda
       ((UINT32 *)(UINTN)DxeCoreEntryPoint)[13]//8548c389
     );
-    mde_9_vga_sprintf(2, "D4l-%x-%x-%x-%x-%x-%x",//D4l-
+    mde_9_vga_sprintf(2, "[GX] D4l-%x-%x-%x-%x-%x-%x",//D4l-
       ((UINT32 *)(UINTN)HobList.Raw)[0],//?
       ((UINT32 *)(UINTN)HobList.Raw)[1],//?
       ((UINT32 *)(UINTN)HobList.Raw)[2],//?
@@ -739,7 +743,7 @@ HandOffToDxeCore (
       ((UINT32 *)(UINTN)HobList.Raw)[4],//?
       ((UINT32 *)(UINTN)HobList.Raw)[5] //?
     );
-    mde_9_vga_sprintf(3, "D4l-%x-%x-%x-%x-%x-%x",//D4l-
+    mde_9_vga_sprintf(3, "[GX] D4l-%x-%x-%x-%x-%x-%x",//D4l-
       ((UINT32 *)(UINTN)HobList.Raw)[6], //5f500000
       ((UINT32 *)(UINTN)HobList.Raw)[7], //0
       ((UINT32 *)(UINTN)HobList.Raw)[8], //62fff000
@@ -747,7 +751,7 @@ HandOffToDxeCore (
       ((UINT32 *)(UINTN)HobList.Raw)[10],//5f521d60
       ((UINT32 *)(UINTN)HobList.Raw)[11] //0
     );
-    mde_9_vga_sprintf(4, "D4m-%x-%x",//D4m
+    mde_9_vga_sprintf(4, "[GX] D4m-%x-%x",//D4m
       (UINTN)TopOfStack,//63462fe0?
       (UINTN)HobList.Raw,//?
       (UINTN)STACK_SIZE//0?
@@ -757,7 +761,7 @@ HandOffToDxeCore (
     mde_9_vga_clear();
     mde_9_vga_hex_dump((const unsigned char*)(void*)(UINTN)DxeCoreEntryPoint, 128, 0);
     mde_9_vga_hex_dump((const unsigned char*)(UINTN)HobList.Raw, 128, 9);
-    mde_9_vga_sprintf(18, "D4k-%x-%x-%x",//D4k-
+    mde_9_vga_sprintf(18, "[GX] D4k-%x-%x-%x",//D4k-
       DxeCoreEntryPoint,//6347e3ee?
       (UINTN)HobList.Raw,//0?
       (UINTN)TopOfStack//5f520000?
@@ -776,7 +780,7 @@ HandOffToDxeCore (
       TopOfStack
       );
 
-    mde_9_vga_sprintf(4, "DJ-4d-%x-%x,%x-%x,%x",
+    mde_9_vga_sprintf(4, "[GX] DJ-4d-%x-%x,%x-%x,%x",
       gLidtDescriptor.Base,
       gLidtDescriptor.Limit,
       BaseOfStack,
@@ -786,7 +790,7 @@ HandOffToDxeCore (
     mde_9_delay_s(2);
   } else {
 
-    mde_9_vga_sprintf(5, "DJ-5a-%x",
+    mde_9_vga_sprintf(5, "[GX] DJ-5a-%x",
       0
     );
     mde_9_delay_s(2);
@@ -800,7 +804,7 @@ HandOffToDxeCore (
                (VOID **)&VectorHandoffInfoPpi
                );
 
-    mde_9_vga_sprintf(5, "DJ-5b-%x,%x-%x-%x-%x,-%x-%x-%x",
+    mde_9_vga_sprintf(5, "[GX] DJ-5b-%x,%x-%x-%x-%x,-%x-%x-%x",
       Status,
       gEfiVectorHandoffInfoPpiGuid.Data1,
       gEfiVectorHandoffInfoPpiGuid.Data2,
@@ -821,7 +825,7 @@ HandOffToDxeCore (
         Index++;
       }
 
-      mde_9_vga_sprintf(6, "DJ-6a-%x",
+      mde_9_vga_sprintf(6, "[GX] DJ-6a-%x",
         Index
       );
       mde_9_delay_s(2);
@@ -832,7 +836,7 @@ HandOffToDxeCore (
         sizeof (EFI_VECTOR_HANDOFF_INFO) * Index
         );
 
-      mde_9_vga_sprintf(6, "DJ-6b-%x,-%x-%x-%x-%x,-%x-%x",
+      mde_9_vga_sprintf(6, "[GX] DJ-6b-%x,-%x-%x-%x-%x,-%x-%x",
         Index,
         gEfiVectorHandoffInfoPpiGuid.Data1,
         gEfiVectorHandoffInfoPpiGuid.Data2,
@@ -861,7 +865,7 @@ HandOffToDxeCore (
       }
     }
 
-    mde_9_vga_sprintf(7, "DJ-7a-%x,-%x-%x",
+    mde_9_vga_sprintf(7, "[GX] DJ-7a-%x,-%x-%x",
       PageTables,
       BuildPageTablesIa32Pae,
       TopOfStack
@@ -874,7 +878,7 @@ HandOffToDxeCore (
     PERF_EVENT_SIGNAL_BEGIN (gEndOfPeiSignalPpi.Guid);
     Status = PeiServicesInstallPpi (&gEndOfPeiSignalPpi);
 
-    mde_9_vga_sprintf(7, "DJ-7b-%x-%x,-%x-%x",
+    mde_9_vga_sprintf(7, "[GX] DJ-7b-%x-%x,-%x-%x",
       Status,
       PageTables,
       BuildPageTablesIa32Pae,
@@ -897,7 +901,7 @@ HandOffToDxeCore (
       //
       AsmWriteCr4 (AsmReadCr4 () | BIT5);
 
-      mde_9_vga_sprintf(7, "DJ-7c-%x-%x,-%x-%x",
+      mde_9_vga_sprintf(7, "[GX] DJ-7c-%x-%x,-%x-%x",
         Status,
         PageTables,
         BuildPageTablesIa32Pae,
@@ -907,7 +911,7 @@ HandOffToDxeCore (
     }
 
 
-    mde_9_vga_sprintf(8, "DJ-8a-%x-%x",
+    mde_9_vga_sprintf(8, "[GX] DJ-8a-%x-%x",
       BaseOfStack,
       STACK_SIZE
     );
@@ -917,7 +921,7 @@ HandOffToDxeCore (
     //
     UpdateStackHob (BaseOfStack, STACK_SIZE);
 
-    mde_9_vga_sprintf(8, "DJ-8b-%x-%x",
+    mde_9_vga_sprintf(8, "[GX] DJ-8b-%x-%x",
       BaseOfStack,
       STACK_SIZE
     );
@@ -936,7 +940,7 @@ HandOffToDxeCore (
     //
     if (BuildPageTablesIa32Pae) {
 
-      mde_9_vga_sprintf(9, "DJ-9a-%x",
+      mde_9_vga_sprintf(9, "[GX] DJ-9a-%x",
         0
       );
       mde_9_delay_s(2);
@@ -948,7 +952,7 @@ HandOffToDxeCore (
         (VOID *)(UINTN)TopOfStack
         );
 
-      mde_9_vga_sprintf(9, "DJ-9b-%x-%x",
+      mde_9_vga_sprintf(9, "[GX] DJ-9b-%x-%x",
         DxeCoreEntryPoint,
         *(UINT32 *)(UINTN)HobList.Raw
       );
@@ -956,7 +960,7 @@ HandOffToDxeCore (
 
     } else {
 
-      mde_9_vga_sprintf(9, "DJ-9c-%x",
+      mde_9_vga_sprintf(9, "[GX] DJ-9c-%x",
         0
       );
       mde_9_delay_s(2);
@@ -968,7 +972,7 @@ HandOffToDxeCore (
         (VOID *)(UINTN)TopOfStack
         );
 
-      mde_9_vga_sprintf(9, "DJ-9d-%x-%x",
+      mde_9_vga_sprintf(9, "[GX] DJ-9d-%x-%x",
         DxeCoreEntryPoint,
         *(UINT32 *)(UINTN)HobList.Raw
       );
@@ -976,7 +980,7 @@ HandOffToDxeCore (
 
     }
 
-    mde_9_vga_sprintf(9, "DJ-9z-%x",
+    mde_9_vga_sprintf(9, "[GX] DJ-9z-%x",
       0
     );
     mde_9_delay_s(2);

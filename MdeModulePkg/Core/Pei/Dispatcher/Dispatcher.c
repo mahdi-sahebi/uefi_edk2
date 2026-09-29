@@ -31,20 +31,37 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 char mde_2_g_buffer[80];
 
-void mde_2_edkii_vga_write_at_offset(unsigned int line, unsigned int offset, const char *string)
+void mde_2_edkii_vga_write_at_offset (unsigned int line, unsigned int offset, const char *string)
+
 {
-	if (!string)
-		return;
 
-	unsigned short *p = (unsigned short *)mde_2__VGA_FB + (mde_2__VGA_COLUMNS * line) + offset;
-	unsigned int i, len = AsciiStrLen(string);
+  UINTN Length;
 
-	for (i = 0; i < (mde_2__VGA_COLUMNS - offset); i++) {
-		if (i < len)
-			p[i] = 0x0F00 | (unsigned char)string[i];
-		else
-			p[i] = 0x0F00;
-	}
+
+  if ((string == NULL) || (line >= 25) || (offset >= mde_2__VGA_COLUMNS)) {
+
+    return;
+
+  }
+
+
+  Length = AsciiStrLen (string);
+
+  if (Length > (mde_2__VGA_COLUMNS - offset)) {
+
+    Length = mde_2__VGA_COLUMNS - offset;
+
+  }
+
+
+  for (UINTN Index = 0; Index < Length; Index++) {
+
+    ((UINT16 *)(UINTN)mde_2__VGA_FB)[mde_2__VGA_COLUMNS * line + offset + Index] =
+
+      (UINT16)(0x0F00 | (UINT8)string[Index]);
+
+  }
+
 }
 
 
@@ -67,33 +84,12 @@ void mde_2_edkii_vga_sprintf(
   mde_2_edkii_vga_print (row, mde_2_g_buffer);
 }
 
-void mde_2_edkii_vga_clear()
+void mde_2_edkii_vga_clear ()
+
 {
-  mde_2_edkii_vga_print(0, "                                                                                                    ");
-  mde_2_edkii_vga_print(1, "                                                                                                    ");
-  mde_2_edkii_vga_print(2, "                                                                                                    ");
-  mde_2_edkii_vga_print(3, "                                                                                                    ");
-  mde_2_edkii_vga_print(4, "                                                                                                    ");
-  mde_2_edkii_vga_print(5, "                                                                                                    ");
-  mde_2_edkii_vga_print(6, "                                                                                                    ");
-  mde_2_edkii_vga_print(7, "                                                                                                    ");
-  mde_2_edkii_vga_print(8, "                                                                                                    ");
-  mde_2_edkii_vga_print(9, "                                                                                                    ");
-  mde_2_edkii_vga_print(10, "                                                                                                    ");
-  mde_2_edkii_vga_print(11, "                                                                                                    ");
-  mde_2_edkii_vga_print(12, "                                                                                                    ");
-  mde_2_edkii_vga_print(13, "                                                                                                    ");
-  mde_2_edkii_vga_print(14, "                                                                                                    ");
-  mde_2_edkii_vga_print(15, "                                                                                                    ");
-  mde_2_edkii_vga_print(16, "                                                                                                    ");
-  mde_2_edkii_vga_print(17, "                                                                                                    ");
-  mde_2_edkii_vga_print(18, "                                                                                                    ");
-  mde_2_edkii_vga_print(19, "                                                                                                    ");
-  mde_2_edkii_vga_print(20, "                                                                                                    ");
-  mde_2_edkii_vga_print(21, "                                                                                                    ");
-  mde_2_edkii_vga_print(22, "                                                                                                    ");
-  mde_2_edkii_vga_print(23, "                                                                                                    ");
-  mde_2_edkii_vga_print(24, "                                                                                                    ");
+
+  // Keep breadcrumbs visible; do not erase earlier module output.
+
 }
 
 void mde_2_edkii_vga_hex_dump(const unsigned char *addr, unsigned int len, int start_row)
@@ -2015,7 +2011,7 @@ PeiDispatcher (
                   EFI_FV_FILE_INFO  DebugFileInfo;
                   Status = CoreFvHandle->FvPpi->GetFileInfo (CoreFvHandle->FvPpi, PeimFileHandle, &DebugFileInfo);
                   if (!EFI_ERROR (Status)) {
-                    mde_2_edkii_vga_sprintf(15, "PEIM:%08X-%04X-%04X", DebugFileInfo.FileName.Data1, DebugFileInfo.FileName.Data2, DebugFileInfo.FileName.Data3);
+                    mde_2_edkii_vga_sprintf(15, "[GX] PEIM:%08X-%04X-%04X", DebugFileInfo.FileName.Data1, DebugFileInfo.FileName.Data2, DebugFileInfo.FileName.Data3);
                   }
 
             PERF_START_IMAGE_BEGIN (PeimFileHandle);
@@ -2104,7 +2100,7 @@ PeiDispatcher (
                 // PEIM_STATE_NOT_DISPATCHED move to PEIM_STATE_DISPATCHED
                 //
                 Private->Fv[FvCount].PeimState[PeimCount]++;
-                  mde_2_edkii_vga_sprintf(10, "a-%X,%X,%X,%X", EFI_SECURITY_VIOLATION, FvCount, PeimCount, Private->PeimDispatchOnThisPass);
+                  mde_2_edkii_vga_sprintf(10, "[GX] a-%X,%X,%X,%X", EFI_SECURITY_VIOLATION, FvCount, PeimCount, Private->PeimDispatchOnThisPass);
                 Private->PeimDispatchOnThisPass = TRUE;
               } else {
                 //
@@ -2154,11 +2150,11 @@ PeiDispatcher (
                   EFI_FV_FILE_INFO  DebugFileInfo;
                   Status = CoreFvHandle->FvPpi->GetFileInfo (CoreFvHandle->FvPpi, PeimFileHandle, &DebugFileInfo);
                   if (!EFI_ERROR (Status)) {
-                    mde_2_edkii_vga_sprintf(15, "PEIM:%08X-%04X-%04X", DebugFileInfo.FileName.Data1, DebugFileInfo.FileName.Data2, DebugFileInfo.FileName.Data3);
+                    mde_2_edkii_vga_sprintf(15, "[GX] PEIM:%08X-%04X-%04X", DebugFileInfo.FileName.Data1, DebugFileInfo.FileName.Data2, DebugFileInfo.FileName.Data3);
                   }
 
                   PeimEntryPoint (PeimFileHandle, (const EFI_PEI_SERVICES **)PeiServices);
-                  mde_2_edkii_vga_sprintf(15, "End of peim entry-%X", PeimCount);
+                  mde_2_edkii_vga_sprintf(15, "[GX] End of peim entry-%X", PeimCount);
 
                   Private->PeimDispatchOnThisPass = TRUE;
                 } else {

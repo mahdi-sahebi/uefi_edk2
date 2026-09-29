@@ -190,7 +190,7 @@ RecoverVariableStorage (
 
   DEBUG ((DEBUG_INFO, "%a: Recovery is needed.\n", __FUNCTION__));
   FtwLastWrite = GET_GUID_HOB_DATA (GuidHob);
-  DEBUG ((DEBUG_INFO, "G4DELDBG: SmmStoreFvb recovery Target=0x%lx Spare=0x%lx Length=0x%lx Mmio=0x%lx BlockSize=0x%lx\n",
+  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: SmmStoreFvb recovery Target=0x%lx Spare=0x%lx Length=0x%lx Mmio=0x%lx BlockSize=0x%lx\n",
     FtwLastWrite->TargetAddress,
     FtwLastWrite->SpareAddress,
     FtwLastWrite->Length,
@@ -275,14 +275,14 @@ SmmStoreInitialize (
   UINT32                FtwSpareSize;
 
   Status = SmmStoreLibInitialize ();
-  DEBUG ((DEBUG_INFO, "G4DELDBG: SmmStoreFvb SmmStoreLibInitialize Status=%r\n", Status));
+  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: SmmStoreFvb SmmStoreLibInitialize Status=%r\n", Status));
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a: Failed to initialize SmmStoreLib\n", __FUNCTION__));
     return Status;
   }
 
   Status = SmmStoreLibGetMmioAddress (&MmioAddress);
-  DEBUG ((DEBUG_INFO, "G4DELDBG: SmmStoreFvb GetMmioAddress Status=%r Mmio=0x%lx\n", Status, MmioAddress));
+  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: SmmStoreFvb GetMmioAddress Status=%r Mmio=0x%lx\n", Status, MmioAddress));
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a: Failed to get SmmStore MMIO address\n", __FUNCTION__));
     SmmStoreLibDeinitialize ();
@@ -290,7 +290,7 @@ SmmStoreInitialize (
   }
 
   Status = SmmStoreLibGetNumBlocks (&BlockCount);
-  DEBUG ((DEBUG_INFO, "G4DELDBG: SmmStoreFvb GetNumBlocks Status=%r Count=0x%lx\n", Status, (UINT64)BlockCount));
+  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: SmmStoreFvb GetNumBlocks Status=%r Count=0x%lx\n", Status, (UINT64)BlockCount));
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a: Failed to get SmmStore No. blocks\n", __FUNCTION__));
     SmmStoreLibDeinitialize ();
@@ -298,7 +298,7 @@ SmmStoreInitialize (
   }
 
   Status = SmmStoreLibGetBlockSize (&BlockSize);
-  DEBUG ((DEBUG_INFO, "G4DELDBG: SmmStoreFvb GetBlockSize Status=%r BlockSize=0x%lx\n", Status, (UINT64)BlockSize));
+  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: SmmStoreFvb GetBlockSize Status=%r BlockSize=0x%lx\n", Status, (UINT64)BlockSize));
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a: Failed to get SmmStore block size\n", __FUNCTION__));
     SmmStoreLibDeinitialize ();
@@ -306,7 +306,7 @@ SmmStoreInitialize (
   }
 
   Status = RecoverVariableStorage (MmioAddress, BlockSize);
-  DEBUG ((DEBUG_INFO, "G4DELDBG: SmmStoreFvb RecoverVariableStorage Status=%r\n", Status));
+  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: SmmStoreFvb RecoverVariableStorage Status=%r\n", Status));
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a: Failed to recover variable storage.\n", __FUNCTION__));
     //
@@ -326,7 +326,7 @@ SmmStoreInitialize (
   FtwSpareSize   = (BlockCount / 2) * BlockSize;
   FtwWorkingSize = BlockSize;
   NvVariableSize = NvStorageSize - FtwSpareSize - FtwWorkingSize;
-  DEBUG ((DEBUG_INFO, "G4DELDBG: SmmStoreFvb geometry VarBase=0x%x VarSize=0x%x FtwWorkBase=0x%x FtwWorkSize=0x%x FtwSpareBase=0x%x FtwSpareSize=0x%x\n",
+  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: SmmStoreFvb geometry VarBase=0x%x VarSize=0x%x FtwWorkBase=0x%x FtwWorkSize=0x%x FtwSpareBase=0x%x FtwSpareSize=0x%x\n",
     NvStorageBase,
     NvVariableSize,
     NvStorageBase + NvVariableSize,
@@ -375,7 +375,7 @@ SmmStoreInitialize (
              BlockSize,
              mSmmStoreInstance
              );
-  DEBUG ((DEBUG_INFO, "G4DELDBG: SmmStoreFvb SmmStoreInitInstance Status=%r Instance=0x%p\n", Status, mSmmStoreInstance));
+  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: SmmStoreFvb SmmStoreInitInstance Status=%r Instance=0x%p\n", Status, mSmmStoreInstance));
   if (EFI_ERROR (Status)) {
     DEBUG (
       (
@@ -400,9 +400,9 @@ SmmStoreInitialize (
                   &gEfiEventVirtualAddressChangeGuid,
                   &mSmmStoreVirtualAddrChangeEvent
                   );
-  DEBUG ((DEBUG_INFO, "G4DELDBG: SmmStoreFvb Create VA change event Status=%r Event=0x%p\n", Status, mSmmStoreVirtualAddrChangeEvent));
+  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: SmmStoreFvb Create VA change event Status=%r Event=0x%p\n", Status, mSmmStoreVirtualAddrChangeEvent));
   ASSERT_EFI_ERROR (Status);
 
-  DEBUG ((DEBUG_INFO, "G4DELDBG: SmmStoreFvb Initialize exit Status=%r\n", Status));
+  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: SmmStoreFvb Initialize exit Status=%r\n", Status));
   return Status;
 }

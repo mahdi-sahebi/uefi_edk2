@@ -42,20 +42,37 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 char mde_2_g_buffer[80];
 
-void mde_4_edkii_vga_write_at_offset(unsigned int line, unsigned int offset, const char *string)
+void mde_4_edkii_vga_write_at_offset (unsigned int line, unsigned int offset, const char *string)
+
 {
-	if (!string)
-		return;
 
-	unsigned short *p = (unsigned short *)mde_2__VGA_FB + (mde_2__VGA_COLUMNS * line) + offset;
-	unsigned int i, len = AsciiStrLen(string);
+  UINTN Length;
 
-	for (i = 0; i < (mde_2__VGA_COLUMNS - offset); i++) {
-		if (i < len)
-			p[i] = 0x0F00 | (unsigned char)string[i];
-		else
-			p[i] = 0x0F00;
-	}
+
+  if ((string == NULL) || (line >= 25) || (offset >= mde_2__VGA_COLUMNS)) {
+
+    return;
+
+  }
+
+
+  Length = AsciiStrLen (string);
+
+  if (Length > (mde_2__VGA_COLUMNS - offset)) {
+
+    Length = mde_2__VGA_COLUMNS - offset;
+
+  }
+
+
+  for (UINTN Index = 0; Index < Length; Index++) {
+
+    ((UINT16 *)(UINTN)mde_2__VGA_FB)[mde_2__VGA_COLUMNS * line + offset + Index] =
+
+      (UINT16)(0x0F00 | (UINT8)string[Index]);
+
+  }
+
 }
 
 
@@ -78,33 +95,12 @@ void mde_4_edkii_vga_sprintf(
   mde_4_edkii_vga_print (row, mde_2_g_buffer);
 }
 
-void mde_4_edkii_vga_clear()
+void mde_4_edkii_vga_clear ()
+
 {
-  mde_4_edkii_vga_print(0, "                                                                                                    ");
-  mde_4_edkii_vga_print(1, "                                                                                                    ");
-  mde_4_edkii_vga_print(2, "                                                                                                    ");
-  mde_4_edkii_vga_print(3, "                                                                                                    ");
-  mde_4_edkii_vga_print(4, "                                                                                                    ");
-  mde_4_edkii_vga_print(5, "                                                                                                    ");
-  mde_4_edkii_vga_print(6, "                                                                                                    ");
-  mde_4_edkii_vga_print(7, "                                                                                                    ");
-  mde_4_edkii_vga_print(8, "                                                                                                    ");
-  mde_4_edkii_vga_print(9, "                                                                                                    ");
-  mde_4_edkii_vga_print(10, "                                                                                                    ");
-  mde_4_edkii_vga_print(11, "                                                                                                    ");
-  mde_4_edkii_vga_print(12, "                                                                                                    ");
-  mde_4_edkii_vga_print(13, "                                                                                                    ");
-  mde_4_edkii_vga_print(14, "                                                                                                    ");
-  mde_4_edkii_vga_print(15, "                                                                                                    ");
-  mde_4_edkii_vga_print(16, "                                                                                                    ");
-  mde_4_edkii_vga_print(17, "                                                                                                    ");
-  mde_4_edkii_vga_print(18, "                                                                                                    ");
-  mde_4_edkii_vga_print(19, "                                                                                                    ");
-  mde_4_edkii_vga_print(20, "                                                                                                    ");
-  mde_4_edkii_vga_print(21, "                                                                                                    ");
-  mde_4_edkii_vga_print(22, "                                                                                                    ");
-  mde_4_edkii_vga_print(23, "                                                                                                    ");
-  mde_4_edkii_vga_print(24, "                                                                                                    ");
+
+  // Keep breadcrumbs visible; do not erase earlier module output.
+
 }
 
 void mde_4_edkii_vga_hex_dump(const unsigned char *addr, unsigned int len, int start_row)
@@ -375,14 +371,14 @@ PeimFaultTolerantWriteInitialize (
   FtwLastWriteHeader    = NULL;
   FtwLastWriteRecord    = NULL;
 
-  DEBUG ((DEBUG_INFO, "G4DELDBG: FtwPei entry FileHandle=0x%p\n", FileHandle));
+  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: FtwPei entry FileHandle=0x%p\n", FileHandle));
 
   SpareAreaAddress = 0;
   SpareAreaLength  = 0;
   WorkSpaceAddress = 0;
   WorkSpaceLength  = 0;
   mde_4_edkii_vga_clear();
-  mde_4_edkii_vga_sprintf(0, "FTWa-%x", 0);
+  mde_4_edkii_vga_sprintf(0, "[GX] FTWa-%x", 0);
 
   //
   // Direct HOB probe - bypasses VariableFlashInfoLib entirely so we can
@@ -397,34 +393,34 @@ PeimFaultTolerantWriteInitialize (
     EFI_HOB_GUID_TYPE *DirectHob = GetFirstGuidHob (&gVariableFlashInfoHobGuid);
     if (DirectHob == NULL) {
       DEBUG ((DEBUG_ERROR, "FtwPei: gVariableFlashInfoHobGuid NOTFOUND\n"));
-      mde_4_edkii_vga_sprintf(1, "HOB-NOTFOUND");
+      mde_4_edkii_vga_sprintf(1, "[GX] HOB-NOTFOUND");
     } else {
       VARIABLE_FLASH_INFO *DirectInfo = (VARIABLE_FLASH_INFO *)GET_GUID_HOB_DATA (DirectHob);
       DEBUG ((DEBUG_INFO, "FtwPei: gVariableFlashInfoHobGuid found @ %p, Version=%u\n",
               (VOID *)DirectHob, DirectInfo->Version));
-      mde_4_edkii_vga_sprintf(1, "HOB-FOUND-%x-%x-%x-%x-%x", (UINTN)DirectHob, (UINTN)DirectInfo->NvVariableBaseAddress, (UINTN)DirectInfo->NvVariableLength, (UINTN)DirectInfo->FtwWorkingBaseAddress, (UINTN)DirectInfo->FtwSpareBaseAddress);
+      mde_4_edkii_vga_sprintf(1, "[GX] HOB-FOUND-%x-%x-%x-%x-%x", (UINTN)DirectHob, (UINTN)DirectInfo->NvVariableBaseAddress, (UINTN)DirectInfo->NvVariableLength, (UINTN)DirectInfo->FtwWorkingBaseAddress, (UINTN)DirectInfo->FtwSpareBaseAddress);
     }
   }
 
   Status = GetVariableFlashFtwWorkingInfo (&WorkSpaceAddress, &Size);
-  DEBUG ((DEBUG_INFO, "G4DELDBG: FtwPei WorkingInfo Status=%r Address=0x%lx Size=0x%lx\n", Status, WorkSpaceAddress, Size));
-  mde_4_edkii_vga_sprintf(3, "FTWb-%x-%x-%x", Status, WorkSpaceAddress, Size);
+  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: FtwPei WorkingInfo Status=%r Address=0x%lx Size=0x%lx\n", Status, WorkSpaceAddress, Size));
+  mde_4_edkii_vga_sprintf(3, "[GX] FTWb-%x-%x-%x", Status, WorkSpaceAddress, Size);
   ASSERT_EFI_ERROR (Status);
 
   Status = SafeUint64ToUintn (Size, &WorkSpaceLength);
-  DEBUG ((DEBUG_INFO, "G4DELDBG: FtwPei WorkingLength convert Status=%r Length=0x%lx\n", Status, (UINT64)WorkSpaceLength));
-  mde_4_edkii_vga_sprintf(4, "4a-%x-%x", Status, WorkSpaceLength);
+  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: FtwPei WorkingLength convert Status=%r Length=0x%lx\n", Status, (UINT64)WorkSpaceLength));
+  mde_4_edkii_vga_sprintf(4, "[GX] 4a-%x-%x", Status, WorkSpaceLength);
   // This driver currently assumes the size will be UINTN so assert the value is safe for now.
   ASSERT_EFI_ERROR (Status);
 
   Status = GetVariableFlashFtwSpareInfo (&SpareAreaAddress, &Size);
-  DEBUG ((DEBUG_INFO, "G4DELDBG: FtwPei SpareInfo Status=%r Address=0x%lx Size=0x%lx\n", Status, SpareAreaAddress, Size));
-  mde_4_edkii_vga_sprintf(5, "5a-%x-%x-%x", Status, SpareAreaAddress, Size);
+  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: FtwPei SpareInfo Status=%r Address=0x%lx Size=0x%lx\n", Status, SpareAreaAddress, Size));
+  mde_4_edkii_vga_sprintf(5, "[GX] 5a-%x-%x-%x", Status, SpareAreaAddress, Size);
   ASSERT_EFI_ERROR (Status);
 
   Status = SafeUint64ToUintn (Size, &SpareAreaLength);
-  DEBUG ((DEBUG_INFO, "G4DELDBG: FtwPei SpareLength convert Status=%r Length=0x%lx\n", Status, (UINT64)SpareAreaLength));
-  mde_4_edkii_vga_sprintf(6, "6a-%x-%x-%x", Status, SpareAreaLength, Size);
+  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: FtwPei SpareLength convert Status=%r Length=0x%lx\n", Status, (UINT64)SpareAreaLength));
+  mde_4_edkii_vga_sprintf(6, "[GX] 6a-%x-%x-%x", Status, SpareAreaLength, Size);
   // This driver currently assumes the size will be UINTN so assert the value is safe for now.
   ASSERT_EFI_ERROR (Status);
 
@@ -434,11 +430,11 @@ PeimFaultTolerantWriteInitialize (
   ASSERT ((WorkSpaceAddress != 0) && (SpareAreaAddress != 0));
 
   FtwWorkingBlockHeader = (EFI_FAULT_TOLERANT_WORKING_BLOCK_HEADER *)(UINTN)WorkSpaceAddress;
-  DEBUG ((DEBUG_INFO, "G4DELDBG: FtwPei validate workspace Header=0x%p Length=0x%lx\n", FtwWorkingBlockHeader, (UINT64)WorkSpaceLength));
-  mde_4_edkii_vga_sprintf(7, "7a-%x-%x-%x,%x,%x", Status, SpareAreaLength, Size, WorkSpaceAddress, SpareAreaAddress);
+  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: FtwPei validate workspace Header=0x%p Length=0x%lx\n", FtwWorkingBlockHeader, (UINT64)WorkSpaceLength));
+  mde_4_edkii_vga_sprintf(7, "[GX] 7a-%x-%x-%x,%x,%x", Status, SpareAreaLength, Size, WorkSpaceAddress, SpareAreaAddress);
   if (IsValidWorkSpace (FtwWorkingBlockHeader, WorkSpaceLength)) {
-    DEBUG ((DEBUG_INFO, "G4DELDBG: FtwPei primary workspace valid\n"));
-    mde_4_edkii_vga_sprintf(8, "8a-%x-%x", FtwWorkingBlockHeader, WorkSpaceLength);
+    DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: FtwPei primary workspace valid\n"));
+    mde_4_edkii_vga_sprintf(8, "[GX] 8a-%x-%x", FtwWorkingBlockHeader, WorkSpaceLength);
     Status = FtwGetLastWriteHeader (
                FtwWorkingBlockHeader,
                WorkSpaceLength,
@@ -450,8 +446,8 @@ PeimFaultTolerantWriteInitialize (
                  &FtwLastWriteRecord
                  );
     }
-    DEBUG ((DEBUG_INFO, "G4DELDBG: FtwPei last write lookup Status=%r Header=0x%p Record=0x%p\n", Status, FtwLastWriteHeader, FtwLastWriteRecord));
-    mde_4_edkii_vga_sprintf(9, "9a-%x-%x", Status, FtwLastWriteRecord);
+    DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: FtwPei last write lookup Status=%r Header=0x%p Record=0x%p\n", Status, FtwLastWriteHeader, FtwLastWriteRecord));
+    mde_4_edkii_vga_sprintf(9, "[GX] 9a-%x-%x", Status, FtwLastWriteRecord);
 
     if (!EFI_ERROR (Status)) {
       ASSERT (FtwLastWriteRecord != NULL);
@@ -472,13 +468,13 @@ PeimFaultTolerantWriteInitialize (
           (UINTN)FtwLastWrite.SpareAddress,
           (UINTN)FtwLastWrite.Length
           ));
-        mde_4_edkii_vga_sprintf(10, "a-%x-%x-%x-%x,%x-%x-%x", gEdkiiFaultTolerantWriteGuid.Data1, gEdkiiFaultTolerantWriteGuid.Data2, gEdkiiFaultTolerantWriteGuid.Data3, gEdkiiFaultTolerantWriteGuid.Data4, FtwLastWrite.TargetAddress, FtwLastWrite.SpareAddress, FtwLastWrite.Length);
+        mde_4_edkii_vga_sprintf(10, "[GX] a-%x-%x-%x-%x,%x-%x-%x", gEdkiiFaultTolerantWriteGuid.Data1, gEdkiiFaultTolerantWriteGuid.Data2, gEdkiiFaultTolerantWriteGuid.Data3, gEdkiiFaultTolerantWriteGuid.Data4, FtwLastWrite.TargetAddress, FtwLastWrite.SpareAddress, FtwLastWrite.Length);
         BuildGuidDataHob (&gEdkiiFaultTolerantWriteGuid, (VOID *)&FtwLastWrite, sizeof (FAULT_TOLERANT_WRITE_LAST_WRITE_DATA));
       }
     }
   } else {
     FtwWorkingBlockHeader = NULL;
-    DEBUG ((DEBUG_INFO, "G4DELDBG: FtwPei primary workspace invalid, scanning spare area\n"));
+    DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: FtwPei primary workspace invalid, scanning spare area\n"));
     //
     // If the working block workspace is not valid, try to find workspace in the spare block.
     //
@@ -489,7 +485,7 @@ PeimFaultTolerantWriteInitialize (
         // Found the workspace.
         //
         DEBUG ((DEBUG_INFO, "FtwPei: workspace in spare block is at 0x%x.\n", (UINTN)WorkSpaceInSpareArea));
-        DEBUG ((DEBUG_INFO, "G4DELDBG: FtwPei spare workspace candidate=0x%lx\n", WorkSpaceInSpareArea));
+        DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: FtwPei spare workspace candidate=0x%lx\n", WorkSpaceInSpareArea));
         FtwWorkingBlockHeader = (EFI_FAULT_TOLERANT_WORKING_BLOCK_HEADER *)(UINTN)WorkSpaceInSpareArea;
         break;
       }
@@ -524,7 +520,7 @@ PeimFaultTolerantWriteInitialize (
   // Install gEdkiiFaultTolerantWriteGuid PPI to inform the check for FTW last write data has been done.
   //
   Status = PeiServicesInstallPpi (&mPpiListVariable);
-  DEBUG ((DEBUG_INFO, "G4DELDBG: FtwPei Install FTW-done PPI Status=%r\n", Status));
-  mde_4_edkii_vga_sprintf(11, "11-%x,%x-%x-%x-%x,%x", Status, mPpiListVariable.Flags, mPpiListVariable.Guid->Data1, mPpiListVariable.Guid->Data2, mPpiListVariable.Guid->Data3, mPpiListVariable.Ppi);
+  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: FtwPei Install FTW-done PPI Status=%r\n", Status));
+  mde_4_edkii_vga_sprintf(11, "[GX] 11-%x,%x-%x-%x-%x,%x", Status, mPpiListVariable.Flags, mPpiListVariable.Guid->Data1, mPpiListVariable.Guid->Data2, mPpiListVariable.Guid->Data3, mPpiListVariable.Ppi);
   return Status;
 }

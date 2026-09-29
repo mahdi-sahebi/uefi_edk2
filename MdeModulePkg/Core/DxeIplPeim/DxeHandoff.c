@@ -55,20 +55,37 @@ void mde_7_delay_s(int n);
 //     return Length;
 // }
 
-void mde_7_edkii_vga_write_at_offset(unsigned int line, unsigned int offset, const char *string)
+void mde_7_edkii_vga_write_at_offset (unsigned int line, unsigned int offset, const char *string)
+
 {
-	if (!string)
-		return;
 
-	unsigned short *p = (unsigned short *)mde_7__VGA_FB + (mde_7__VGA_COLUMNS * line) + offset;
-	unsigned int i, len = AsciiStrLen(string);
+  UINTN Length;
 
-	for (i = 0; i < (mde_7__VGA_COLUMNS - offset); i++) {
-		if (i < len)
-			p[i] = 0x0F00 | (unsigned char)string[i];
-		else
-			p[i] = 0x0F00;
-	}
+
+  if ((string == NULL) || (line >= 25) || (offset >= mde_7__VGA_COLUMNS)) {
+
+    return;
+
+  }
+
+
+  Length = AsciiStrLen (string);
+
+  if (Length > (mde_7__VGA_COLUMNS - offset)) {
+
+    Length = mde_7__VGA_COLUMNS - offset;
+
+  }
+
+
+  for (UINTN Index = 0; Index < Length; Index++) {
+
+    ((UINT16 *)(UINTN)mde_7__VGA_FB)[mde_7__VGA_COLUMNS * line + offset + Index] =
+
+      (UINT16)(0x0F00 | (UINT8)string[Index]);
+
+  }
+
 }
 
 
@@ -91,11 +108,12 @@ void mde_7_edkii_vga_sprintf(
   mde_7_edkii_vga_print (row, mde_7_g_buffer);
 }
 
-void mde_7_edkii_vga_clear()
+void mde_7_edkii_vga_clear ()
+
 {
-  for (unsigned int index = 0; index <= 24; index++) {
-    mde_7_edkii_vga_print(index, "                                                                                                    ");
-  }
+
+  // Keep breadcrumbs visible; do not erase earlier module output.
+
 }
 
 void mde_7_edkii_vga_hex_dump(const unsigned char *addr, unsigned int len, int start_row)
@@ -172,7 +190,7 @@ void mde_7_delay_s(int n)
     }
   }
 
-  mde_7_edkii_vga_sprintf(23, "%x", t);
+  mde_7_edkii_vga_sprintf(23, "[GX] %x", t);
 }
 
 
@@ -203,7 +221,7 @@ HandOffToDxeCore (
   EDKII_MEMORY_ATTRIBUTE_PPI  *MemoryPpi;
 
   mde_7_edkii_vga_clear();
-  mde_7_edkii_vga_sprintf(0, "DxeHOa-%x-%x,%x-%x,%x-%x",
+  mde_7_edkii_vga_sprintf(0, "[GX] DxeHOa-%x-%x,%x-%x,%x-%x",
     DxeCoreEntryPoint,
     HobList,
     HobList.Capsule->BaseAddress,
@@ -211,7 +229,7 @@ HandOffToDxeCore (
     HobList.HandoffInformationTable->BootMode,
     HobList.HandoffInformationTable->EfiEndOfHobList
   );
-  mde_7_edkii_vga_sprintf(1, "b-%x-%x,%x-%x,%x-%x",
+  mde_7_edkii_vga_sprintf(1, "[GX] b-%x-%x,%x-%x,%x-%x",
     HobList.HandoffInformationTable->EfiFreeMemoryBottom,
     HobList.HandoffInformationTable->EfiFreeMemoryTop,
     HobList.HandoffInformationTable->EfiMemoryBottom,
@@ -219,7 +237,7 @@ HandOffToDxeCore (
     HobList.MemoryAllocation->AllocDescriptor.MemoryBaseAddress,
     HobList.MemoryAllocation->AllocDescriptor.MemoryLength
   );
-  mde_7_edkii_vga_sprintf(2, "c-%x-%x,%x-%x,%x-%x",
+  mde_7_edkii_vga_sprintf(2, "[GX] c-%x-%x,%x-%x,%x-%x",
     HobList.MemoryAllocation->AllocDescriptor.MemoryType,
     HobList.MemoryAllocation->AllocDescriptor.Name,
     HobList.MemoryAllocationStack->AllocDescriptor.MemoryBaseAddress,
@@ -227,7 +245,7 @@ HandOffToDxeCore (
     HobList.MemoryAllocationStack->AllocDescriptor.MemoryType,
     HobList.MemoryAllocationStack->AllocDescriptor.Name
   );
-  mde_7_edkii_vga_sprintf(3, "d-%x-%x",
+  mde_7_edkii_vga_sprintf(3, "[GX] d-%x-%x",
     HobList.Cpu->Header.HobLength,
     HobList.Cpu->Header.HobType
   );
@@ -238,7 +256,7 @@ HandOffToDxeCore (
   //
   BaseOfStack = AllocatePages (EFI_SIZE_TO_PAGES (STACK_SIZE));
 
-  mde_7_edkii_vga_sprintf(4, "e-%x-%x-%x",
+  mde_7_edkii_vga_sprintf(4, "[GX] e-%x-%x-%x",
     BaseOfStack,
     STACK_SIZE,
     EFI_SIZE_TO_PAGES (STACK_SIZE)
@@ -247,7 +265,7 @@ HandOffToDxeCore (
   ASSERT (BaseOfStack != NULL);
 
   if (PcdGetBool (PcdSetNxForStack)) {
-    mde_7_edkii_vga_sprintf(5, "fa-%x",
+    mde_7_edkii_vga_sprintf(5, "[GX] fa-%x",
       0
     );
     mde_7_delay_s(2);
@@ -257,7 +275,7 @@ HandOffToDxeCore (
                NULL,
                (VOID **)&MemoryPpi
                );
-    mde_7_edkii_vga_sprintf(5, "fb-%x,%x-%x-%x-%x",
+    mde_7_edkii_vga_sprintf(5, "[GX] fb-%x,%x-%x-%x-%x",
       Status,
       &gEdkiiMemoryAttributePpiGuid.Data1,
       &gEdkiiMemoryAttributePpiGuid.Data2,
@@ -275,7 +293,7 @@ HandOffToDxeCore (
                           EFI_MEMORY_XP
                           );
 
-    mde_7_edkii_vga_sprintf(5, "fc-%x,%x-%x-%x-%x",
+    mde_7_edkii_vga_sprintf(5, "[GX] fc-%x,%x-%x-%x-%x",
       Status,
       MemoryPpi,
       MemoryPpi->SetPermissions,
@@ -292,7 +310,7 @@ HandOffToDxeCore (
   TopOfStack = (VOID *)((UINTN)BaseOfStack + EFI_SIZE_TO_PAGES (STACK_SIZE) * EFI_PAGE_SIZE - CPU_STACK_ALIGNMENT);
   TopOfStack = ALIGN_POINTER (TopOfStack, CPU_STACK_ALIGNMENT);
 
-  mde_7_edkii_vga_sprintf(6, "6a-%x,%x-%x-%x-%x",
+  mde_7_edkii_vga_sprintf(6, "[GX] 6a-%x,%x-%x-%x-%x",
     BaseOfStack,
     TopOfStack,
     EFI_SIZE_TO_PAGES(STACK_SIZE),
@@ -306,7 +324,7 @@ HandOffToDxeCore (
   //
   Status = PeiServicesInstallPpi (&gEndOfPeiSignalPpi);
 
-  mde_7_edkii_vga_sprintf(7, "7a-%x-%x,%x-%x-%x-%x,%x",
+  mde_7_edkii_vga_sprintf(7, "[GX] 7a-%x-%x,%x-%x-%x-%x,%x",
     Status,
     gEndOfPeiSignalPpi.Flags,
     gEndOfPeiSignalPpi.Guid->Data1,
@@ -323,7 +341,7 @@ HandOffToDxeCore (
   //
   UpdateStackHob ((EFI_PHYSICAL_ADDRESS)(UINTN)BaseOfStack, STACK_SIZE);
 
-  mde_7_edkii_vga_sprintf(8, "8a-%x-%x,%x",
+  mde_7_edkii_vga_sprintf(8, "[GX] 8a-%x-%x,%x",
     HobList.Raw,
     TopOfStack,
     DxeCoreEntryPoint

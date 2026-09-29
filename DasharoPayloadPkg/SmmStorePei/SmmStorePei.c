@@ -38,20 +38,37 @@ SPDX-License-Identifier: GPL-2.0-or-later
 
 char mde_2_g_buffer[80];
 
-void mde_5_edkii_vga_write_at_offset(unsigned int line, unsigned int offset, const char *string)
+void mde_5_edkii_vga_write_at_offset (unsigned int line, unsigned int offset, const char *string)
+
 {
-	if (!string)
-		return;
 
-	unsigned short *p = (unsigned short *)mde_2__VGA_FB + (mde_2__VGA_COLUMNS * line) + offset;
-	unsigned int i, len = AsciiStrLen(string);
+  UINTN Length;
 
-	for (i = 0; i < (mde_2__VGA_COLUMNS - offset); i++) {
-		if (i < len)
-			p[i] = 0x0F00 | (unsigned char)string[i];
-		else
-			p[i] = 0x0F00;
-	}
+
+  if ((string == NULL) || (line >= 25) || (offset >= mde_2__VGA_COLUMNS)) {
+
+    return;
+
+  }
+
+
+  Length = AsciiStrLen (string);
+
+  if (Length > (mde_2__VGA_COLUMNS - offset)) {
+
+    Length = mde_2__VGA_COLUMNS - offset;
+
+  }
+
+
+  for (UINTN Index = 0; Index < Length; Index++) {
+
+    ((UINT16 *)(UINTN)mde_2__VGA_FB)[mde_2__VGA_COLUMNS * line + offset + Index] =
+
+      (UINT16)(0x0F00 | (UINT8)string[Index]);
+
+  }
+
 }
 
 
@@ -74,33 +91,12 @@ void mde_5_edkii_vga_sprintf(
   mde_5_edkii_vga_print (row, mde_2_g_buffer);
 }
 
-void mde_5_edkii_vga_clear()
+void mde_5_edkii_vga_clear ()
+
 {
-  mde_5_edkii_vga_print(0, "                                                                                                    ");
-  mde_5_edkii_vga_print(1, "                                                                                                    ");
-  mde_5_edkii_vga_print(2, "                                                                                                    ");
-  mde_5_edkii_vga_print(3, "                                                                                                    ");
-  mde_5_edkii_vga_print(4, "                                                                                                    ");
-  mde_5_edkii_vga_print(5, "                                                                                                    ");
-  mde_5_edkii_vga_print(6, "                                                                                                    ");
-  mde_5_edkii_vga_print(7, "                                                                                                    ");
-  mde_5_edkii_vga_print(8, "                                                                                                    ");
-  mde_5_edkii_vga_print(9, "                                                                                                    ");
-  mde_5_edkii_vga_print(10, "                                                                                                    ");
-  mde_5_edkii_vga_print(11, "                                                                                                    ");
-  mde_5_edkii_vga_print(12, "                                                                                                    ");
-  mde_5_edkii_vga_print(13, "                                                                                                    ");
-  mde_5_edkii_vga_print(14, "                                                                                                    ");
-  mde_5_edkii_vga_print(15, "                                                                                                    ");
-  mde_5_edkii_vga_print(16, "                                                                                                    ");
-  mde_5_edkii_vga_print(17, "                                                                                                    ");
-  mde_5_edkii_vga_print(18, "                                                                                                    ");
-  mde_5_edkii_vga_print(19, "                                                                                                    ");
-  mde_5_edkii_vga_print(20, "                                                                                                    ");
-  mde_5_edkii_vga_print(21, "                                                                                                    ");
-  mde_5_edkii_vga_print(22, "                                                                                                    ");
-  mde_5_edkii_vga_print(23, "                                                                                                    ");
-  mde_5_edkii_vga_print(24, "                                                                                                    ");
+
+  // Keep breadcrumbs visible; do not erase earlier module output.
+
 }
 
 void mde_5_edkii_vga_hex_dump(const unsigned char *addr, unsigned int len, int start_row)
@@ -198,13 +194,13 @@ SmmStorePeiInitialize (
   UINT32               FtwWorkingSize;
   UINT32               FtwSpareSize;
 
-  DEBUG ((DEBUG_INFO, "G4DELDBG: SmmStorePei entry FileHandle=0x%p\n", FileHandle));
+  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: SmmStorePei entry FileHandle=0x%p\n", FileHandle));
   mde_5_edkii_vga_clear();
   mde_5_edkii_vga_print(0, "SmmStore");
 
   Status = ParseSMMSTOREInfo (&SmmStoreInfo);
-  DEBUG ((DEBUG_INFO, "G4DELDBG: SmmStorePei ParseSMMSTOREInfo Status=%r\n", Status));
-  mde_5_edkii_vga_sprintf(0, "SMM-%x-%x-%x-%x,-%x-%x-%x", Status, SmmStoreInfo.ComBuffer, SmmStoreInfo.ComBufferSize, SmmStoreInfo.NumBlocks, SmmStoreInfo.BlockSize, SmmStoreInfo.MmioAddress, SmmStoreInfo.ApmCmd);
+  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: SmmStorePei ParseSMMSTOREInfo Status=%r\n", Status));
+  mde_5_edkii_vga_sprintf(0, "[GX] SMM-%x-%x-%x-%x,-%x-%x-%x", Status, SmmStoreInfo.ComBuffer, SmmStoreInfo.ComBufferSize, SmmStoreInfo.NumBlocks, SmmStoreInfo.BlockSize, SmmStoreInfo.MmioAddress, SmmStoreInfo.ApmCmd);
   if (EFI_ERROR (Status)) {
     DEBUG ((
       DEBUG_ERROR,
@@ -216,7 +212,7 @@ SmmStorePeiInitialize (
 
   NvStorageSize = SmmStoreInfo.NumBlocks * SmmStoreInfo.BlockSize;
   NvStorageBase = SmmStoreInfo.MmioAddress;
-  DEBUG ((DEBUG_INFO, "G4DELDBG: SmmStorePei Info Mmio=0x%x Blocks=0x%x BlockSize=0x%x ComBuffer=0x%lx ComBufferSize=0x%x\n",
+  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: SmmStorePei Info Mmio=0x%x Blocks=0x%x BlockSize=0x%x ComBuffer=0x%lx ComBufferSize=0x%x\n",
     SmmStoreInfo.MmioAddress,
     SmmStoreInfo.NumBlocks,
     SmmStoreInfo.BlockSize,
@@ -233,7 +229,7 @@ SmmStorePeiInitialize (
   FtwSpareSize   = (SmmStoreInfo.NumBlocks / 2) * SmmStoreInfo.BlockSize;
   FtwWorkingSize = SmmStoreInfo.BlockSize;
   NvVariableSize = NvStorageSize - FtwSpareSize - FtwWorkingSize;
-  DEBUG ((DEBUG_INFO, "G4DELDBG: SmmStorePei geometry VarBase=0x%x VarSize=0x%x FtwWorkBase=0x%x FtwWorkSize=0x%x FtwSpareBase=0x%x FtwSpareSize=0x%x\n",
+  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: SmmStorePei geometry VarBase=0x%x VarSize=0x%x FtwWorkBase=0x%x FtwWorkSize=0x%x FtwSpareBase=0x%x FtwSpareSize=0x%x\n",
     NvStorageBase,
     NvVariableSize,
     NvStorageBase + NvVariableSize,
@@ -241,7 +237,7 @@ SmmStorePeiInitialize (
     NvStorageBase + NvVariableSize + FtwWorkingSize,
     FtwSpareSize
     ));
-  mde_5_edkii_vga_sprintf(1, "1a-%x-%x-%x-%x,%x", NvStorageSize, NvStorageBase, FtwSpareSize, FtwWorkingSize, NvVariableSize);
+  mde_5_edkii_vga_sprintf(1, "[GX] 1a-%x-%x-%x-%x,%x", NvStorageSize, NvStorageBase, FtwSpareSize, FtwWorkingSize, NvVariableSize);
   if (NvVariableSize >= 0x80000000) {
     DEBUG ((
       DEBUG_ERROR,
@@ -261,10 +257,10 @@ SmmStorePeiInitialize (
   VariableFlashInfo.FtwWorkingBaseAddress = NvStorageBase + NvVariableSize;
   VariableFlashInfo.FtwWorkingLength      = FtwWorkingSize;
 
-    mde_5_edkii_vga_sprintf(2, "2a-%x-%x-%x-%x,%x,%x", VariableFlashInfo.NvVariableBaseAddress, VariableFlashInfo.NvVariableLength, VariableFlashInfo.FtwSpareBaseAddress, VariableFlashInfo.FtwSpareLength, VariableFlashInfo.FtwWorkingBaseAddress, VariableFlashInfo.FtwWorkingLength);
+    mde_5_edkii_vga_sprintf(2, "[GX] 2a-%x-%x-%x-%x,%x,%x", VariableFlashInfo.NvVariableBaseAddress, VariableFlashInfo.NvVariableLength, VariableFlashInfo.FtwSpareBaseAddress, VariableFlashInfo.FtwSpareLength, VariableFlashInfo.FtwWorkingBaseAddress, VariableFlashInfo.FtwWorkingLength);
 BuildGuidDataHob (&gVariableFlashInfoHobGuid, &VariableFlashInfo, sizeof (VariableFlashInfo));
   Status = PeiServicesInstallPpi (&mPpiListVariable);
-  DEBUG ((DEBUG_INFO, "G4DELDBG: SmmStorePei Install VariableFlashInfo PPI Status=%r\n", Status));
-  mde_5_edkii_vga_sprintf(4, "4a-%x-%x-%x-%x", Status, mPpiListVariable.Flags, mPpiListVariable.Guid, mPpiListVariable.Ppi);
+  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: SmmStorePei Install VariableFlashInfo PPI Status=%r\n", Status));
+  mde_5_edkii_vga_sprintf(4, "[GX] 4a-%x-%x-%x-%x", Status, mPpiListVariable.Flags, mPpiListVariable.Guid, mPpiListVariable.Ppi);
   return Status;
 }

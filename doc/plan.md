@@ -16,6 +16,22 @@ The reference build uses a DEBUG EDK2 build, coreboot framebuffer information pa
 - Match the reference DEBUG configuration and bootsplash conversion; add an external GOP driver only when its VBT and driver are available.
 - Add stable `G4DELDBG` markers proving PEI graphics setup, DXE IPL, DXE Core handoff, GOP installation, graphics-console dispatch, and BDS entry.
 
+## Completed in this implementation
+
+- Added the exact `[GX]` prefix to the customized serial breadcrumbs and VGA breadcrumbs.
+- Reworked customized VGA writers to validate row, column, string length, and framebuffer offset before writing.
+- Removed destructive VGA row clearing so earlier phase breadcrumbs remain visible.
+- Corrected the IA32 DXE IPL formatter buffer mismatch.
+- Added/retained tagged checkpoints covering SEC/PEI, FSP, DXE IPL/Core, dispatcher, graphics, PCI, SMM/FTW, and BDS paths.
+
+The VGA writer currently uses the validated legacy `0xB8000` fallback. The framebuffer/GOP path remains the preferred runtime graphics path; a subsequent hardware pass should bind early breadcrumbs to the active framebuffer once its handoff contract is confirmed on the target.
+
+## Validation status
+
+- `git diff --check`: passes.
+- Static source inspection: customized VGA writes are bounded and clear helpers no longer erase prior breadcrumbs.
+- Full payload build: pending; the local BaseTools build is blocked by the missing Brotli source header `BaseTools/Source/C/BrotliCompress/brotli/c/common/constants.h`.
+
 ## Acceptance and Tests
 
 - Build the local payload in DEBUG mode and verify the generated FV contains DxeIpl, GraphicsOutputDxe, GraphicsConsoleDxe, and BDS.

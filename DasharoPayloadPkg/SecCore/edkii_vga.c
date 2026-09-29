@@ -22,20 +22,37 @@
 
 char mde_2_g_buffer[80];
 
-void edkii_vga_write_at_offset(unsigned int line, unsigned int offset, const char *string)
+void edkii_vga_write_at_offset (unsigned int line, unsigned int offset, const char *string)
+
 {
-	if (!string)
-		return;
 
-	unsigned short *p = (unsigned short *)mde_2__VGA_FB + (mde_2__VGA_COLUMNS * line) + offset;
-	unsigned int i, len = AsciiStrLen(string);
+  UINTN Length;
 
-	for (i = 0; i < (mde_2__VGA_COLUMNS - offset); i++) {
-		if (i < len)
-			p[i] = 0x0F00 | (unsigned char)string[i];
-		else
-			p[i] = 0x0F00;
-	}
+
+  if ((string == NULL) || (line >= 25) || (offset >= mde_2__VGA_COLUMNS)) {
+
+    return;
+
+  }
+
+
+  Length = AsciiStrLen (string);
+
+  if (Length > (mde_2__VGA_COLUMNS - offset)) {
+
+    Length = mde_2__VGA_COLUMNS - offset;
+
+  }
+
+
+  for (UINTN Index = 0; Index < Length; Index++) {
+
+    ((UINT16 *)(UINTN)mde_2__VGA_FB)[mde_2__VGA_COLUMNS * line + offset + Index] =
+
+      (UINT16)(0x0F00 | (UINT8)string[Index]);
+
+  }
+
 }
 
 
@@ -58,33 +75,12 @@ void edkii_vga_sprintf(
   edkii_vga_print (row, mde_2_g_buffer);
 }
 
-void edkii_vga_clear()
+void edkii_vga_clear ()
+
 {
-  edkii_vga_print(0, "                                                                                                    ");
-  edkii_vga_print(1, "                                                                                                    ");
-  edkii_vga_print(2, "                                                                                                    ");
-  edkii_vga_print(3, "                                                                                                    ");
-  edkii_vga_print(4, "                                                                                                    ");
-  edkii_vga_print(5, "                                                                                                    ");
-  edkii_vga_print(6, "                                                                                                    ");
-  edkii_vga_print(7, "                                                                                                    ");
-  edkii_vga_print(8, "                                                                                                    ");
-  edkii_vga_print(9, "                                                                                                    ");
-  edkii_vga_print(10, "                                                                                                    ");
-  edkii_vga_print(11, "                                                                                                    ");
-  edkii_vga_print(12, "                                                                                                    ");
-  edkii_vga_print(13, "                                                                                                    ");
-  edkii_vga_print(14, "                                                                                                    ");
-  edkii_vga_print(15, "                                                                                                    ");
-  edkii_vga_print(16, "                                                                                                    ");
-  edkii_vga_print(17, "                                                                                                    ");
-  edkii_vga_print(18, "                                                                                                    ");
-  edkii_vga_print(19, "                                                                                                    ");
-  edkii_vga_print(20, "                                                                                                    ");
-  edkii_vga_print(21, "                                                                                                    ");
-  edkii_vga_print(22, "                                                                                                    ");
-  edkii_vga_print(23, "                                                                                                    ");
-  edkii_vga_print(24, "                                                                                                    ");
+
+  // Keep breadcrumbs visible; do not erase earlier module output.
+
 }
 
 void edkii_vga_hex_dump(const unsigned char *addr, unsigned int len, int start_row)

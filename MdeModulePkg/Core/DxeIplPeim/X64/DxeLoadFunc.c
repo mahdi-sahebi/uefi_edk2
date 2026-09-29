@@ -36,20 +36,37 @@ void mde_8_edkii_vga_print(unsigned int line, const char *string);
 void mde_8_edkii_vga_write_at_offset(unsigned int line, unsigned int offset, const char *string);
 void mde_8_delay_s(int n);
 
-void mde_8_edkii_vga_write_at_offset(unsigned int line, unsigned int offset, const char *string)
+void mde_8_edkii_vga_write_at_offset (unsigned int line, unsigned int offset, const char *string)
+
 {
-	if (!string)
-		return;
 
-	unsigned short *p = (unsigned short *)mde_8__VGA_FB + (mde_8__VGA_COLUMNS * line) + offset;
-	unsigned int i, len = AsciiStrLen(string);
+  UINTN Length;
 
-	for (i = 0; i < (mde_8__VGA_COLUMNS - offset); i++) {
-		if (i < len)
-			p[i] = 0x0F00 | (unsigned char)string[i];
-		else
-			p[i] = 0x0F00;
-	}
+
+  if ((string == NULL) || (line >= 25) || (offset >= mde_8__VGA_COLUMNS)) {
+
+    return;
+
+  }
+
+
+  Length = AsciiStrLen (string);
+
+  if (Length > (mde_8__VGA_COLUMNS - offset)) {
+
+    Length = mde_8__VGA_COLUMNS - offset;
+
+  }
+
+
+  for (UINTN Index = 0; Index < Length; Index++) {
+
+    ((UINT16 *)(UINTN)mde_8__VGA_FB)[mde_8__VGA_COLUMNS * line + offset + Index] =
+
+      (UINT16)(0x0F00 | (UINT8)string[Index]);
+
+  }
+
 }
 
 
@@ -72,11 +89,12 @@ void mde_8_edkii_vga_sprintf(
   mde_8_edkii_vga_print (row, mde_8_g_buffer);
 }
 
-void mde_8_edkii_vga_clear()
+void mde_8_edkii_vga_clear ()
+
 {
-  for (unsigned int index = 0; index <= 24; index++) {
-    mde_8_edkii_vga_print(index, "                                                                                                    ");
-  }
+
+  // Keep breadcrumbs visible; do not erase earlier module output.
+
 }
 
 void mde_8_edkii_vga_hex_dump(const unsigned char *addr, unsigned int len, int start_row)
@@ -152,7 +170,7 @@ void mde_8_delay_s(int n)
     }
   }
 
-  mde_8_edkii_vga_sprintf(23, "%x", t);
+  mde_8_edkii_vga_sprintf(23, "[GX] %x", t);
 }
 
 
@@ -188,7 +206,7 @@ HandOffToDxeCore (
 
   mde_8_edkii_vga_clear();
 
-  mde_8_edkii_vga_sprintf(0, "DxeHOa-%x-%x,%x-%x,%x-%x",
+  mde_8_edkii_vga_sprintf(0, "[GX] DxeHOa-%x-%x,%x-%x,%x-%x",
     DxeCoreEntryPoint,
     HobList,
     HobList.Capsule->BaseAddress,
@@ -196,7 +214,7 @@ HandOffToDxeCore (
     HobList.HandoffInformationTable->BootMode,
     HobList.HandoffInformationTable->EfiEndOfHobList
   );
-  mde_8_edkii_vga_sprintf(1, "b-%x-%x,%x-%x,%x-%x",
+  mde_8_edkii_vga_sprintf(1, "[GX] b-%x-%x,%x-%x,%x-%x",
     HobList.HandoffInformationTable->EfiFreeMemoryBottom,
     HobList.HandoffInformationTable->EfiFreeMemoryTop,
     HobList.HandoffInformationTable->EfiMemoryBottom,
@@ -204,7 +222,7 @@ HandOffToDxeCore (
     HobList.MemoryAllocation->AllocDescriptor.MemoryBaseAddress,
     HobList.MemoryAllocation->AllocDescriptor.MemoryLength
   );
-  mde_8_edkii_vga_sprintf(2, "c-%x-%x,%x-%x,%x-%x",
+  mde_8_edkii_vga_sprintf(2, "[GX] c-%x-%x,%x-%x,%x-%x",
     HobList.MemoryAllocation->AllocDescriptor.MemoryType,
     HobList.MemoryAllocation->AllocDescriptor.Name,
     HobList.MemoryAllocationStack->AllocDescriptor.MemoryBaseAddress,
@@ -212,7 +230,7 @@ HandOffToDxeCore (
     HobList.MemoryAllocationStack->AllocDescriptor.MemoryType,
     HobList.MemoryAllocationStack->AllocDescriptor.Name
   );
-  mde_8_edkii_vga_sprintf(3, "d-%x-%x",
+  mde_8_edkii_vga_sprintf(3, "[GX] d-%x-%x",
     HobList.Cpu->Header.HobLength,
     HobList.Cpu->Header.HobType
   );
@@ -223,28 +241,28 @@ HandOffToDxeCore (
   //
   if (IsNullDetectionEnabled ()) {
 
-    mde_8_edkii_vga_sprintf(4, "4a-%x",
+    mde_8_edkii_vga_sprintf(4, "[GX] 4a-%x",
       0
     );
     mde_8_delay_s(2);
 
     ClearFirst4KPage (HobList.Raw);
 
-    mde_8_edkii_vga_sprintf(4, "4b-%x",
+    mde_8_edkii_vga_sprintf(4, "[GX] 4b-%x",
       0
     );
     mde_8_delay_s(2);
 
     BuildMemoryAllocationHob (0, EFI_PAGES_TO_SIZE (1), EfiBootServicesData);
 
-    mde_8_edkii_vga_sprintf(4, "4c-%x",
+    mde_8_edkii_vga_sprintf(4, "[GX] 4c-%x",
       0
     );
     mde_8_delay_s(2);
   }
 
 
-  mde_8_edkii_vga_sprintf(5, "5a-%x",
+  mde_8_edkii_vga_sprintf(5, "[GX] 5a-%x",
     0
   );
   mde_8_delay_s(2);
@@ -258,7 +276,7 @@ HandOffToDxeCore (
              (VOID **)&VectorHandoffInfoPpi
              );
 
-  mde_8_edkii_vga_sprintf(5, "5b-%x",
+  mde_8_edkii_vga_sprintf(5, "[GX] 5b-%x",
     Status
   );
   mde_8_delay_s(2);
@@ -272,7 +290,7 @@ HandOffToDxeCore (
     }
 
 
-    mde_8_edkii_vga_sprintf(5, "5c-%x",
+    mde_8_edkii_vga_sprintf(5, "[GX] 5c-%x",
       Index
     );
     mde_8_delay_s(2);
@@ -283,13 +301,13 @@ HandOffToDxeCore (
       sizeof (EFI_VECTOR_HANDOFF_INFO) * Index
       );
 
-      mde_8_edkii_vga_sprintf(5, "5d-%x",
+      mde_8_edkii_vga_sprintf(5, "[GX] 5d-%x",
         Index
       );
   }
 
 
-    mde_8_edkii_vga_sprintf(6, "6a-%x",
+    mde_8_edkii_vga_sprintf(6, "[GX] 6a-%x",
       0
     );
     mde_8_delay_s(2);
@@ -298,7 +316,7 @@ HandOffToDxeCore (
   //
   BaseOfStack = AllocatePages (EFI_SIZE_TO_PAGES (STACK_SIZE));
 
-  mde_8_edkii_vga_sprintf(6, "6b-%x",
+  mde_8_edkii_vga_sprintf(6, "[GX] 6b-%x",
     BaseOfStack
   );
   mde_8_delay_s(2);
@@ -318,7 +336,7 @@ HandOffToDxeCore (
   GhcbSize = PcdGet64 (PcdGhcbSize);
 
 
-  mde_8_edkii_vga_sprintf(6, "6c-%x-%x-%x-%x",
+  mde_8_edkii_vga_sprintf(6, "[GX] 6c-%x-%x-%x-%x",
     BaseOfStack,
     TopOfStack,
     GhcbBase,
@@ -329,7 +347,7 @@ HandOffToDxeCore (
   PageTables = 0;
   if (FeaturePcdGet (PcdDxeIplBuildPageTables)) {
 
-    mde_8_edkii_vga_sprintf(7, "7a-%x",
+    mde_8_edkii_vga_sprintf(7, "[GX] 7a-%x",
       0
     );
     mde_8_delay_s(2);
@@ -343,7 +361,7 @@ HandOffToDxeCore (
                    GhcbSize
                    );
 
-      mde_8_edkii_vga_sprintf(7, "7b-%x",
+      mde_8_edkii_vga_sprintf(7, "[GX] 7b-%x",
         PageTables
       );
   } else {
@@ -356,7 +374,7 @@ HandOffToDxeCore (
   }
 
 
-  mde_8_edkii_vga_sprintf(9, "9a-%x",
+  mde_8_edkii_vga_sprintf(9, "[GX] 9a-%x",
     0
   );
   mde_8_delay_s(2);
@@ -365,7 +383,7 @@ HandOffToDxeCore (
   //
   Status = PeiServicesInstallPpi (&gEndOfPeiSignalPpi);
 
-  mde_8_edkii_vga_sprintf(9, "9b-%x-%x,%x-%x-%x-%x,%x",
+  mde_8_edkii_vga_sprintf(9, "[GX] 9b-%x-%x,%x-%x-%x-%x,%x",
     Status,
     gEndOfPeiSignalPpi.Flags,
     gEndOfPeiSignalPpi.Guid->Data1,
@@ -383,7 +401,7 @@ HandOffToDxeCore (
   }
 
 
-  mde_8_edkii_vga_sprintf(9, "9c-%x",
+  mde_8_edkii_vga_sprintf(9, "[GX] 9c-%x",
     0
   );
   mde_8_delay_s(2);
@@ -393,7 +411,7 @@ HandOffToDxeCore (
   UpdateStackHob ((EFI_PHYSICAL_ADDRESS)(UINTN)BaseOfStack, STACK_SIZE);
 
 
-  mde_8_edkii_vga_sprintf(9, "9d-%x-%x-%x",
+  mde_8_edkii_vga_sprintf(9, "[GX] 9d-%x-%x-%x",
     DxeCoreEntryPoint,
     *(unsigned int*)DxeCoreEntryPoint,
     ((unsigned int*)DxeCoreEntryPoint)[1],
@@ -411,7 +429,7 @@ HandOffToDxeCore (
     );
 
 
-  mde_8_edkii_vga_sprintf(9, "9e-%x",
+  mde_8_edkii_vga_sprintf(9, "[GX] 9e-%x",
     0
   );
   mde_8_delay_s(2);

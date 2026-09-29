@@ -156,7 +156,7 @@ SecStartupPhase2(
   EFI_PEI_CORE_ENTRY_POINT    PeiCoreEntryPoint;
 
   SecCoreData = (EFI_SEC_PEI_HAND_OFF *) Context;
-  DEBUG ((DEBUG_INFO, "G4DELDBG: SEC phase2 entry SecCoreData=0x%p BFV=0x%p Size=0x%x TempRam=0x%p Stack=0x%p\n",
+  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: SEC phase2 entry SecCoreData=0x%p BFV=0x%p Size=0x%x TempRam=0x%p Stack=0x%p\n",
     SecCoreData,
     (VOID *)(UINTN)SecCoreData->BootFirmwareVolumeBase,
     SecCoreData->BootFirmwareVolumeSize,
@@ -168,11 +168,11 @@ SecStartupPhase2(
   // is enabled.
   //
   FindAndReportEntryPoints ((EFI_FIRMWARE_VOLUME_HEADER *) SecCoreData->BootFirmwareVolumeBase, &PeiCoreEntryPoint);
-  DEBUG ((DEBUG_INFO, "G4DELDBG: SEC located PeiCoreEntryPoint=0x%p\n", (VOID *)(UINTN)PeiCoreEntryPoint));
-  edkii_vga_sprintf(9, "SPa-%x-%x-%x,%x-%x-%x", SecCoreData, SecCoreData->BootFirmwareVolumeBase, PeiCoreEntryPoint, mPeiSecPlatformInformationPpi->Flags, mPeiSecPlatformInformationPpi->Guid, mPeiSecPlatformInformationPpi->Ppi);
+  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: SEC located PeiCoreEntryPoint=0x%p\n", (VOID *)(UINTN)PeiCoreEntryPoint));
+  edkii_vga_sprintf(9, "[GX] SPa-%x-%x-%x,%x-%x-%x", SecCoreData, SecCoreData->BootFirmwareVolumeBase, PeiCoreEntryPoint, mPeiSecPlatformInformationPpi->Flags, mPeiSecPlatformInformationPpi->Guid, mPeiSecPlatformInformationPpi->Ppi);
   if (PeiCoreEntryPoint == NULL)
   {
-    DEBUG ((DEBUG_ERROR, "G4DELDBG: SEC failed to locate PEI core, entering CpuDeadLoop\n"));
+    DEBUG ((DEBUG_ERROR, "[GX] G4DELDBG: SEC failed to locate PEI core, entering CpuDeadLoop\n"));
     CpuDeadLoop ();
   }
 
@@ -180,8 +180,8 @@ SecStartupPhase2(
   // Transfer the control to the PEI core
   //
   ASSERT (PeiCoreEntryPoint != NULL);
-  DEBUG ((DEBUG_INFO, "G4DELDBG: SEC handoff to PEI core\n"));
-  edkii_vga_sprintf(10, "SPb-%x-%x-%x,%x-%x-%x", SecCoreData, SecCoreData->BootFirmwareVolumeBase, PeiCoreEntryPoint, mPeiSecPlatformInformationPpi->Flags, mPeiSecPlatformInformationPpi->Guid, mPeiSecPlatformInformationPpi->Ppi);
+  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: SEC handoff to PEI core\n"));
+  edkii_vga_sprintf(10, "[GX] SPb-%x-%x-%x,%x-%x-%x", SecCoreData, SecCoreData->BootFirmwareVolumeBase, PeiCoreEntryPoint, mPeiSecPlatformInformationPpi->Flags, mPeiSecPlatformInformationPpi->Guid, mPeiSecPlatformInformationPpi->Ppi);
   (*PeiCoreEntryPoint) (SecCoreData, (EFI_PEI_PPI_DESCRIPTOR *)&mPeiSecPlatformInformationPpi);
 
   //
@@ -301,4 +301,3 @@ SecTemporaryRamSupport (
 
   return EFI_SUCCESS;
 }
-
