@@ -14,6 +14,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Library/PeiServicesLib.h>
 #include <Library/PcdLib.h>
 #include <Library/DebugLib.h>
+#include <Library/GxVgaLib.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/HobLib.h>
 #include <Library/SafeIntLib.h>
@@ -355,6 +356,8 @@ PeimFaultTolerantWriteInitialize (
   IN CONST EFI_PEI_SERVICES     **PeiServices
   )
 {
+  DEBUG ((DEBUG_INFO, "[GX] module=FtwPei event=entry status=success\n"));
+  GxVgaCheckpoint (10, "[GX] module=FtwPei event=entry status=success");
   EFI_STATUS                               Status;
   EFI_FAULT_TOLERANT_WORKING_BLOCK_HEADER  *FtwWorkingBlockHeader;
   EFI_FAULT_TOLERANT_WRITE_HEADER          *FtwLastWriteHeader;

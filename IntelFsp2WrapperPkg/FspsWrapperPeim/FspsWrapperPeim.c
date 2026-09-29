@@ -15,6 +15,7 @@
 #include <Library/PeiServicesTablePointerLib.h>
 #include <Library/BaseLib.h>
 #include <Library/DebugLib.h>
+#include <Library/GxVgaLib.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/HobLib.h>
 #include <Library/PcdLib.h>
@@ -547,6 +548,8 @@ FspsWrapperPeimEntryPoint (
   IN CONST EFI_PEI_SERVICES     **PeiServices
   )
 {
+  DEBUG ((DEBUG_INFO, "[GX] module=FspsWrapperPeim event=entry status=success\n"));
+  GxVgaCheckpoint (8, "[GX] module=FspsWrapperPeim event=entry status=success");
   EFI_STATUS  Status;
 
   DEBUG ((DEBUG_INFO, "FspsWrapperPeimEntryPoint\n"));

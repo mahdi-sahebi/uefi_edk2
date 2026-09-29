@@ -33,6 +33,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 #include "DxeMain.h"
 #include <Library/DebugLib.h>
+#include <Library/GxVgaLib.h>
 
 //
 // The Driver List contains one copy of every driver that has been discovered.
@@ -402,6 +403,8 @@ CoreDispatcher (
   VOID
   )
 {
+  DEBUG ((DEBUG_INFO, "[GX] module=DxeDispatcher event=entry status=success\n"));
+  GxVgaCheckpoint (4, "[GX] module=DxeDispatcher event=entry status=success");
   EFI_STATUS             Status;
   EFI_STATUS             ReturnStatus;
   LIST_ENTRY             *Link;

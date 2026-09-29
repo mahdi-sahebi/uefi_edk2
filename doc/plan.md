@@ -23,8 +23,12 @@ The reference build uses a DEBUG EDK2 build, coreboot framebuffer information pa
 - Removed destructive VGA row clearing so earlier phase breadcrumbs remain visible.
 - Corrected the IA32 DXE IPL formatter buffer mismatch.
 - Added/retained tagged checkpoints covering SEC/PEI, FSP, DXE IPL/Core, dispatcher, graphics, PCI, SMM/FTW, and BDS paths.
+- Added paired coreboot checkpoints for FSP completion, CBFS payload lookup/load, HOB validation, and EDK2 payload handoff.
+- Added a shared bounded EDK2 early-VGA checkpoint interface for the core execution phases.
 
 The VGA writer currently uses the validated legacy `0xB8000` fallback. The framebuffer/GOP path remains the preferred runtime graphics path; a subsequent hardware pass should bind early breadcrumbs to the active framebuffer once its handoff contract is confirmed on the target.
+
+Coreboot emits its `[GX]` markers before the original romstage/payload messages. This separates a failure before payload handoff from a failure inside EDK2.
 
 ## Validation status
 

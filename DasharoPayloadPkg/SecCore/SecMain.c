@@ -9,6 +9,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 #include "SecMain.h"
 #include <Library/DebugLib.h>
+#include <Library/GxVgaLib.h>
 #include "edkii_vga.h"
 #include <Library/TimerLib.h>
 #include <Library/DebugLib.h>
@@ -152,6 +153,8 @@ SecStartupPhase2(
   IN VOID                     *Context
   )
 {
+  DEBUG ((DEBUG_INFO, "[GX] module=SecCore event=entry status=success\n"));
+  GxVgaCheckpoint (0, "[GX] module=SecCore event=entry status=success");
   EFI_SEC_PEI_HAND_OFF        *SecCoreData;
   EFI_PEI_CORE_ENTRY_POINT    PeiCoreEntryPoint;
 

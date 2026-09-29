@@ -10,6 +10,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 #include "DxeIpl.h"
 #include <Library/DebugLib.h>
+#include <Library/GxVgaLib.h>
 
 
 /////////////////////////////////////////////////////
@@ -255,6 +256,8 @@ PeimInitializeDxeIpl (
   IN CONST EFI_PEI_SERVICES     **PeiServices
   )
 {
+  DEBUG ((DEBUG_INFO, "[GX] module=DxeIplPeim event=entry status=success\n"));
+  GxVgaCheckpoint (2, "[GX] module=DxeIplPeim event=entry status=success");
   EFI_STATUS     Status;
   EFI_BOOT_MODE  BootMode;
   VOID           *Dummy;

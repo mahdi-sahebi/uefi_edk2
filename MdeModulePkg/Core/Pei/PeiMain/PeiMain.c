@@ -18,6 +18,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Library/PrintLib.h>
 #include <Library/BaseLib.h>
 #include <Library/DebugLib.h>
+#include <Library/GxVgaLib.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/PcdLib.h>
 // #include <Library/CpuLib.h>
@@ -345,6 +346,8 @@ PeiCore (
   IN VOID                          *Data
   )
 {
+  DEBUG ((DEBUG_INFO, "[GX] module=PeiCore event=entry status=success\n"));
+  GxVgaCheckpoint (0, "[GX] module=PeiCore event=entry status=success");
 
   PEI_CORE_INSTANCE               PrivateData;
   EFI_SEC_PEI_HAND_OFF            *SecCoreData;

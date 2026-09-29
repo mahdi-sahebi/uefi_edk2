@@ -15,6 +15,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 #include "PciBus.h"
 #include <Library/DebugLib.h>
+#include <Library/GxVgaLib.h>
 
 //
 // PCI Bus Driver Global Variables
@@ -66,6 +67,8 @@ PciBusEntryPoint (
   IN EFI_SYSTEM_TABLE  *SystemTable
   )
 {
+  DEBUG ((DEBUG_INFO, "[GX] module=PciBus event=entry status=success\n"));
+  GxVgaCheckpoint (6, "[GX] module=PciBus event=entry status=success");
   EFI_STATUS  Status;
   EFI_HANDLE  Handle;
 

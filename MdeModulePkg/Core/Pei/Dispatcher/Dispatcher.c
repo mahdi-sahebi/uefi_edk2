@@ -19,6 +19,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Library/PrintLib.h>
 #include <Library/BaseLib.h>
 #include <Library/DebugLib.h>
+#include <Library/GxVgaLib.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/PcdLib.h>
 // #include <Library/CpuLib.h>
@@ -1924,6 +1925,8 @@ PeiDispatcher (
   IN PEI_CORE_INSTANCE           *Private
   )
 {
+  DEBUG ((DEBUG_INFO, "[GX] module=PeiDispatcher event=entry status=success\n"));
+  GxVgaCheckpoint (1, "[GX] module=PeiDispatcher event=entry status=success");
   EFI_STATUS              Status;
   UINT32                  Index1;
   UINT32                  Index2;

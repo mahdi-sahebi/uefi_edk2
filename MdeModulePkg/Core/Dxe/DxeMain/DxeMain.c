@@ -7,6 +7,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 **/
 
 #include "DxeMain.h"
+#include <Library/GxVgaLib.h>
 
 //
 // DXE Core Global Variables for Protocols from PEI
@@ -236,6 +237,8 @@ DxeMain (
   IN  VOID  *HobStart
   )
 {
+  DEBUG ((DEBUG_INFO, "[GX] module=DxeCore event=entry status=success\n"));
+  GxVgaCheckpoint (3, "[GX] module=DxeCore event=entry status=success");
   EFI_STATUS                    Status;
   EFI_PHYSICAL_ADDRESS          MemoryBaseAddress;
   UINT64                        MemoryLength;

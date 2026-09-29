@@ -14,6 +14,7 @@ SPDX-License-Identifier: GPL-2.0-or-later
 #include <Library/BaseMemoryLib.h>
 #include <Library/BlParseLib.h>
 #include <Library/DebugLib.h>
+#include <Library/GxVgaLib.h>
 #include <Library/HobLib.h>
 #include <Library/PeiServicesLib.h>
 
@@ -185,6 +186,8 @@ SmmStorePeiInitialize (
   IN CONST EFI_PEI_SERVICES     **PeiServices
   )
 {
+  DEBUG ((DEBUG_INFO, "[GX] module=SmmStorePei event=entry status=success\n"));
+  GxVgaCheckpoint (9, "[GX] module=SmmStorePei event=entry status=success");
   EFI_STATUS           Status;
   SMMSTORE_INFO        SmmStoreInfo;
   VARIABLE_FLASH_INFO  VariableFlashInfo;

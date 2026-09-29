@@ -10,6 +10,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Coreboot.h>
 #include <IndustryStandard/UefiTcgPlatform.h>
 #include <Library/DebugLib.h>
+#include <Library/GxVgaLib.h>
 
 
 /////////////////////////////////////////////////////
@@ -793,6 +794,8 @@ BlPeiEntryPoint (
   IN CONST EFI_PEI_SERVICES        **PeiServices
   )
 {
+  DEBUG ((DEBUG_INFO, "[GX] module=BlSupportPei event=entry status=success\n"));
+  GxVgaCheckpoint (0, "[GX] module=BlSupportPei event=entry status=success");
   EFI_STATUS                       Status;
   EFI_PHYSICAL_ADDRESS             UsableLowMemTop = 0;
   EFI_PHYSICAL_ADDRESS             PeiMemBase = 0;

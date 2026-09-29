@@ -14,6 +14,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 #include "Bds.h"
 #include <Library/DebugLib.h>
+#include <Library/GxVgaLib.h>
 #include "Language.h"
 #include "HwErrRecSupport.h"
 #include <Library/VariablePolicyHelperLib.h>
@@ -702,6 +703,8 @@ BdsEntry (
   IN EFI_BDS_ARCH_PROTOCOL  *This
   )
 {
+  DEBUG ((DEBUG_INFO, "[GX] module=Bds event=entry status=success\n"));
+  GxVgaCheckpoint (7, "[GX] module=Bds event=entry status=success");
   EFI_BOOT_MANAGER_LOAD_OPTION    *LoadOptions;
   UINTN                           LoadOptionCount;
   CHAR16                          *FirmwareVendor;

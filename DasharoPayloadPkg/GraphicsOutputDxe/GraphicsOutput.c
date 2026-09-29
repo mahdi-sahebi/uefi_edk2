@@ -745,6 +745,8 @@ InitializeGraphicsOutput (
   IN EFI_SYSTEM_TABLE                  *SystemTable
   )
 {
+  DEBUG ((DEBUG_INFO, "[GX] module=GraphicsOutputDxe event=entry status=success\n"));
+  GxVgaCheckpoint (5, "[GX] module=GraphicsOutputDxe event=entry status=success");
   EFI_STATUS                           Status;
   VOID                                 *HobStart;
 
