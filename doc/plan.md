@@ -34,7 +34,11 @@ Coreboot emits its `[GX]` markers before the original romstage/payload messages.
 
 - `git diff --check`: passes.
 - Static source inspection: customized VGA writes are bounded and clear helpers no longer erase prior breadcrumbs.
-- Full payload build: pending; the local BaseTools build is blocked by the missing Brotli source header `BaseTools/Source/C/BrotliCompress/brotli/c/common/constants.h`.
+- BaseTools build and test suite: passed after initializing the Brotli submodule.
+- EDK2 DEBUG IA32/X64 payload build: passed with GCC5.
+- Coreboot build: passed; the generated payload was copied into the coreboot build and embedded as `fallback/payload`.
+- Artifact verification: the EDK2 FV, extracted CBFS payload, and coreboot build payload contain the expected `[GX]` module markers.
+- Hardware SOL/VGA capture: still required; source and artifact verification cannot prove the physical console path.
 
 ## Acceptance and Tests
 
