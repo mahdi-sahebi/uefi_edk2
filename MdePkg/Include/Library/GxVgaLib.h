@@ -35,3 +35,4 @@ GxVgaCheckpoint (
 }
 
 #endif
+
