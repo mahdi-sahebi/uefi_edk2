@@ -313,9 +313,29 @@ GraphicsOutputDriverBindingStart (
 
   FrameBufferBase = 0;
 
+  DEBUG ((DEBUG_INFO, "G4DELDBG: GraphicsOutputDxe start\n"));
+
   HobStart = GetFirstGuidHob (&gEfiGraphicsInfoHobGuid);
-  ASSERT ((HobStart != NULL) && (GET_GUID_HOB_DATA_SIZE (HobStart) == sizeof (EFI_PEI_GRAPHICS_INFO_HOB)));
+  if ((HobStart == NULL) || (GET_GUID_HOB_DATA_SIZE (HobStart) < sizeof (EFI_PEI_GRAPHICS_INFO_HOB))) {
+    DEBUG ((DEBUG_ERROR, "G4DELDBG: GraphicsOutputDxe graphics HOB missing or too small\n"));
+    return EFI_NOT_FOUND;
+  }
   GraphicsInfo = (EFI_PEI_GRAPHICS_INFO_HOB *) (GET_GUID_HOB_DATA (HobStart));
+  DEBUG ((DEBUG_INFO, "G4DELDBG: GraphicsOutputDxe graphics HOB FB=0x%lx size=0x%lx %ux%u stride=%u\n",
+          GraphicsInfo->FrameBufferBase,
+          GraphicsInfo->FrameBufferSize,
+          GraphicsInfo->GraphicsMode.HorizontalResolution,
+          GraphicsInfo->GraphicsMode.VerticalResolution,
+          GraphicsInfo->GraphicsMode.PixelsPerScanLine));
+
+  if ((GraphicsInfo->FrameBufferBase == 0) ||
+      (GraphicsInfo->FrameBufferSize == 0) ||
+      (GraphicsInfo->GraphicsMode.HorizontalResolution == 0) ||
+      (GraphicsInfo->GraphicsMode.VerticalResolution == 0) ||
+      (GraphicsInfo->GraphicsMode.PixelsPerScanLine < GraphicsInfo->GraphicsMode.HorizontalResolution)) {
+    DEBUG ((DEBUG_ERROR, "G4DELDBG: GraphicsOutputDxe invalid graphics HOB\n"));
+    return EFI_DEVICE_ERROR;
+  }
 
   HobStart = GetFirstGuidHob (&gEfiGraphicsDeviceInfoHobGuid);
   if ((HobStart == NULL) || (GET_GUID_HOB_DATA_SIZE (HobStart) < sizeof (*DeviceInfo))) {
@@ -507,6 +527,14 @@ GraphicsOutputDriverBindingStart (
                   &gEfiDevicePathProtocolGuid, Private->DevicePath,
                   NULL
                   );
+
+  if (!EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_INFO, "G4DELDBG: GraphicsOutputDxe GOP installed FB=0x%lx size=0x%lx\n",
+            Private->GraphicsOutputMode.FrameBufferBase,
+            Private->GraphicsOutputMode.FrameBufferSize));
+  } else {
+    DEBUG ((DEBUG_ERROR, "G4DELDBG: GraphicsOutputDxe GOP install failed Status=%r\n", Status));
+  }
 
   if (!EFI_ERROR (Status)) {
     Status = gBS->OpenProtocol (
@@ -720,9 +748,12 @@ InitializeGraphicsOutput (
   EFI_STATUS                           Status;
   VOID                                 *HobStart;
 
+  DEBUG ((DEBUG_INFO, "G4DELDBG: GraphicsOutputDxe entry\n"));
+
   HobStart = GetFirstGuidHob (&gEfiGraphicsInfoHobGuid);
 
   if ((HobStart == NULL) || (GET_GUID_HOB_DATA_SIZE (HobStart) < sizeof (EFI_PEI_GRAPHICS_INFO_HOB))) {
+    DEBUG ((DEBUG_ERROR, "G4DELDBG: GraphicsOutputDxe no usable graphics HOB\n"));
     return EFI_NOT_FOUND;
   }
 
