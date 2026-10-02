@@ -448,7 +448,7 @@
 OrderedCollectionLib|MdePkg/Library/BaseOrderedCollectionRedBlackTreeLib/BaseOrderedCollectionRedBlackTreeLib.inf
 
 [LibraryClasses.IA32.SEC]
-  DebugLib|MdePkg/Library/BaseDebugLibNull/BaseDebugLibNull.inf
+  DebugLib|DasharoPayloadPkg/Library/SecDebugLibSerialPort/SecDebugLibSerialPort.inf
   PcdLib|MdePkg/Library/BasePcdLibNull/BasePcdLibNull.inf
   HobLib|MdePkg/Library/PeiHobLib/PeiHobLib.inf
   MemoryAllocationLib|MdePkg/Library/PeiMemoryAllocationLib/PeiMemoryAllocationLib.inf
@@ -457,6 +457,7 @@ OrderedCollectionLib|MdePkg/Library/BaseOrderedCollectionRedBlackTreeLib/BaseOrd
   PerformanceLib|MdeModulePkg/Library/PeiPerformanceLib/PeiPerformanceLib.inf
 
 [LibraryClasses.common.SEC]
+  SerialPortLib|MdeModulePkg/Library/BaseSerialPortLib16550/BaseSerialPortLib16550.inf
 !if $(QEMU_PLATFORM) == TRUE
   TimerLib|OvmfPkg/Library/AcpiTimerLib/BaseRomAcpiTimerLib.inf
 !endif
@@ -612,7 +613,11 @@ OrderedCollectionLib|MdePkg/Library/BaseOrderedCollectionRedBlackTreeLib/BaseOrd
   gEfiMdeModulePkgTokenSpaceGuid.PcdStatusCodeUseMemory|FALSE
 
   gEfiMdePkgTokenSpaceGuid.PcdReportStatusCodePropertyMask|0x7
-  gEfiMdePkgTokenSpaceGuid.PcdDebugPrintErrorLevel|0x8000004F
+  gEfiMdePkgTokenSpaceGuid.PcdDebugPrintErrorLevel|0x80000002
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSerialUseMmio|FALSE
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSerialRegisterBase|0x2F8
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSerialRegisterStride|1
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSerialBaudRate|115200
 !if $(USE_CBMEM_FOR_CONSOLE) == FALSE
   !if $(SOURCE_DEBUG_ENABLE)
     gEfiMdePkgTokenSpaceGuid.PcdDebugPropertyMask|0x17

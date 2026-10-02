@@ -50,6 +50,44 @@
 #define   B_UART_MSR_RI      BIT6
 #define   B_UART_MSR_DCD     BIT7
 
+#ifdef GX_DUAL_SERIAL_DEBUG
+#define GX_SECONDARY_UART_TIMEOUT  10000U
+
+STATIC BOOLEAN  mGxSecondaryUartInitialized;
+
+STATIC
+VOID
+GxSecondaryUartWrite (
+  IN UINTN  Base,
+  IN UINT8  *Buffer,
+  IN UINTN  NumberOfBytes
+  )
+{
+  UINTN  Index;
+  UINTN  Timeout;
+
+  if (!mGxSecondaryUartInitialized) {
+    IoWrite8 (Base + R_UART_IER, 0);
+    IoWrite8 (Base + R_UART_LCR, B_UART_LCR_DLAB);
+    IoWrite8 (Base + R_UART_BAUD_HIGH, 0);
+    IoWrite8 (Base + R_UART_BAUD_LOW, 1);
+    IoWrite8 (Base + R_UART_LCR, 0x03);
+    IoWrite8 (Base + R_UART_FCR, 0x07);
+    IoWrite8 (Base + R_UART_MCR, 0x03);
+    mGxSecondaryUartInitialized = TRUE;
+  }
+
+  for (Index = 0; Index < NumberOfBytes; Index++) {
+    for (Timeout = 0; Timeout < GX_SECONDARY_UART_TIMEOUT; Timeout++) {
+      if ((IoRead8 (Base + R_UART_LSR) & B_UART_LSR_TXRDY) != 0) {
+        IoWrite8 (Base + R_UART_TXBUF, Buffer[Index]);
+        break;
+      }
+    }
+  }
+}
+#endif
+
 //
 // 4-byte structure for each PCI node in PcdSerialPciDeviceInfo
 //
@@ -612,6 +650,9 @@ SerialPortWrite (
   UINTN  Result;
   UINTN  Index;
   UINTN  FifoSize;
+  #ifdef GX_DUAL_SERIAL_DEBUG
+  UINT8  *OriginalBuffer;
+  #endif
 
   if (Buffer == NULL) {
     return 0;
@@ -641,6 +682,10 @@ SerialPortWrite (
 
     return 0;
   }
+
+  #ifdef GX_DUAL_SERIAL_DEBUG
+  OriginalBuffer = Buffer;
+  #endif
 
   //
   // Compute the maximum size of the Tx FIFO
@@ -679,6 +724,16 @@ SerialPortWrite (
       SerialPortWriteRegister (SerialRegisterBase, R_UART_TXBUF, *Buffer);
     }
   }
+
+  #ifdef GX_DUAL_SERIAL_DEBUG
+  if (!PcdGetBool (PcdSerialUseMmio)) {
+    if (SerialRegisterBase == 0x2F8U) {
+      GxSecondaryUartWrite (0x3F8U, OriginalBuffer, Result);
+    } else if (SerialRegisterBase == 0x3F8U) {
+      GxSecondaryUartWrite (0x2F8U, OriginalBuffer, Result);
+    }
+  }
+  #endif
 
   return Result;
 }

@@ -4,6 +4,7 @@
 
 #include <Uefi.h>
 #include <Library/BaseLib.h>
+#include <Library/DebugLib.h>
 
 #define GX_VGA_TEXT_BASE     0xB8000
 #define GX_VGA_TEXT_COLUMNS  80U
@@ -32,7 +33,8 @@ GxVgaCheckpoint (
     Text[(Row * GX_VGA_TEXT_COLUMNS) + Index] =
       (UINT16)(0x0F00U | (UINT8)Message[Index]);
   }
+
+  DEBUG ((DEBUG_WARN, "%a\n", Message));
 }
 
 #endif
-

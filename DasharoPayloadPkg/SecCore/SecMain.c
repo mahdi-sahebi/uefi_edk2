@@ -153,6 +153,15 @@ SecStartupPhase2(
   IN VOID                     *Context
   )
 {
+  // Keep a distinctive, persistent VGA/SOL signature at the very start of
+  // the C SEC path. The delay makes the signature observable in BMC video
+  // and SOL captures before PEI begins changing the console state.
+  GxVgaCheckpoint (0, "G4DEL SEC START >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
+  GxVgaCheckpoint (1, "G4DEL SEC START / DASHARO PAYLOAD / 2SEC");
+  GxVgaCheckpoint (2, "G4DEL SEC START >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
+  GxVgaCheckpoint (3, "WAITING BEFORE PEI CORE HANDOFF");
+  MicroSecondDelay (2 * 1000 * 1000);
+  GxVgaCheckpoint (4, "G4DEL SEC START / PEI HANDOFF");
   DEBUG ((DEBUG_INFO, "[GX] module=SecCore event=entry status=success\n"));
   GxVgaCheckpoint (0, "[GX] module=SecCore event=entry status=success");
   EFI_SEC_PEI_HAND_OFF        *SecCoreData;

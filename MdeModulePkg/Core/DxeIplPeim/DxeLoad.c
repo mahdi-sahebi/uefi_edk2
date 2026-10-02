@@ -10,191 +10,6 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 #include "DxeIpl.h"
 #include <Library/DebugLib.h>
-#include <Library/GxVgaLib.h>
-
-
-/////////////////////////////////////////////////////
-
-#include <stdarg.h>
-
-#include <Library/IoLib.h>
-#include <Library/PrintLib.h>
-#include <Library/BaseLib.h>
-#include <Library/DebugLib.h>
-#include <Library/BaseMemoryLib.h>
-#include <Library/PcdLib.h>
-// #include <Library/CpuLib.h>
-// #include <Library/PeCoffGetEntryPointLib.h>
-// #include <Library/PeCoffExtraActionLib.h>
-#include <Library/DebugAgentLib.h>
-
-#define mde_6__VGA_FB 0xB8000
-#define mde_6__VGA_COLUMNS 80
-
-char mde_6_g_buffer[80];
-
-void mde_6_edkii_vga_clear(void);
-void mde_6_edkii_vga_sprintf(unsigned int row, const char* format, ...);
-void mde_6_edkii_vga_print(unsigned int line, const char *string);
-void mde_6_edkii_vga_write_at_offset(unsigned int line, unsigned int offset, const char *string);
-void mn_6_delay_s(int n);
-
-// unsigned int mn_6_strlen(char *String)
-// {
-//     UINTN Length = 0;
-
-//     if (String == NULL) {
-//         return 0;
-//     }
-
-//     while (*String != '\0') {
-//         String++;
-//         Length++;
-//     }
-
-//     return Length;
-// }
-
-void mde_6_edkii_vga_write_at_offset (unsigned int line, unsigned int offset, const char *string)
-
-{
-
-  UINTN Length;
-
-
-  if ((string == NULL) || (line >= 25) || (offset >= mde_6__VGA_COLUMNS)) {
-
-    return;
-
-  }
-
-
-  Length = AsciiStrLen (string);
-
-  if (Length > (mde_6__VGA_COLUMNS - offset)) {
-
-    Length = mde_6__VGA_COLUMNS - offset;
-
-  }
-
-
-  for (UINTN Index = 0; Index < Length; Index++) {
-
-    ((UINT16 *)(UINTN)mde_6__VGA_FB)[mde_6__VGA_COLUMNS * line + offset + Index] =
-
-      (UINT16)(0x0F00 | (UINT8)string[Index]);
-
-  }
-
-}
-
-
-void mde_6_edkii_vga_print(unsigned int line, const char *string)
-{
-	mde_6_edkii_vga_write_at_offset(line, 0, string);
-}
-
-void mde_6_edkii_vga_sprintf(
-  unsigned int row,
-  const char* format,
-  ...)
-{
-  VA_LIST  marker;
-
-  VA_START (marker, format);
-  AsciiVSPrint(mde_6_g_buffer, sizeof(mde_6_g_buffer), format, marker);
-  VA_END (marker);
-
-  mde_6_edkii_vga_print (row, mde_6_g_buffer);
-}
-
-void mde_6_edkii_vga_clear ()
-
-{
-
-  // Keep breadcrumbs visible; do not erase earlier module output.
-
-}
-
-void mde_6_edkii_vga_hex_dump(const unsigned char *addr, unsigned int len, int start_row)
-{
-    unsigned int i;
-
-    for (i = 0; i < len; i += 16) {
-        unsigned int j;
-        int row = start_row + (i / 16);
-        int offset_pos = 0;
-
-        // Write offset character by character
-        unsigned long ptr_val = (unsigned long)(addr + i);
-        for (j = 28; j > 0; j -= 4) {
-            char nibble = (ptr_val >> j) & 0x0F;
-            char c = (nibble < 10) ? ('0' + nibble) : ('A' + nibble - 10);
-            char buf[2] = {c, '\0'};
-            mde_6_edkii_vga_write_at_offset(row, offset_pos++, buf);
-        }
-        {
-            char last_nibble = ptr_val & 0x0F;
-            char c = (last_nibble < 10) ? ('0' + last_nibble) : ('A' + last_nibble - 10);
-            char buf[2] = {c, '\0'};
-            mde_6_edkii_vga_write_at_offset(row, offset_pos++, buf);
-        }
-        mde_6_edkii_vga_write_at_offset(row, offset_pos++, ": ");
-
-        // Write hex bytes
-        for (j = 0; j < 16 && (i + j < len); j++) {
-            unsigned char byte = addr[i + j];
-            // Write high nibble
-            char high = (byte >> 4) & 0x0F;
-            char c1 = (high < 10) ? ('0' + high) : ('A' + high - 10);
-            char buf1[2] = {c1, '\0'};
-            mde_6_edkii_vga_write_at_offset(row, offset_pos++, buf1);
-            // Write low nibble
-            char low = byte & 0x0F;
-            char c2 = (low < 10) ? ('0' + low) : ('A' + low - 10);
-            char buf2[2] = {c2, '\0'};
-            mde_6_edkii_vga_write_at_offset(row, offset_pos++, buf2);
-            // Write space
-            mde_6_edkii_vga_write_at_offset(row, offset_pos++, " ");
-        }
-
-        // Pad remaining hex spaces
-        for (; j < 16; j++) {
-            mde_6_edkii_vga_write_at_offset(row, offset_pos++, "   ");
-        }
-
-        // Write ASCII representation
-        mde_6_edkii_vga_write_at_offset(row, offset_pos++, "  ");
-
-        for (j = 0; j < 16 && (i + j < len); j++) {
-            unsigned char byte = addr[i + j];
-            char c = (byte >= 0x20 && byte <= 0x7e) ? (char)byte : '.';
-            char buf[2] = {c, '\0'};
-            mde_6_edkii_vga_write_at_offset(row, offset_pos + j, buf);
-        }
-    }
-}
-
-
-
-void mn_6_delay_s(int n)
-{
-  volatile unsigned long t = 25;
-  volatile unsigned long x = (unsigned long)n * 10000UL;
-
-  while (x--) {
-    for (unsigned long i1 = 0; i1 < 1000UL; ++i1) {
-        for (int i = 0; i < 10; ++i) {
-            t = t * 14823424UL + x + 1UL;
-        }
-    }
-  }
-
-  mde_6_edkii_vga_sprintf(23, "[GX] %x", t);
-}
-
-
-/////////////////////////////////////////////////////
 
 //
 // Module Globals used in the DXE to PEI hand off
@@ -256,21 +71,16 @@ PeimInitializeDxeIpl (
   IN CONST EFI_PEI_SERVICES     **PeiServices
   )
 {
-  DEBUG ((DEBUG_INFO, "[GX] module=DxeIplPeim event=entry status=success\n"));
-  GxVgaCheckpoint (2, "[GX] module=DxeIplPeim event=entry status=success");
   EFI_STATUS     Status;
   EFI_BOOT_MODE  BootMode;
   VOID           *Dummy;
 
   BootMode = GetBootModeHob ();
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: DxeIplPeim entry FileHandle=0x%p BootMode=0x%x\n", FileHandle, BootMode));
-  mde_6_edkii_vga_clear();
-  mde_6_edkii_vga_sprintf(0, "[GX] DxeIplb-%x", BootMode);
+  DEBUG ((DEBUG_INFO, "G4DELDBG: DxeIplPeim entry FileHandle=0x%p BootMode=0x%x\n", FileHandle, BootMode));
 
   if (BootMode != BOOT_ON_S3_RESUME) {
     Status = PeiServicesRegisterForShadow (FileHandle);
-    DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: DxeIplPeim RegisterForShadow Status=%r\n", Status));
-    mde_6_edkii_vga_sprintf(1, "[GX] 1a-%x-%x", BootMode, Status);
+    DEBUG ((DEBUG_INFO, "G4DELDBG: DxeIplPeim RegisterForShadow Status=%r\n", Status));
     if (Status == EFI_SUCCESS) {
       //
       // EFI_SUCESS means it is the first time to call register for shadow.
@@ -292,8 +102,7 @@ PeimInitializeDxeIpl (
                NULL,
                (VOID **)&Dummy
                );
-    DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: DxeIplPeim Locate MemoryDiscoveredPpi Status=%r Ppi=0x%p\n", Status, Dummy));
-    mde_6_edkii_vga_sprintf(1, "[GX] 1b-%x-%x", BootMode, Status);
+    DEBUG ((DEBUG_INFO, "G4DELDBG: DxeIplPeim Locate MemoryDiscoveredPpi Status=%r Ppi=0x%p\n", Status, Dummy));
     ASSERT_EFI_ERROR (Status);
     if (EFI_ERROR (Status)) {
       return Status;
@@ -304,8 +113,7 @@ PeimInitializeDxeIpl (
     // and section extraction.
     //
     Status = InstallIplPermanentMemoryPpis (NULL, NULL, NULL);
-    DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: DxeIplPeim InstallIplPermanentMemoryPpis Status=%r\n", Status));
-    mde_6_edkii_vga_sprintf(1, "[GX] 1c-%x-%x", BootMode, Status);
+    DEBUG ((DEBUG_INFO, "G4DELDBG: DxeIplPeim InstallIplPermanentMemoryPpis Status=%r\n", Status));
     ASSERT_EFI_ERROR (Status);
   } else {
     //
@@ -313,7 +121,7 @@ PeimInitializeDxeIpl (
     // decompression and section extraction.
     //
     Status = PeiServicesNotifyPpi (&mMemoryDiscoveredNotifyList);
-    DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: DxeIplPeim Notify MemoryDiscovered Status=%r\n", Status));
+    DEBUG ((DEBUG_INFO, "G4DELDBG: DxeIplPeim Notify MemoryDiscovered Status=%r\n", Status));
     ASSERT_EFI_ERROR (Status);
   }
 
@@ -321,11 +129,10 @@ PeimInitializeDxeIpl (
   // Install DxeIpl PPI.
   //
   Status = PeiServicesInstallPpi (&mDxeIplPpiList);
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: DxeIplPeim Install DxeIplPpi Status=%r\n", Status));
-  mde_6_edkii_vga_sprintf(2, "[GX] 2b-%x-%x", BootMode, Status);
+  DEBUG ((DEBUG_INFO, "G4DELDBG: DxeIplPeim Install DxeIplPpi Status=%r\n", Status));
   ASSERT_EFI_ERROR (Status);
 
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: DxeIplPeim exit Status=%r\n", Status));
+  DEBUG ((DEBUG_INFO, "G4DELDBG: DxeIplPeim exit Status=%r\n", Status));
   return Status;
 }
 
@@ -473,9 +280,7 @@ DxeLoadCore (
   // if in S3 Resume, restore configure
   //
   BootMode = GetBootModeHob ();
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: DXE IPL DxeLoadCore entry BootMode=0x%x HobList=0x%p\n", BootMode, HobList.Raw));
-  mde_6_edkii_vga_clear();
-  mde_6_edkii_vga_sprintf(0, "[GX] DxeLoadCoreb-%x-%x", HobList.Header->HobType, BootMode);
+  DEBUG ((DEBUG_INFO, "G4DELDBG: DXE IPL DxeLoadCore entry BootMode=0x%x HobList=0x%p\n", BootMode, HobList.Raw));
 
   if (BootMode == BOOT_ON_S3_RESUME) {
     Status = PeiServicesLocatePpi (
@@ -602,8 +407,7 @@ DxeLoadCore (
   // Look in all the FVs present in PEI and find the DXE Core FileHandle
   //
   FileHandle = DxeIplFindDxeCore ();
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: DXE IPL DxeCore FileHandle=0x%p\n", FileHandle));
-  mde_6_edkii_vga_sprintf(6, "[GX] 6b-%x", BootMode);
+  DEBUG ((DEBUG_INFO, "G4DELDBG: DXE IPL DxeCore FileHandle=0x%p\n", FileHandle));
 
   //
   // Load the DXE Core from a Firmware Volume.
@@ -611,8 +415,7 @@ DxeLoadCore (
   Instance = 0;
   do {
     Status = PeiServicesLocatePpi (&gEfiPeiLoadFilePpiGuid, Instance++, NULL, (VOID **)&LoadFile);
-    DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: DXE IPL Locate LoadFilePpi Instance=%u Status=%r LoadFile=0x%p\n", (UINT32)(Instance - 1), Status, LoadFile));
-    mde_6_edkii_vga_sprintf(7, "[GX] 7b-%x-%x", Status, Instance);
+    DEBUG ((DEBUG_INFO, "G4DELDBG: DXE IPL Locate LoadFilePpi Instance=%u Status=%r LoadFile=0x%p\n", (UINT32)(Instance - 1), Status, LoadFile));
     //
     // These must exist an instance of EFI_PEI_LOAD_FILE_PPI to support to load DxeCore file handle successfully.
     //
@@ -626,8 +429,7 @@ DxeLoadCore (
                          &DxeCoreEntryPoint,
                          &AuthenticationState
                          );
-    DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: DXE IPL LoadFile Status=%r Address=0x%lx Size=0x%lx Entry=0x%lx Auth=0x%x\n", Status, DxeCoreAddress, DxeCoreSize, DxeCoreEntryPoint, AuthenticationState));
-    mde_6_edkii_vga_sprintf(7, "[GX] 7c-%x-%x,%x-%x-%x-%x", Status, Instance, (UINTN)DxeCoreAddress, (UINTN)DxeCoreSize, (UINTN)DxeCoreEntryPoint, (UINTN)AuthenticationState);
+    DEBUG ((DEBUG_INFO, "G4DELDBG: DXE IPL LoadFile Status=%r Address=0x%lx Size=0x%lx Entry=0x%lx Auth=0x%x\n", Status, DxeCoreAddress, DxeCoreSize, DxeCoreEntryPoint, AuthenticationState));
   } while (EFI_ERROR (Status));
 
   //
@@ -652,8 +454,7 @@ DxeLoadCore (
   REPORT_STATUS_CODE (EFI_PROGRESS_CODE, (EFI_SOFTWARE_PEI_CORE | EFI_SW_PEI_CORE_PC_HANDOFF_TO_NEXT));
 
   DEBUG ((DEBUG_INFO | DEBUG_LOAD, "Loading DXE CORE at 0x%11p EntryPoint=0x%11p\n", (VOID *)(UINTN)DxeCoreAddress, FUNCTION_ENTRY_POINT (DxeCoreEntryPoint)));
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: DXE IPL handoff to DXE Core Entry=0x%p HobList=0x%p\n", FUNCTION_ENTRY_POINT (DxeCoreEntryPoint), HobList.Raw));
-  mde_6_edkii_vga_sprintf(8, "[GX] 8dd-%x-%x", (UINTN)HandOffToDxeCore, (UINTN)HobList.Raw);
+  DEBUG ((DEBUG_INFO, "G4DELDBG: DXE IPL handoff to DXE Core Entry=0x%p HobList=0x%p\n", FUNCTION_ENTRY_POINT (DxeCoreEntryPoint), HobList.Raw));
 
   //
   // Transfer control to the DXE Core
@@ -693,7 +494,6 @@ DxeIplFindDxeCore (
     // Traverse all firmware volume instances
     //
     Status = PeiServicesFfsFindNextVolume (Instance, &VolumeHandle);
-    mde_6_edkii_vga_sprintf(9, "[GX] FindDxeCore-9b-%x-%x", Status, Instance);
     //
     // If some error occurs here, then we cannot find any firmware
     // volume that may contain DxeCore.
@@ -709,7 +509,6 @@ DxeIplFindDxeCore (
     //
     FileHandle = NULL;
     Status     = PeiServicesFfsFindNextFile (EFI_FV_FILETYPE_DXE_CORE, VolumeHandle, &FileHandle);
-    mde_6_edkii_vga_sprintf(9, "[GX] FindDxeCore-9d-%x-%x", Status, Instance);
     if (!EFI_ERROR (Status)) {
       //
       // Find DxeCore FileHandle in this volume, then we skip other firmware volume and
