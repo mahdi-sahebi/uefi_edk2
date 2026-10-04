@@ -186,7 +186,7 @@ SmmStorePeiInitialize (
   IN CONST EFI_PEI_SERVICES     **PeiServices
   )
 {
-  DEBUG ((DEBUG_INFO, "[GX] module=SmmStorePei event=entry status=success\n"));
+  DEBUG ((DEBUG_WARN, "[GX] module=SmmStorePei event=entry status=success\n"));
   GxVgaCheckpoint (9, "[GX] module=SmmStorePei event=entry status=success");
   EFI_STATUS           Status;
   SMMSTORE_INFO        SmmStoreInfo;
@@ -197,12 +197,12 @@ SmmStorePeiInitialize (
   UINT32               FtwWorkingSize;
   UINT32               FtwSpareSize;
 
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: SmmStorePei entry FileHandle=0x%p\n", FileHandle));
+  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: SmmStorePei entry FileHandle=0x%p\n", FileHandle));
   mde_5_edkii_vga_clear();
   mde_5_edkii_vga_print(0, "SmmStore");
 
   Status = ParseSMMSTOREInfo (&SmmStoreInfo);
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: SmmStorePei ParseSMMSTOREInfo Status=%r\n", Status));
+  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: SmmStorePei ParseSMMSTOREInfo Status=%r\n", Status));
   mde_5_edkii_vga_sprintf(0, "[GX] SMM-%x-%x-%x-%x,-%x-%x-%x", Status, SmmStoreInfo.ComBuffer, SmmStoreInfo.ComBufferSize, SmmStoreInfo.NumBlocks, SmmStoreInfo.BlockSize, SmmStoreInfo.MmioAddress, SmmStoreInfo.ApmCmd);
   if (EFI_ERROR (Status)) {
     DEBUG ((
@@ -215,7 +215,7 @@ SmmStorePeiInitialize (
 
   NvStorageSize = SmmStoreInfo.NumBlocks * SmmStoreInfo.BlockSize;
   NvStorageBase = SmmStoreInfo.MmioAddress;
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: SmmStorePei Info Mmio=0x%x Blocks=0x%x BlockSize=0x%x ComBuffer=0x%lx ComBufferSize=0x%x\n",
+  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: SmmStorePei Info Mmio=0x%x Blocks=0x%x BlockSize=0x%x ComBuffer=0x%lx ComBufferSize=0x%x\n",
     SmmStoreInfo.MmioAddress,
     SmmStoreInfo.NumBlocks,
     SmmStoreInfo.BlockSize,
@@ -232,7 +232,7 @@ SmmStorePeiInitialize (
   FtwSpareSize   = (SmmStoreInfo.NumBlocks / 2) * SmmStoreInfo.BlockSize;
   FtwWorkingSize = SmmStoreInfo.BlockSize;
   NvVariableSize = NvStorageSize - FtwSpareSize - FtwWorkingSize;
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: SmmStorePei geometry VarBase=0x%x VarSize=0x%x FtwWorkBase=0x%x FtwWorkSize=0x%x FtwSpareBase=0x%x FtwSpareSize=0x%x\n",
+  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: SmmStorePei geometry VarBase=0x%x VarSize=0x%x FtwWorkBase=0x%x FtwWorkSize=0x%x FtwSpareBase=0x%x FtwSpareSize=0x%x\n",
     NvStorageBase,
     NvVariableSize,
     NvStorageBase + NvVariableSize,
@@ -263,7 +263,7 @@ SmmStorePeiInitialize (
     mde_5_edkii_vga_sprintf(2, "[GX] 2a-%x-%x-%x-%x,%x,%x", VariableFlashInfo.NvVariableBaseAddress, VariableFlashInfo.NvVariableLength, VariableFlashInfo.FtwSpareBaseAddress, VariableFlashInfo.FtwSpareLength, VariableFlashInfo.FtwWorkingBaseAddress, VariableFlashInfo.FtwWorkingLength);
 BuildGuidDataHob (&gVariableFlashInfoHobGuid, &VariableFlashInfo, sizeof (VariableFlashInfo));
   Status = PeiServicesInstallPpi (&mPpiListVariable);
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: SmmStorePei Install VariableFlashInfo PPI Status=%r\n", Status));
+  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: SmmStorePei Install VariableFlashInfo PPI Status=%r\n", Status));
   mde_5_edkii_vga_sprintf(4, "[GX] 4a-%x-%x-%x-%x", Status, mPpiListVariable.Flags, mPpiListVariable.Guid, mPpiListVariable.Ppi);
   return Status;
 }

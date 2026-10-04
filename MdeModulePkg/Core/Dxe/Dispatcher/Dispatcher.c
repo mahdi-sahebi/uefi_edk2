@@ -403,7 +403,7 @@ CoreDispatcher (
   VOID
   )
 {
-  DEBUG ((DEBUG_INFO, "[GX] module=DxeDispatcher event=entry status=success\n"));
+  DEBUG ((DEBUG_WARN, "[GX] module=DxeDispatcher event=entry status=success\n"));
   GxVgaCheckpoint (4, "[GX] module=DxeDispatcher event=entry status=success");
   EFI_STATUS             Status;
   EFI_STATUS             ReturnStatus;

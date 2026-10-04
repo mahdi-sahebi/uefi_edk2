@@ -356,7 +356,7 @@ PeimFaultTolerantWriteInitialize (
   IN CONST EFI_PEI_SERVICES     **PeiServices
   )
 {
-  DEBUG ((DEBUG_INFO, "[GX] module=FtwPei event=entry status=success\n"));
+  DEBUG ((DEBUG_WARN, "[GX] module=FtwPei event=entry status=success\n"));
   GxVgaCheckpoint (10, "[GX] module=FtwPei event=entry status=success");
   EFI_STATUS                               Status;
   EFI_FAULT_TOLERANT_WORKING_BLOCK_HEADER  *FtwWorkingBlockHeader;
@@ -374,7 +374,7 @@ PeimFaultTolerantWriteInitialize (
   FtwLastWriteHeader    = NULL;
   FtwLastWriteRecord    = NULL;
 
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: FtwPei entry FileHandle=0x%p\n", FileHandle));
+  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: FtwPei entry FileHandle=0x%p\n", FileHandle));
 
   SpareAreaAddress = 0;
   SpareAreaLength  = 0;
@@ -406,23 +406,23 @@ PeimFaultTolerantWriteInitialize (
   }
 
   Status = GetVariableFlashFtwWorkingInfo (&WorkSpaceAddress, &Size);
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: FtwPei WorkingInfo Status=%r Address=0x%lx Size=0x%lx\n", Status, WorkSpaceAddress, Size));
+  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: FtwPei WorkingInfo Status=%r Address=0x%lx Size=0x%lx\n", Status, WorkSpaceAddress, Size));
   mde_4_edkii_vga_sprintf(3, "[GX] FTWb-%x-%x-%x", Status, WorkSpaceAddress, Size);
   ASSERT_EFI_ERROR (Status);
 
   Status = SafeUint64ToUintn (Size, &WorkSpaceLength);
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: FtwPei WorkingLength convert Status=%r Length=0x%lx\n", Status, (UINT64)WorkSpaceLength));
+  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: FtwPei WorkingLength convert Status=%r Length=0x%lx\n", Status, (UINT64)WorkSpaceLength));
   mde_4_edkii_vga_sprintf(4, "[GX] 4a-%x-%x", Status, WorkSpaceLength);
   // This driver currently assumes the size will be UINTN so assert the value is safe for now.
   ASSERT_EFI_ERROR (Status);
 
   Status = GetVariableFlashFtwSpareInfo (&SpareAreaAddress, &Size);
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: FtwPei SpareInfo Status=%r Address=0x%lx Size=0x%lx\n", Status, SpareAreaAddress, Size));
+  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: FtwPei SpareInfo Status=%r Address=0x%lx Size=0x%lx\n", Status, SpareAreaAddress, Size));
   mde_4_edkii_vga_sprintf(5, "[GX] 5a-%x-%x-%x", Status, SpareAreaAddress, Size);
   ASSERT_EFI_ERROR (Status);
 
   Status = SafeUint64ToUintn (Size, &SpareAreaLength);
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: FtwPei SpareLength convert Status=%r Length=0x%lx\n", Status, (UINT64)SpareAreaLength));
+  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: FtwPei SpareLength convert Status=%r Length=0x%lx\n", Status, (UINT64)SpareAreaLength));
   mde_4_edkii_vga_sprintf(6, "[GX] 6a-%x-%x-%x", Status, SpareAreaLength, Size);
   // This driver currently assumes the size will be UINTN so assert the value is safe for now.
   ASSERT_EFI_ERROR (Status);
@@ -433,10 +433,10 @@ PeimFaultTolerantWriteInitialize (
   ASSERT ((WorkSpaceAddress != 0) && (SpareAreaAddress != 0));
 
   FtwWorkingBlockHeader = (EFI_FAULT_TOLERANT_WORKING_BLOCK_HEADER *)(UINTN)WorkSpaceAddress;
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: FtwPei validate workspace Header=0x%p Length=0x%lx\n", FtwWorkingBlockHeader, (UINT64)WorkSpaceLength));
+  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: FtwPei validate workspace Header=0x%p Length=0x%lx\n", FtwWorkingBlockHeader, (UINT64)WorkSpaceLength));
   mde_4_edkii_vga_sprintf(7, "[GX] 7a-%x-%x-%x,%x,%x", Status, SpareAreaLength, Size, WorkSpaceAddress, SpareAreaAddress);
   if (IsValidWorkSpace (FtwWorkingBlockHeader, WorkSpaceLength)) {
-    DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: FtwPei primary workspace valid\n"));
+    DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: FtwPei primary workspace valid\n"));
     mde_4_edkii_vga_sprintf(8, "[GX] 8a-%x-%x", FtwWorkingBlockHeader, WorkSpaceLength);
     Status = FtwGetLastWriteHeader (
                FtwWorkingBlockHeader,
@@ -449,7 +449,7 @@ PeimFaultTolerantWriteInitialize (
                  &FtwLastWriteRecord
                  );
     }
-    DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: FtwPei last write lookup Status=%r Header=0x%p Record=0x%p\n", Status, FtwLastWriteHeader, FtwLastWriteRecord));
+    DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: FtwPei last write lookup Status=%r Header=0x%p Record=0x%p\n", Status, FtwLastWriteHeader, FtwLastWriteRecord));
     mde_4_edkii_vga_sprintf(9, "[GX] 9a-%x-%x", Status, FtwLastWriteRecord);
 
     if (!EFI_ERROR (Status)) {
@@ -477,7 +477,7 @@ PeimFaultTolerantWriteInitialize (
     }
   } else {
     FtwWorkingBlockHeader = NULL;
-    DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: FtwPei primary workspace invalid, scanning spare area\n"));
+    DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: FtwPei primary workspace invalid, scanning spare area\n"));
     //
     // If the working block workspace is not valid, try to find workspace in the spare block.
     //
@@ -488,7 +488,7 @@ PeimFaultTolerantWriteInitialize (
         // Found the workspace.
         //
         DEBUG ((DEBUG_INFO, "FtwPei: workspace in spare block is at 0x%x.\n", (UINTN)WorkSpaceInSpareArea));
-        DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: FtwPei spare workspace candidate=0x%lx\n", WorkSpaceInSpareArea));
+        DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: FtwPei spare workspace candidate=0x%lx\n", WorkSpaceInSpareArea));
         FtwWorkingBlockHeader = (EFI_FAULT_TOLERANT_WORKING_BLOCK_HEADER *)(UINTN)WorkSpaceInSpareArea;
         break;
       }
@@ -523,7 +523,7 @@ PeimFaultTolerantWriteInitialize (
   // Install gEdkiiFaultTolerantWriteGuid PPI to inform the check for FTW last write data has been done.
   //
   Status = PeiServicesInstallPpi (&mPpiListVariable);
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: FtwPei Install FTW-done PPI Status=%r\n", Status));
+  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: FtwPei Install FTW-done PPI Status=%r\n", Status));
   mde_4_edkii_vga_sprintf(11, "[GX] 11-%x,%x-%x-%x-%x,%x", Status, mPpiListVariable.Flags, mPpiListVariable.Guid->Data1, mPpiListVariable.Guid->Data2, mPpiListVariable.Guid->Data3, mPpiListVariable.Ppi);
   return Status;
 }

@@ -10,6 +10,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 #include "DxeIpl.h"
 #include <Library/DebugLib.h>
+#include <Library/GxVgaLib.h>
 
 //
 // Module Globals used in the DXE to PEI hand off
@@ -280,6 +281,8 @@ DxeLoadCore (
   // if in S3 Resume, restore configure
   //
   BootMode = GetBootModeHob ();
+  GxVgaCheckpoint (2, "[GX] module=DxeIpl event=entry status=success");
+  DEBUG ((DEBUG_WARN, "[GX] module=DxeIpl event=entry status=success BootMode=0x%x Hob=0x%p\n", BootMode, HobList.Raw));
   DEBUG ((DEBUG_INFO, "G4DELDBG: DXE IPL DxeLoadCore entry BootMode=0x%x HobList=0x%p\n", BootMode, HobList.Raw));
 
   if (BootMode == BOOT_ON_S3_RESUME) {
@@ -455,6 +458,8 @@ DxeLoadCore (
 
   DEBUG ((DEBUG_INFO | DEBUG_LOAD, "Loading DXE CORE at 0x%11p EntryPoint=0x%11p\n", (VOID *)(UINTN)DxeCoreAddress, FUNCTION_ENTRY_POINT (DxeCoreEntryPoint)));
   DEBUG ((DEBUG_INFO, "G4DELDBG: DXE IPL handoff to DXE Core Entry=0x%p HobList=0x%p\n", FUNCTION_ENTRY_POINT (DxeCoreEntryPoint), HobList.Raw));
+  GxVgaCheckpoint (3, "[GX] module=DxeIpl event=handoff-dxe-core status=success");
+  DEBUG ((DEBUG_WARN, "[GX] module=DxeIpl event=handoff-dxe-core status=success Entry=0x%p Hob=0x%p\n", FUNCTION_ENTRY_POINT (DxeCoreEntryPoint), HobList.Raw));
 
   //
   // Transfer control to the DXE Core

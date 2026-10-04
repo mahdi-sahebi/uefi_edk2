@@ -237,7 +237,7 @@ DxeMain (
   IN  VOID  *HobStart
   )
 {
-  DEBUG ((DEBUG_INFO, "[GX] module=DxeCore event=entry status=success\n"));
+  DEBUG ((DEBUG_WARN, "[GX] module=DxeCore event=entry status=success\n"));
   GxVgaCheckpoint (3, "[GX] module=DxeCore event=entry status=success");
   EFI_STATUS                    Status;
   EFI_PHYSICAL_ADDRESS          MemoryBaseAddress;
@@ -249,7 +249,7 @@ DxeMain (
   EFI_VECTOR_HANDOFF_INFO       *VectorInfo;
   VOID                          *EntryPoint;
 
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: DXE Core DxeMain entry HobStart=0x%p\n", HobStart));
+  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: DXE Core DxeMain entry HobStart=0x%p\n", HobStart));
 
   //
   // Setup the default exception handlers
@@ -261,7 +261,7 @@ DxeMain (
   }
 
   Status = InitializeCpuExceptionHandlers (VectorInfoList);
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: DXE Core exception handlers Status=%r VectorInfo=0x%p\n", Status, VectorInfoList));
+  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: DXE Core exception handlers Status=%r VectorInfo=0x%p\n", Status, VectorInfoList));
   ASSERT_EFI_ERROR (Status);
 
   //
@@ -281,7 +281,7 @@ DxeMain (
   // Initialize Memory Services
   //
   CoreInitializeMemoryServices (&HobStart, &MemoryBaseAddress, &MemoryLength);
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: DXE Core memory services HobStart=0x%p Base=0x%lx Length=0x%lx\n", HobStart, MemoryBaseAddress, MemoryLength));
+  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: DXE Core memory services HobStart=0x%p Base=0x%lx Length=0x%lx\n", HobStart, MemoryBaseAddress, MemoryLength));
 
   MemoryProfileInit (HobStart);
 
@@ -289,21 +289,21 @@ DxeMain (
   // Start the Handle Services.
   //
   Status = CoreInitializeHandleServices ();
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: DXE Core handle services Status=%r\n", Status));
+  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: DXE Core handle services Status=%r\n", Status));
   ASSERT_EFI_ERROR (Status);
 
   //
   // Start the Image Services.
   //
   Status = CoreInitializeImageServices (HobStart);
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: DXE Core image services Status=%r\n", Status));
+  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: DXE Core image services Status=%r\n", Status));
   ASSERT_EFI_ERROR (Status);
 
   //
   // Initialize the Global Coherency Domain Services
   //
   Status = CoreInitializeGcdServices (&HobStart, MemoryBaseAddress, MemoryLength);
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: DXE Core GCD services Status=%r HobStart=0x%p\n", Status, HobStart));
+  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: DXE Core GCD services Status=%r HobStart=0x%p\n", Status, HobStart));
   ASSERT_EFI_ERROR (Status);
 
   //
@@ -327,7 +327,7 @@ DxeMain (
   // Call constructor for all libraries
   //
   ProcessLibraryConstructorList (gDxeCoreImageHandle, gDxeCoreST);
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: DXE Core library constructors complete ImageHandle=0x%p SystemTable=0x%p\n", gDxeCoreImageHandle, gDxeCoreST));
+  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: DXE Core library constructors complete ImageHandle=0x%p SystemTable=0x%p\n", gDxeCoreImageHandle, gDxeCoreST));
   PERF_CROSSMODULE_END ("PEI");
   PERF_CROSSMODULE_BEGIN ("DXE");
 
@@ -364,14 +364,14 @@ DxeMain (
   // Install the DXE Services Table into the EFI System Tables's Configuration Table
   //
   Status = CoreInstallConfigurationTable (&gEfiDxeServicesTableGuid, gDxeCoreDS);
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: DXE Core install DXE services table Status=%r\n", Status));
+  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: DXE Core install DXE services table Status=%r\n", Status));
   ASSERT_EFI_ERROR (Status);
 
   //
   // Install the HOB List into the EFI System Tables's Configuration Table
   //
   Status = CoreInstallConfigurationTable (&gEfiHobListGuid, HobStart);
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: DXE Core install HOB list Status=%r HobStart=0x%p\n", Status, HobStart));
+  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: DXE Core install HOB list Status=%r HobStart=0x%p\n", Status, HobStart));
   ASSERT_EFI_ERROR (Status);
 
   //
@@ -474,7 +474,7 @@ DxeMain (
   // Initialize the Event Services
   //
   Status = CoreInitializeEventServices ();
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: DXE Core event services Status=%r\n", Status));
+  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: DXE Core event services Status=%r\n", Status));
   ASSERT_EFI_ERROR (Status);
 
   //
@@ -536,38 +536,38 @@ DxeMain (
   // Also register for the GUIDs of optional protocols.
   //
   CoreNotifyOnProtocolInstallation ();
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: DXE Core arch protocol notifications registered\n"));
+  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: DXE Core arch protocol notifications registered\n"));
 
   //
   // Produce Firmware Volume Protocols, one for each FV in the HOB list.
   //
   Status = FwVolBlockDriverInit (gDxeCoreImageHandle, gDxeCoreST);
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: DXE Core FVB init Status=%r\n", Status));
+  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: DXE Core FVB init Status=%r\n", Status));
   ASSERT_EFI_ERROR (Status);
 
   Status = FwVolDriverInit (gDxeCoreImageHandle, gDxeCoreST);
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: DXE Core FV init Status=%r\n", Status));
+  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: DXE Core FV init Status=%r\n", Status));
   ASSERT_EFI_ERROR (Status);
 
   //
   // Produce the Section Extraction Protocol
   //
   Status = InitializeSectionExtraction (gDxeCoreImageHandle, gDxeCoreST);
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: DXE Core section extraction Status=%r\n", Status));
+  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: DXE Core section extraction Status=%r\n", Status));
   ASSERT_EFI_ERROR (Status);
 
   //
   // Initialize the DXE Dispatcher
   //
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: DXE Core initialize dispatcher begin\n"));
+  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: DXE Core initialize dispatcher begin\n"));
   CoreInitializeDispatcher ();
 
   //
   // Invoke the DXE Dispatcher
   //
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: DXE Core dispatcher begin\n"));
+  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: DXE Core dispatcher begin\n"));
   Status = CoreDispatcher ();
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: DXE Core dispatcher returned Status=%r\n", Status));
+  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: DXE Core dispatcher returned Status=%r\n", Status));
 
   //
   // Display Architectural protocols that were not loaded if this is DEBUG build
@@ -588,7 +588,7 @@ DxeMain (
   // Assert if the Architectural Protocols are not present.
   //
   Status = CoreAllEfiServicesAvailable ();
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: DXE Core all EFI services Status=%r Bds=0x%p\n", Status, gBds));
+  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: DXE Core all EFI services Status=%r Bds=0x%p\n", Status, gBds));
   if (EFI_ERROR (Status)) {
     //
     // Report Status code that some Architectural Protocols are not present.
@@ -612,7 +612,7 @@ DxeMain (
   //
   // Transfer control to the BDS Architectural Protocol
   //
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: DXE Core handoff to BDS Bds=0x%p\n", gBds));
+  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: DXE Core handoff to BDS Bds=0x%p\n", gBds));
   gBds->Entry (gBds);
 
   //
@@ -804,7 +804,7 @@ CoreExitBootServices (
 {
   EFI_STATUS  Status;
 
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: ExitBootServices entry ImageHandle=0x%p MapKey=0x%lx\n", ImageHandle, (UINT64)MapKey));
+  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: ExitBootServices entry ImageHandle=0x%p MapKey=0x%lx\n", ImageHandle, (UINT64)MapKey));
 
   //
   // Notify other drivers of their last chance to use boot services
@@ -834,7 +834,7 @@ CoreExitBootServices (
   }
 
   gMemoryMapTerminated = TRUE;
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: ExitBootServices memory map terminated\n"));
+  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: ExitBootServices memory map terminated\n"));
 
   //
   // Notify other drivers that we are exiting boot services.

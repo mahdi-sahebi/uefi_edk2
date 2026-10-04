@@ -346,7 +346,7 @@ PeiCore (
   IN VOID                          *Data
   )
 {
-  DEBUG ((DEBUG_INFO, "[GX] module=PeiCore event=entry status=success\n"));
+  DEBUG ((DEBUG_WARN, "[GX] module=PeiCore event=entry status=success\n"));
   GxVgaCheckpoint (0, "[GX] module=PeiCore event=entry status=success");
 
   PEI_CORE_INSTANCE               PrivateData;

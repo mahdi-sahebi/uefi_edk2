@@ -794,7 +794,7 @@ BlPeiEntryPoint (
   IN CONST EFI_PEI_SERVICES        **PeiServices
   )
 {
-  DEBUG ((DEBUG_INFO, "[GX] module=BlSupportPei event=entry status=success\n"));
+  DEBUG ((DEBUG_WARN, "[GX] module=BlSupportPei event=entry status=success\n"));
   GxVgaCheckpoint (0, "[GX] module=BlSupportPei event=entry status=success");
   EFI_STATUS                       Status;
   EFI_PHYSICAL_ADDRESS             UsableLowMemTop = 0;
@@ -815,7 +815,7 @@ BlPeiEntryPoint (
   EFI_PEI_GRAPHICS_DEVICE_INFO_HOB *NewGfxDeviceInfo;
   FIRMWARE_SEC_PERFORMANCE         Performance;
 
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: BlSupportPei entry FileHandle=0x%p\n", FileHandle));
+  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: BlSupportPei entry FileHandle=0x%p\n", FileHandle));
   mde_3_edkii_vga_clear();
   mde_3_edkii_vga_sprintf(0, "[GX] BLSa-%x,%x", FileHandle, PeiServices);
 
@@ -873,7 +873,7 @@ BlPeiEntryPoint (
   // to root bridge scanning if the HOB is not found.
   //
   Status = ParseRootBridgeInfo ();
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: BlSupportPei ParseRootBridgeInfo Status=%r\n", Status));
+  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: BlSupportPei ParseRootBridgeInfo Status=%r\n", Status));
   mde_3_edkii_vga_sprintf(0, "[GX] BLSd-%x,%x", FileHandle, PeiServices);
   if (EFI_ERROR(Status)) {
     DEBUG ((DEBUG_INFO, "Payload Root Bridge HOB not created: %r\n", Status));
@@ -883,7 +883,7 @@ BlPeiEntryPoint (
   // Parse memory info
   //
   Status = ParseMemoryInfo (MemInfoCallback, &UsableLowMemTop);
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: BlSupportPei ParseMemoryInfo Status=%r UsableLowMemTop=0x%lx\n", Status, UsableLowMemTop));
+  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: BlSupportPei ParseMemoryInfo Status=%r UsableLowMemTop=0x%lx\n", Status, UsableLowMemTop));
   mde_3_edkii_vga_sprintf(0, "[GX] BLSe-%x,%x,%x,%x,%x", FileHandle, PeiServices, Status, UsableLowMemTop, PeiMemBase);
   if (EFI_ERROR(Status)) {
     return Status;
@@ -898,7 +898,7 @@ BlPeiEntryPoint (
   DEBUG ((DEBUG_INFO, "PeiMemBase: 0x%lx.\n", PeiMemBase));
   DEBUG ((DEBUG_INFO, "PeiMemSize: 0x%lx.\n", PEI_MEM_SIZE));
   Status = PeiServicesInstallPeiMemory (PeiMemBase, PEI_MEM_SIZE);
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: BlSupportPei InstallPeiMemory Base=0x%lx Size=0x%lx Status=%r\n", PeiMemBase, (UINT64)PEI_MEM_SIZE, Status));
+  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: BlSupportPei InstallPeiMemory Base=0x%lx Size=0x%lx Status=%r\n", PeiMemBase, (UINT64)PEI_MEM_SIZE, Status));
   mde_3_edkii_vga_sprintf(1, "[GX] BLSf-%x,%x,%x-%x,%x", FileHandle, PeiServices, Status, UsableLowMemTop, PeiMemBase);
   ASSERT_EFI_ERROR (Status);
 
@@ -947,12 +947,12 @@ BlPeiEntryPoint (
   // Boot mode
   //
   Status = PeiServicesSetBootMode (BOOT_WITH_FULL_CONFIGURATION);
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: BlSupportPei SetBootMode FULL Status=%r\n", Status));
+  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: BlSupportPei SetBootMode FULL Status=%r\n", Status));
   mde_3_edkii_vga_sprintf(1, "[GX] h-%x,%x,%x-%x,%x", gEfiMemoryTypeInformationGuid, sizeof(mDefaultMemoryTypeInformation), RegEax, PhysicalAddressBits, Status);
   ASSERT_EFI_ERROR (Status);
 
   Status = PeiServicesInstallPpi (mPpiBootMode);
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: BlSupportPei Install BootMode PPI Status=%r\n", Status));
+  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: BlSupportPei Install BootMode PPI Status=%r\n", Status));
   mde_3_edkii_vga_sprintf(2, "[GX] a-%x", Status);
   ASSERT_EFI_ERROR (Status);
 
@@ -980,10 +980,10 @@ BlPeiEntryPoint (
   // Create guid hob for SMMSTORE
   //
   Status = ParseSMMSTOREInfo (&SMMSTOREInfo);
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: BlSupportPei ParseSMMSTOREInfo Status=%r\n", Status));
+  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: BlSupportPei ParseSMMSTOREInfo Status=%r\n", Status));
   mde_3_edkii_vga_sprintf(4, "[GX] a-%x-%x-%x-%x-%x-%x-%x", Status, SMMSTOREInfo.ApmCmd, SMMSTOREInfo.BlockSize, SMMSTOREInfo.ComBuffer, SMMSTOREInfo.ComBufferSize, SMMSTOREInfo.MmioAddress, SMMSTOREInfo.NumBlocks);
   if (!EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: BlSupportPei SMMSTORE Mmio=0x%x Blocks=0x%x BlockSize=0x%x ComBuffer=0x%lx Size=0x%x\n",
+    DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: BlSupportPei SMMSTORE Mmio=0x%x Blocks=0x%x BlockSize=0x%x ComBuffer=0x%lx Size=0x%x\n",
       SMMSTOREInfo.MmioAddress,
       SMMSTOREInfo.NumBlocks,
       SMMSTOREInfo.BlockSize,
@@ -996,7 +996,7 @@ BlPeiEntryPoint (
     DEBUG ((DEBUG_INFO, "Created SMMSTORE info hob\n"));
 
     Status = ValidateFvHeader (&SMMSTOREInfo);
-    DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: BlSupportPei ValidateFvHeader Status=%r FtwHob=0x%p\n", Status, GetFirstGuidHob (&gEdkiiFaultTolerantWriteGuid)));
+    DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: BlSupportPei ValidateFvHeader Status=%r FtwHob=0x%p\n", Status, GetFirstGuidHob (&gEdkiiFaultTolerantWriteGuid)));
     mde_3_edkii_vga_sprintf(6, "[GX] a-%x", Status);
     //
     // gEdkiiFaultTolerantWriteGuid HOB doesn't exist if both working and spare
@@ -1005,13 +1005,13 @@ BlPeiEntryPoint (
     //
     if (EFI_ERROR (Status) && GetFirstGuidHob (&gEdkiiFaultTolerantWriteGuid) == NULL) {
       Status = PeiServicesSetBootMode (BOOT_WITH_DEFAULT_SETTINGS);
-      DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: BlSupportPei SetBootMode DEFAULT Status=%r\n", Status));
+      DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: BlSupportPei SetBootMode DEFAULT Status=%r\n", Status));
       mde_3_edkii_vga_sprintf(6, "[GX] c-%x", Status);
       DEBUG ((DEBUG_INFO, "BootMode: Boot with default settings\n"));
       ASSERT_EFI_ERROR (Status);
     } else {
       Status = PeiServicesSetBootMode (BOOT_ASSUMING_NO_CONFIGURATION_CHANGES);
-      DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: BlSupportPei SetBootMode NO_CONFIG_CHANGES Status=%r\n", Status));
+      DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: BlSupportPei SetBootMode NO_CONFIG_CHANGES Status=%r\n", Status));
       mde_3_edkii_vga_sprintf(6, "[GX] e-%x", Status);
       DEBUG ((DEBUG_INFO, "BootMode: Boot boot assuming no configuration changes\n"));
       ASSERT_EFI_ERROR (Status);

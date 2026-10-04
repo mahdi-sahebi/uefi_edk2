@@ -313,7 +313,7 @@ GraphicsOutputDriverBindingStart (
 
   FrameBufferBase = 0;
 
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: GraphicsOutputDxe start\n"));
+  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: GraphicsOutputDxe start\n"));
 
   HobStart = GetFirstGuidHob (&gEfiGraphicsInfoHobGuid);
   if ((HobStart == NULL) || (GET_GUID_HOB_DATA_SIZE (HobStart) < sizeof (EFI_PEI_GRAPHICS_INFO_HOB))) {
@@ -321,7 +321,7 @@ GraphicsOutputDriverBindingStart (
     return EFI_NOT_FOUND;
   }
   GraphicsInfo = (EFI_PEI_GRAPHICS_INFO_HOB *) (GET_GUID_HOB_DATA (HobStart));
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: GraphicsOutputDxe graphics HOB FB=0x%lx size=0x%lx %ux%u stride=%u\n",
+  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: GraphicsOutputDxe graphics HOB FB=0x%lx size=0x%lx %ux%u stride=%u\n",
           GraphicsInfo->FrameBufferBase,
           GraphicsInfo->FrameBufferSize,
           GraphicsInfo->GraphicsMode.HorizontalResolution,
@@ -529,7 +529,7 @@ GraphicsOutputDriverBindingStart (
                   );
 
   if (!EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: GraphicsOutputDxe GOP installed FB=0x%lx size=0x%lx\n",
+    DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: GraphicsOutputDxe GOP installed FB=0x%lx size=0x%lx\n",
             Private->GraphicsOutputMode.FrameBufferBase,
             Private->GraphicsOutputMode.FrameBufferSize));
   } else {
@@ -745,12 +745,12 @@ InitializeGraphicsOutput (
   IN EFI_SYSTEM_TABLE                  *SystemTable
   )
 {
-  DEBUG ((DEBUG_INFO, "[GX] module=GraphicsOutputDxe event=entry status=success\n"));
+  DEBUG ((DEBUG_WARN, "[GX] module=GraphicsOutputDxe event=entry status=success\n"));
   GxVgaCheckpoint (5, "[GX] module=GraphicsOutputDxe event=entry status=success");
   EFI_STATUS                           Status;
   VOID                                 *HobStart;
 
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: GraphicsOutputDxe entry\n"));
+  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: GraphicsOutputDxe entry\n"));
 
   HobStart = GetFirstGuidHob (&gEfiGraphicsInfoHobGuid);
 

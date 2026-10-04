@@ -1925,7 +1925,7 @@ PeiDispatcher (
   IN PEI_CORE_INSTANCE           *Private
   )
 {
-  DEBUG ((DEBUG_INFO, "[GX] module=PeiDispatcher event=entry status=success\n"));
+  DEBUG ((DEBUG_WARN, "[GX] module=PeiDispatcher event=entry status=success\n"));
   GxVgaCheckpoint (1, "[GX] module=PeiDispatcher event=entry status=success");
   EFI_STATUS              Status;
   UINT32                  Index1;

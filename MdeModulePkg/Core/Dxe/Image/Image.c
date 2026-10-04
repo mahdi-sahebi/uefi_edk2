@@ -1551,7 +1551,7 @@ CoreLoadImage (
   EFI_HANDLE  Handle;
 
   PERF_LOAD_IMAGE_BEGIN (NULL);
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: CoreLoadImage entry BootPolicy=%u Parent=0x%p FilePath=0x%p SourceBuffer=0x%p SourceSize=0x%lx\n", BootPolicy, ParentImageHandle, FilePath, SourceBuffer, (UINT64)SourceSize));
+  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: CoreLoadImage entry BootPolicy=%u Parent=0x%p FilePath=0x%p SourceBuffer=0x%p SourceSize=0x%lx\n", BootPolicy, ParentImageHandle, FilePath, SourceBuffer, (UINT64)SourceSize));
 
   Status = CoreLoadImageCommon (
              BootPolicy,
@@ -1574,7 +1574,7 @@ CoreLoadImage (
     Handle = *ImageHandle;
   }
 
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: CoreLoadImage exit Status=%r ImageHandle=0x%p\n", Status, Handle));
+  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: CoreLoadImage exit Status=%r ImageHandle=0x%p\n", Status, Handle));
 
   PERF_LOAD_IMAGE_END (Handle);
 
@@ -1616,7 +1616,7 @@ CoreStartImage (
   EFI_HANDLE                 Handle;
 
   Handle = ImageHandle;
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: CoreStartImage entry ImageHandle=0x%p\n", ImageHandle));
+  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: CoreStartImage entry ImageHandle=0x%p\n", ImageHandle));
 
   Image = CoreLoadedImageInfo (ImageHandle);
   if ((Image == NULL) ||  Image->Started) {
@@ -1663,7 +1663,7 @@ CoreStartImage (
     }
   }
 
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: CoreStartImage call entrypoint ImageHandle=0x%p ImageBase=0x%p Entry=0x%lx Type=0x%x\n", ImageHandle, Image->Info.ImageBase, (UINT64)(UINTN)Image->EntryPoint, Image->Type));
+  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: CoreStartImage call entrypoint ImageHandle=0x%p ImageBase=0x%p Entry=0x%lx Type=0x%x\n", ImageHandle, Image->Info.ImageBase, (UINT64)(UINTN)Image->EntryPoint, Image->Type));
   PERF_START_IMAGE_BEGIN (Handle);
 
   //
@@ -1712,7 +1712,7 @@ CoreStartImage (
     //
     Image->Started = TRUE;
     Image->Status  = Image->EntryPoint (ImageHandle, Image->Info.SystemTable);
-    DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: CoreStartImage entrypoint returned ImageHandle=0x%p Status=%r\n", ImageHandle, Image->Status));
+    DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: CoreStartImage entrypoint returned ImageHandle=0x%p Status=%r\n", ImageHandle, Image->Status));
 
     //
     // Add some debug information if the image returned with error.
@@ -1809,7 +1809,7 @@ CoreStartImage (
   //
   // Done
   //
-  DEBUG ((DEBUG_INFO, "[GX] G4DELDBG: CoreStartImage exit ImageHandle=0x%p Status=%r PerfHandle=0x%p\n", ImageHandle, Status, Handle));
+  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: CoreStartImage exit ImageHandle=0x%p Status=%r PerfHandle=0x%p\n", ImageHandle, Status, Handle));
   PERF_START_IMAGE_END (Handle);
   return Status;
 }
