@@ -65,6 +65,7 @@
   PeimEntryPoint
   DebugLib
   DebugAgentLib
+  TimerLib
   PeiServicesTablePointerLib
   PerformanceLib
 

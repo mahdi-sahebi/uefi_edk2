@@ -23,6 +23,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Library/DebugLib.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/PcdLib.h>
+#include <Library/TimerLib.h>
 // #include <Library/CpuLib.h>
 // #include <Library/PeCoffGetEntryPointLib.h>
 // #include <Library/PeCoffExtraActionLib.h>
@@ -46,7 +47,7 @@ void mde_9_delay_s(int n);
 }
 void mde_9_vga_write_at_offset(unsigned int line, unsigned int offset, const char *string)
 {
-	if (!string)
+	if (!string || line >= 25 || offset >= mde_9__VGA_COLUMNS)
 		return;
 
 	unsigned short *p = (unsigned short *)mde_9__VGA_FB + (mde_9__VGA_COLUMNS * line) + offset;
@@ -78,6 +79,8 @@ void mde_9_vga_sprintf(
   VA_END (marker);
   
   mde_9_vga_print (row, mde_8_g_buffer);
+  DEBUG ((DEBUG_ERROR, "[DXE-VGA] row=%u %a\n", row, mde_8_g_buffer));
+  MicroSecondDelay (500000);
 }
 
 void mde_9_vga_clear()
@@ -90,6 +93,9 @@ void mde_9_vga_clear()
 void mde_9_vga_hex_dump(const unsigned char *addr, unsigned int len, int start_row) 
 {
     unsigned int i;
+
+    DEBUG ((DEBUG_ERROR, "[DXE-VGA] hex-dump addr=%p len=%u start-row=%d\n",
+      addr, len, start_row));
     
     for (i = 0; i < len; i += 16) {
         unsigned int j;
@@ -144,23 +150,13 @@ void mde_9_vga_hex_dump(const unsigned char *addr, unsigned int len, int start_r
             mde_9_vga_write_at_offset(row, offset_pos + j, buf);
         }
     }
+    MicroSecondDelay (500000);
 }
 
 
 void mde_9_delay_s(int n)
 {
-  volatile unsigned long t = 25;
-  volatile unsigned long x = (unsigned long)n * 10000UL;
-
-  while (x--) {
-    for (unsigned long i1 = 0; i1 < 1000UL; ++i1) {
-        for (int i = 0; i < 100; ++i) {
-            t = t * 14823424UL + x + 1UL;
-        }
-    }
-  }
-
-  mde_9_vga_sprintf(23, "%x", t);
+  (void)n;
 }
 
 
