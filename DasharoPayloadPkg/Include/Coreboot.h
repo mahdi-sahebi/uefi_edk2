@@ -111,14 +111,13 @@ struct cb_memory_range {
   UINT32 type;
 };
 
-#define CB_MEM_RAM           1
-#define CB_MEM_RESERVED      2
-#define CB_MEM_ACPI          3
-#define CB_MEM_NVS           4
-#define CB_MEM_UNUSABLE      5
-#define CB_MEM_VENDOR_RSVD   6
-#define CB_MEM_TABLE         16
-#define CB_MEM_SOFT_RESERVED 0xefffffff
+#define CB_MEM_RAM    1
+#define CB_MEM_RESERVED     2
+#define CB_MEM_ACPI   3
+#define CB_MEM_NVS    4
+#define CB_MEM_UNUSABLE     5
+#define CB_MEM_VENDOR_RSVD  6
+#define CB_MEM_TABLE       16
 
 struct cb_memory {
   UINT32 tag;
@@ -238,21 +237,6 @@ struct cb_vdat {
 };
 
 #define CB_TAG_TIMESTAMPS     0x0016
-
-struct timestamp_entry {
-	UINT32	entry_id;
-	INT64	entry_stamp;
-} __attribute__ ((packed));
-
-struct timestamp_table {
-	UINT64	base_time;
-	UINT16	max_entries;
-	UINT16	tick_freq_mhz;
-	UINT32	num_entries;
-	struct timestamp_entry entries[0]; /* Variable number of entries */
-} __attribute__ ((packed));
-
-
 #define CB_TAG_CBMEM_CONSOLE  0x0017
 struct cbmem_console {
   UINT32    size;
@@ -273,12 +257,11 @@ struct cb_smmstorev2 {
 	UINT32 size;
 	UINT32 num_blocks;	/* Number of writeable blocks in SMM */
 	UINT32 block_size;	/* Size of a block in byte. Default: 64 KiB */
-	UINT32 mmap_addr;	/* MMIO address of the store for read only access (deprecated)*/
+	UINT32 mmap_addr;	/* MMIO address of the store for read only access */
 	UINT32 com_buffer;	/* Physical address of the communication buffer */
 	UINT32 com_buffer_size;	/* Size of the communication buffer in byte */
 	UINT8 apm_cmd;	/* The command byte to write to the APM I/O port */
 	UINT8 unused[3];	/* Set to zero */
-	UINT64 mmap_addr64;	/* MMIO address of the store for read only access */
 };
 
 #define CB_TAG_CBMEM_ENTRY      0x0031
@@ -781,8 +764,6 @@ struct cb_range {
 } __attribute__((packed));
 
 #define CB_TAG_FW_INFO  0x0045
-
-#define CB_TAG_RB_INFO  0x0048
 
 /*
  * Machine-friendly version of a system firmware component.  A component is

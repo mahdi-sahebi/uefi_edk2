@@ -112,15 +112,6 @@ InstallTablesFromXsdt (
       }
     }
 
-    // Skip TPM tables
-    if (!AsciiStrnCmp ((CHAR8 *) &CurrentTable->Signature, "TPM2", 4)) {
-      continue;
-    }
-
-    if (!AsciiStrnCmp ((CHAR8 *) &CurrentTable->Signature, "TCPA", 4)) {
-      continue;
-    }
-
     //
     // Install the XSDT tables
     //
@@ -219,16 +210,6 @@ InstallTablesFromRsdt (
         ASSERT_EFI_ERROR (Status);
       }
     }
-
-    // Skip TPM tables
-    if (!AsciiStrnCmp ((CHAR8 *) &CurrentTable->Signature, "TPM2", 4)) {
-      continue;
-    }
-
-    if (!AsciiStrnCmp ((CHAR8 *) &CurrentTable->Signature, "TCPA", 4)) {
-      continue;
-    }
-
     //
     // Install the RSDT tables
     //
@@ -432,7 +413,6 @@ AcpiExitBootServicesEventNotify (
 
   cbRsdp = NULL;
   Rsdp = NULL;
-  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: ACPI ExitBootServices callback entry\n"));
 
   /* Find coreboot RSDP. */
   for (Ptr = 0xe0000; Ptr < 0xfffff; Ptr += 16) {

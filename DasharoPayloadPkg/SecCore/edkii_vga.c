@@ -4,7 +4,7 @@
 
 /////////////////////////////////////////////////////
 
-#include <stdarg.h>
+#include <stdarg.h> 
 
 #include <Library/IoLib.h>
 #include <Library/PrintLib.h>
@@ -22,37 +22,20 @@
 
 char mde_2_g_buffer[80];
 
-void edkii_vga_write_at_offset (unsigned int line, unsigned int offset, const char *string)
-
+void edkii_vga_write_at_offset(unsigned int line, unsigned int offset, const char *string)
 {
+	if (!string)
+		return;
 
-  UINTN Length;
+	unsigned short *p = (unsigned short *)mde_2__VGA_FB + (mde_2__VGA_COLUMNS * line) + offset;
+	unsigned int i, len = AsciiStrLen(string);
 
-
-  if ((string == NULL) || (line >= 25) || (offset >= mde_2__VGA_COLUMNS)) {
-
-    return;
-
-  }
-
-
-  Length = AsciiStrLen (string);
-
-  if (Length > (mde_2__VGA_COLUMNS - offset)) {
-
-    Length = mde_2__VGA_COLUMNS - offset;
-
-  }
-
-
-  for (UINTN Index = 0; Index < Length; Index++) {
-
-    ((UINT16 *)(UINTN)mde_2__VGA_FB)[mde_2__VGA_COLUMNS * line + offset + Index] =
-
-      (UINT16)(0x0F00 | (UINT8)string[Index]);
-
-  }
-
+	for (i = 0; i < (mde_2__VGA_COLUMNS - offset); i++) {
+		if (i < len)
+			p[i] = 0x0F00 | (unsigned char)string[i];
+		else
+			p[i] = 0x0F00;
+	}
 }
 
 
@@ -67,31 +50,52 @@ void edkii_vga_sprintf(
   ...)
 {
   VA_LIST  marker;
-
+  
   VA_START (marker, format);
   AsciiVSPrint(mde_2_g_buffer, sizeof(mde_2_g_buffer), format, marker);
   VA_END (marker);
-
+  
   edkii_vga_print (row, mde_2_g_buffer);
 }
 
-void edkii_vga_clear ()
-
+void edkii_vga_clear()
 {
-
-  // Keep breadcrumbs visible; do not erase earlier module output.
-
+  edkii_vga_print(0, "                                                                                                    ");
+  edkii_vga_print(1, "                                                                                                    ");
+  edkii_vga_print(2, "                                                                                                    ");
+  edkii_vga_print(3, "                                                                                                    ");
+  edkii_vga_print(4, "                                                                                                    ");
+  edkii_vga_print(5, "                                                                                                    ");
+  edkii_vga_print(6, "                                                                                                    ");
+  edkii_vga_print(7, "                                                                                                    ");
+  edkii_vga_print(8, "                                                                                                    ");
+  edkii_vga_print(9, "                                                                                                    ");
+  edkii_vga_print(10, "                                                                                                    ");
+  edkii_vga_print(11, "                                                                                                    ");
+  edkii_vga_print(12, "                                                                                                    ");
+  edkii_vga_print(13, "                                                                                                    ");
+  edkii_vga_print(14, "                                                                                                    ");
+  edkii_vga_print(15, "                                                                                                    ");
+  edkii_vga_print(16, "                                                                                                    ");
+  edkii_vga_print(17, "                                                                                                    ");
+  edkii_vga_print(18, "                                                                                                    ");
+  edkii_vga_print(19, "                                                                                                    ");
+  edkii_vga_print(20, "                                                                                                    ");
+  edkii_vga_print(21, "                                                                                                    ");
+  edkii_vga_print(22, "                                                                                                    ");
+  edkii_vga_print(23, "                                                                                                    ");
+  edkii_vga_print(24, "                                                                                                    ");
 }
 
-void edkii_vga_hex_dump(const unsigned char *addr, unsigned int len, int start_row)
+void edkii_vga_hex_dump(const unsigned char *addr, unsigned int len, int start_row) 
 {
     unsigned int i;
-
+    
     for (i = 0; i < len; i += 16) {
         unsigned int j;
         int row = start_row + (i / 16);
         int offset_pos = 0;
-
+        
         // Write offset character by character
         unsigned long ptr_val = (unsigned long)(addr + i);
         for (j = 28; j > 0; j -= 4) {
@@ -107,7 +111,7 @@ void edkii_vga_hex_dump(const unsigned char *addr, unsigned int len, int start_r
             edkii_vga_write_at_offset(row, offset_pos++, buf);
         }
         edkii_vga_write_at_offset(row, offset_pos++, ": ");
-
+        
         // Write hex bytes
         for (j = 0; j < 16 && (i + j < len); j++) {
             unsigned char byte = addr[i + j];
@@ -124,15 +128,15 @@ void edkii_vga_hex_dump(const unsigned char *addr, unsigned int len, int start_r
             // Write space
             edkii_vga_write_at_offset(row, offset_pos++, " ");
         }
-
+        
         // Pad remaining hex spaces
         for (; j < 16; j++) {
             edkii_vga_write_at_offset(row, offset_pos++, "   ");
         }
-
+        
         // Write ASCII representation
         edkii_vga_write_at_offset(row, offset_pos++, "  ");
-
+        
         for (j = 0; j < 16 && (i + j < len); j++) {
             unsigned char byte = addr[i + j];
             char c = (byte >= 0x20 && byte <= 0x7e) ? (char)byte : '.';

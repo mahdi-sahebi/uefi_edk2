@@ -26,7 +26,6 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Library/DevicePathLib.h>
 #include <Library/FrameBufferBltLib.h>
 #include <Library/DebugLib.h>
-#include <Library/GxVgaLib.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/MemoryAllocationLib.h>
 #include <Library/UefiLib.h>

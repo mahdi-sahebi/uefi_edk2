@@ -1,7 +1,7 @@
 #ifndef MN_EDK_II_VGA_H_
 #define MN_EDK_II_VGA_H_
 
-#include <stdarg.h>
+#include <stdarg.h> 
 
 #include <Library/IoLib.h>
 #include <Library/PrintLib.h>

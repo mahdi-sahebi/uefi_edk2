@@ -50,7 +50,6 @@
   PeCoffExtraActionLib
   IoLib
   PrintLib
-  TimerLib
   ReportStatusCodeLib
 
 [Ppis]

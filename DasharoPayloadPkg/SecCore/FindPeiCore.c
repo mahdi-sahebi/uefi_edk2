@@ -29,6 +29,8 @@ FindImageBase (
   OUT EFI_PHYSICAL_ADDRESS             *PeiCoreImageBase
   )
 {
+  // char buf[78];
+
   EFI_PHYSICAL_ADDRESS        CurrentAddress;
   EFI_PHYSICAL_ADDRESS        EndOfFirmwareVolume;
   EFI_FFS_FILE_HEADER         *File;
@@ -43,13 +45,29 @@ FindImageBase (
   CurrentAddress = (EFI_PHYSICAL_ADDRESS)(UINTN) BootFirmwareVolumePtr;
   EndOfFirmwareVolume = CurrentAddress + BootFirmwareVolumePtr->FvLength;
 
+  edkii_vga_sprintf(1, "FI-%x,%x,%x,%x,%x",
+    BootFirmwareVolumePtr,
+    BootFirmwareVolumePtr->FvLength,
+    EndOfFirmwareVolume,
+    BootFirmwareVolumePtr->HeaderLength,
+    CurrentAddress + BootFirmwareVolumePtr->HeaderLength);
+
+  // edkii_vga_hex_dump((unsigned char*)BootFirmwareVolumePtr, 32, 6);
+
+
+  int ip = 0;
   //
   // Loop through the FFS files in the Boot Firmware Volume
   //
   for (EndOfFile = CurrentAddress + BootFirmwareVolumePtr->HeaderLength; ; ) {
-
+    ip++;
     CurrentAddress = (EndOfFile + 7) & 0xfffffffffffffff8ULL;
     if (CurrentAddress > EndOfFirmwareVolume) {
+      edkii_vga_sprintf(2, "EFI_NOT_FOUND-0: %X,%x,%X,%X", 
+        ip,
+        CurrentAddress,
+        EndOfFirmwareVolume
+      );
       return EFI_NOT_FOUND;
     }
 
@@ -57,17 +75,35 @@ FindImageBase (
     if (IS_FFS_FILE2 (File)) {
       Size = FFS_FILE2_SIZE (File);
       if (Size <= 0x00FFFFFF) {
+        edkii_vga_sprintf(2, "EFI_NOT_FOUND-1: %X,%X, %X", 
+          ip,
+          Size,
+          CurrentAddress
+        );
+        // edkii_vga_print(4, buf);
         return EFI_NOT_FOUND;
       }
     } else {
       Size = FFS_FILE_SIZE (File);
       if (Size < sizeof (EFI_FFS_FILE_HEADER)) {
+        edkii_vga_sprintf(2, "EFI_NOT_FOUND-2: %X,%X, %X", 
+          ip,
+          Size,
+          sizeof (EFI_FFS_FILE_HEADER)
+        );
+        // edkii_vga_print(4, buf);
         return EFI_NOT_FOUND;
       }
     }
 
     EndOfFile = CurrentAddress + Size;
     if (EndOfFile > EndOfFirmwareVolume) {
+        edkii_vga_sprintf(2, "EFI_NOT_FOUND-3: %X,%X, %X", 
+          ip,
+          EndOfFile,
+          EndOfFirmwareVolume
+        );
+        // edkii_vga_print(4, buf);
       return EFI_NOT_FOUND;
     }
 
@@ -94,17 +130,42 @@ FindImageBase (
       if (IS_SECTION2 (Section)) {
         Size = SECTION2_SIZE (Section);
         if (Size <= 0x00FFFFFF) {
+          
+          edkii_vga_sprintf(2, "EFI_NOT_FOUND-4: %X,%X,%X,%X", 
+            ip,
+            Size,
+            CurrentAddress,
+            Section
+          );
+          // edkii_vga_print(4, buf);
           return EFI_NOT_FOUND;
         }
       } else {
         Size = SECTION_SIZE (Section);
         if (Size < sizeof (EFI_COMMON_SECTION_HEADER)) {
+
+          edkii_vga_sprintf(2, "EFI_NOT_FOUND-5: %X,%X,%X,%X,%X", 
+            ip,
+            Size,
+            sizeof (EFI_COMMON_SECTION_HEADER),
+            CurrentAddress,
+            Section
+          );
+          // edkii_vga_print(4, buf);
           return EFI_NOT_FOUND;
         }
       }
 
       EndOfSection = CurrentAddress + Size;
       if (EndOfSection > EndOfFile) {
+          edkii_vga_sprintf(2, "EFI_NOT_FOUND-5: %X,%X, %X, %X", 
+            ip,
+            Size,
+            EndOfSection,
+            EndOfFile
+          );
+          // edkii_vga_print(4, buf);
+
         return EFI_NOT_FOUND;
       }
 
@@ -129,13 +190,33 @@ FindImageBase (
       }
     }
 
+    edkii_vga_sprintf(3, "SP-%X,%x,%x-%x,%x",
+      ip,
+      SecCoreImageBase,
+      *SecCoreImageBase,
+      PeiCoreImageBase,
+      *PeiCoreImageBase
+    );
     //
     // Both SEC Core and PEI Core images found
     //
     if (*SecCoreImageBase != 0 && *PeiCoreImageBase != 0) {
+          // AsciiSPrint(buf, sizeof(buf), "7: 0x%X, 0x%X", 
+          //   (UINT32)(UINTN)*SecCoreImageBase,
+          //   (UINT32)(UINTN)*PeiCoreImageBase);
+          // edkii_vga_print(5, buf);
+
       return EFI_SUCCESS;
     }
   }
+  
+  edkii_vga_sprintf(4, "EndFindImageBase-%X,%x,%x-%x,%x",
+    ip,
+    SecCoreImageBase,
+    *SecCoreImageBase,
+    PeiCoreImageBase,
+    *PeiCoreImageBase
+  );
 }
 
 /**
@@ -160,40 +241,84 @@ FindAndReportEntryPoints (
   EFI_PHYSICAL_ADDRESS             PeiCoreImageBase;
   PE_COFF_LOADER_IMAGE_CONTEXT     ImageContext;
 
+  // char buf[70];
+  // AsciiSPrint(buf, sizeof(buf), "FindEntry-BFV 0x%08X, PCE 0x%08X", 
+  //   (UINT32)(UINTN)BootFirmwareVolumePtr,
+  //   (UINT32)(UINTN)PeiCoreEntryPoint);
+  edkii_vga_sprintf(0, "FPa-%x-%x,%x-%x",
+    BootFirmwareVolumePtr,
+    *BootFirmwareVolumePtr,
+    PeiCoreEntryPoint,
+    *PeiCoreEntryPoint
+  );
+
+
   //
   // Find SEC Core and PEI Core image base
   //
   Status = FindImageBase (BootFirmwareVolumePtr, &SecCoreImageBase, &PeiCoreImageBase);
+  edkii_vga_sprintf(5, "FEa-%x", 
+    Status//,
+    // (UINT32)(UINTN)SecCoreImageBase,
+    // (UINT32)(UINTN)PeiCoreImageBase);
+  // edkii_vga_print(5, buf);
+  );
+  // ASSERT_EFI_ERROR (Status);
   ASSERT_EFI_ERROR (Status);
 
   ZeroMem ((VOID *) &ImageContext, sizeof (PE_COFF_LOADER_IMAGE_CONTEXT));
   //
   // Report SEC Core debug information when remote debug is enabled
   //
+  // char* iptr_sec = 0;
   // if (0 != SecCoreImageBase) {
-  ImageContext.ImageAddress = SecCoreImageBase;
-  ImageContext.PdbPointer = PeCoffLoaderGetPdbPointer ((VOID*) (UINTN) ImageContext.ImageAddress);
-  edkii_vga_sprintf(5, "[GX] FEb-%x,%x", ImageContext.ImageAddress, ImageContext.PdbPointer);
-  PeCoffLoaderRelocateImageExtraAction (&ImageContext);
-// }
+    ImageContext.ImageAddress = SecCoreImageBase;
+    ImageContext.PdbPointer = PeCoffLoaderGetPdbPointer ((VOID*) (UINTN) ImageContext.ImageAddress);
+    
+    edkii_vga_sprintf(5, "FEb-%x,%x",
+      ImageContext.ImageAddress,
+      ImageContext.PdbPointer
+    );
+    PeCoffLoaderRelocateImageExtraAction (&ImageContext);
+  // }
 
   //
   // Report PEI Core debug information when remote debug is enabled
   //
+  // char* iptr_pei = 0;
   // if (0 != PeiCoreImageBase) {
-  ImageContext.ImageAddress = PeiCoreImageBase;
-  ImageContext.PdbPointer = PeCoffLoaderGetPdbPointer ((VOID*) (UINTN) ImageContext.ImageAddress);
-  edkii_vga_sprintf(6, "[GX] FEc-%x,%x", ImageContext.ImageAddress, ImageContext.PdbPointer);
-  PeCoffLoaderRelocateImageExtraAction (&ImageContext);
+    ImageContext.ImageAddress = PeiCoreImageBase;
+    ImageContext.PdbPointer = PeCoffLoaderGetPdbPointer ((VOID*) (UINTN) ImageContext.ImageAddress);
+    
+    edkii_vga_sprintf(6, "FEc-%x,%x",
+      ImageContext.ImageAddress,
+      ImageContext.PdbPointer
+    );
+    PeCoffLoaderRelocateImageExtraAction (&ImageContext);
   // }
 
   //
   // Find PEI Core entry point
   //
+  edkii_vga_print(8, "FEd-!");
   Status = PeCoffLoaderGetEntryPoint ((VOID *) (UINTN) PeiCoreImageBase, (VOID**) PeiCoreEntryPoint);
+  edkii_vga_sprintf(8, "FEd-%x", 
+    // (UINT32)(UINTN)iptr_sec,
+    // (UINT32)(UINTN)iptr_pei,
+    // PeiCoreEntryPoint,
+    // *PeiCoreEntryPoint,
+    Status);
   if (EFI_ERROR (Status)) {
+    // edkii_vga_print(8, "FE - 8");
     *PeiCoreEntryPoint = 0;
   }
-
+  edkii_vga_sprintf(8, "FEe-%x", 
+    // (UINT32)(UINTN)iptr_sec,
+    // (UINT32)(UINTN)iptr_pei,
+    // PeiCoreEntryPoint,
+    // *PeiCoreEntryPoint,
+    Status);
+    
   return;
 }
+

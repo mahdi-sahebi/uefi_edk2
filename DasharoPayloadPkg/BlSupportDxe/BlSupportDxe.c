@@ -234,7 +234,6 @@ BlDxeEntryPoint (
   EFI_SYSTEM_RESOURCE_ENTRY               *Esre;
 
   Status = EFI_SUCCESS;
-  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: BlSupportDxe entry\n"));
   //
   // Report MMIO/IO Resources
   //
@@ -270,11 +269,6 @@ BlDxeEntryPoint (
   GuidHob = GetFirstGuidHob (&gEfiGraphicsInfoHobGuid);
   if (GuidHob != NULL) {
     GfxInfo = (EFI_PEI_GRAPHICS_INFO_HOB *)GET_GUID_HOB_DATA (GuidHob);
-    DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: BlSupportDxe graphics HOB FB=0x%lx size=0x%lx %ux%u\n",
-            GfxInfo->FrameBufferBase,
-            GfxInfo->FrameBufferSize,
-            GfxInfo->GraphicsMode.HorizontalResolution,
-            GfxInfo->GraphicsMode.VerticalResolution));
     Status = PcdSet32S (PcdVideoHorizontalResolution, GfxInfo->GraphicsMode.HorizontalResolution);
     ASSERT_EFI_ERROR (Status);
     Status = PcdSet32S (PcdVideoVerticalResolution, GfxInfo->GraphicsMode.VerticalResolution);
@@ -284,8 +278,6 @@ BlDxeEntryPoint (
     Status = PcdSet32S (PcdSetupVideoVerticalResolution, GfxInfo->GraphicsMode.VerticalResolution);
     ASSERT_EFI_ERROR (Status);
   }
-
-  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: BlSupportDxe graphics setup complete\n"));
 
   Status = ParseFwInfo (&FwGuid, &FwVersion, &FwLsv, &FwSize);
   if (!EFI_ERROR (Status)) {

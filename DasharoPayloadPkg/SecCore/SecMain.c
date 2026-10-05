@@ -8,11 +8,13 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 
 #include "SecMain.h"
-#include <Library/DebugLib.h>
-#include <Library/GxVgaLib.h>
+
+//////////////////////////// mahdi
 #include "edkii_vga.h"
 #include <Library/TimerLib.h>
-#include <Library/DebugLib.h>
+/////////////////////////////////
+
+
 
 EFI_PEI_TEMPORARY_RAM_SUPPORT_PPI gSecTemporaryRamSupportPpi = {
   SecTemporaryRamSupport
@@ -70,6 +72,11 @@ SecStartup (
   IN UINT32                   BootloaderParameter
   )
 {
+  //////////////////////////// mahdi
+  edkii_vga_clear();
+  edkii_vga_print(0, "EDK II Started ");
+  ///////////////////////////
+// MicroSecondDelay (5000000);
   EFI_SEC_PEI_HAND_OFF        SecCoreData;
   IA32_DESCRIPTOR             IdtDescriptor;
   SEC_IDT_TABLE               IdtTableInStack;
@@ -78,17 +85,51 @@ SecStartup (
 
   PeiStackSize = (SizeOfRam >> 1);
 
+//////////////////////////////////////////
+    // char buf[32];
+// //edkii_vga_print(1, "Params:");
+
+// AsciiSPrint(buf, sizeof(buf), "HDR: 0x%X", *(UINT32*)BootloaderParameter);
+// //edkii_vga_print(2, buf);
+
+// AsciiSPrint(buf, sizeof(buf), "SOR: 0x%X", SizeOfRam);
+// //edkii_vga_print(3, buf);
+
+// AsciiSPrint(buf, sizeof(buf), "TRB: 0x%X", TempRamBase);
+// //edkii_vga_print(4, buf);
+
+// AsciiSPrint(buf, sizeof(buf), "BFV: 0x%X", (UINT32)(UINTN)BootFirmwareVolume);
+// //edkii_vga_print(5, buf);
+
+// AsciiSPrint(buf, sizeof(buf), "BLP: 0x%X", BootloaderParameter);
+// //edkii_vga_print(6, buf);
+
+
+// // Also verify the coreboot table signature
+// UINT32 *lb = (UINT32 *)BootloaderParameter;
+// if (lb && lb[0] == 0x4F49424C) {  // "LBIO" in little-endian
+//     //edkii_vga_print(7, "LBIO OK");
+// } else {
+//     //edkii_vga_print(7, "LBIO FAIL");
+// }
+
+// if (SizeOfRam == 0 || TempRamBase == 0) {
+//     //edkii_vga_print(8, "ERROR: Invalid params!");
+// }
+///////////////////////////////////////////
   ASSERT (PeiStackSize < SizeOfRam);
 
   //
   // Process all libraries constructor function linked to SecCore.
   //
+  // //edkii_vga_print(0, "EDK II Started - 1");
   ProcessLibraryConstructorList ();
 
   //
   // Initialize floating point operating environment
   // to be compliant with UEFI spec.
   //
+  // //edkii_vga_print(0, "EDK II Started - 2");
   InitializeFloatingPointUnits ();
 
 
@@ -106,14 +147,20 @@ SecStartup (
   // |                   |
   // |                   |
   // |-------------------|---->  TempRamBase
+  // //edkii_vga_print(0, "EDK II Started - 3");
 
   IdtTableInStack.PeiService = 0;
   for (Index = 0; Index < SEC_IDT_ENTRY_COUNT; Index ++) {
     CopyMem ((VOID*)&IdtTableInStack.IdtTable[Index], (VOID*)&mIdtEntryTemplate, sizeof (UINT64));
   }
+  // //edkii_vga_print(0, "EDK II Started - 4");
 
   IdtDescriptor.Base  = (UINTN) &IdtTableInStack.IdtTable;
   IdtDescriptor.Limit = (UINT16)(sizeof (IdtTableInStack.IdtTable) - 1);
+
+  // //edkii_vga_print(0, "EDK II Started - 5");
+  AsmWriteIdtr (&IdtDescriptor);
+  // //edkii_vga_print(0, "EDK II Started - 6");
 
   AsmWriteIdtr (&IdtDescriptor);
 
@@ -153,49 +200,63 @@ SecStartupPhase2(
   IN VOID                     *Context
   )
 {
-  // Keep a distinctive, persistent VGA/SOL signature at the very start of
-  // the C SEC path. The delay makes the signature observable in BMC video
-  // and SOL captures before PEI begins changing the console state.
-  GxVgaCheckpoint (0, "G4DEL SEC START >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
-  GxVgaCheckpoint (1, "G4DEL SEC START / DASHARO PAYLOAD / 2SEC");
-  GxVgaCheckpoint (2, "G4DEL SEC START >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
-  GxVgaCheckpoint (3, "WAITING BEFORE PEI CORE HANDOFF");
-  MicroSecondDelay (2 * 1000 * 1000);
-  GxVgaCheckpoint (4, "G4DEL SEC START / PEI HANDOFF");
-  DEBUG ((DEBUG_WARN, "[GX] module=SecCore event=entry status=success\n"));
-  GxVgaCheckpoint (0, "[GX] module=SecCore event=entry status=success");
+  edkii_vga_clear();
+  
+  // edkii_vga_print(0, "EDK II- Testing the delay - 1");
+  // MicroSecondDelay(5000000);
+  // edkii_vga_print(0, "EDK II- Testing the delay - 1");
+  // MicroSecondDelay(5000000);
+  // edkii_vga_clear();
+  edkii_vga_print(0, "EDK II SecStartupPhase2");
+
   EFI_SEC_PEI_HAND_OFF        *SecCoreData;
   EFI_PEI_CORE_ENTRY_POINT    PeiCoreEntryPoint;
 
   SecCoreData = (EFI_SEC_PEI_HAND_OFF *) Context;
-  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: SEC phase2 entry SecCoreData=0x%p BFV=0x%p Size=0x%x TempRam=0x%p Stack=0x%p\n",
-    SecCoreData,
-    (VOID *)(UINTN)SecCoreData->BootFirmwareVolumeBase,
-    SecCoreData->BootFirmwareVolumeSize,
-    (VOID *)(UINTN)SecCoreData->TemporaryRamBase,
-    (VOID *)(UINTN)SecCoreData->StackBase
-    ));
   //
   // Find Pei Core entry point. It will report SEC and Pei Core debug information if remote debug
   // is enabled.
   //
   FindAndReportEntryPoints ((EFI_FIRMWARE_VOLUME_HEADER *) SecCoreData->BootFirmwareVolumeBase, &PeiCoreEntryPoint);
-  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: SEC located PeiCoreEntryPoint=0x%p\n", (VOID *)(UINTN)PeiCoreEntryPoint));
-  edkii_vga_sprintf(9, "[GX] SPa-%x-%x-%x,%x-%x-%x", SecCoreData, SecCoreData->BootFirmwareVolumeBase, PeiCoreEntryPoint, mPeiSecPlatformInformationPpi->Flags, mPeiSecPlatformInformationPpi->Guid, mPeiSecPlatformInformationPpi->Ppi);
+  edkii_vga_sprintf(9, "SPa-%x-%x-%x,%x-%x-%x",
+    SecCoreData,
+    SecCoreData->BootFirmwareVolumeBase, 
+    PeiCoreEntryPoint,
+    mPeiSecPlatformInformationPpi->Flags,
+    mPeiSecPlatformInformationPpi->Guid,
+    mPeiSecPlatformInformationPpi->Ppi
+  );
   if (PeiCoreEntryPoint == NULL)
   {
-    DEBUG ((DEBUG_ERROR, "[GX] G4DELDBG: SEC failed to locate PEI core, entering CpuDeadLoop\n"));
+    // edkii_vga_print(0, "SePh2 - PeiCoreEntryPoint is NULL");
     CpuDeadLoop ();
   }
 
   //
   // Transfer the control to the PEI core
   //
+  // edkii_vga_print(3, "SePh2[3]");
   ASSERT (PeiCoreEntryPoint != NULL);
-  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: SEC handoff to PEI core\n"));
-  edkii_vga_sprintf(10, "[GX] SPb-%x-%x-%x,%x-%x-%x", SecCoreData, SecCoreData->BootFirmwareVolumeBase, PeiCoreEntryPoint, mPeiSecPlatformInformationPpi->Flags, mPeiSecPlatformInformationPpi->Guid, mPeiSecPlatformInformationPpi->Ppi);
-  (*PeiCoreEntryPoint) (SecCoreData, (EFI_PEI_PPI_DESCRIPTOR *)&mPeiSecPlatformInformationPpi);
 
+  // edkii_vga_hex_dump((void*)PeiCoreEntryPoint, 64, 9);
+  // edkii_vga_hex_dump((void*)*PeiCoreEntryPoint, 64, 14);
+  // edkii_vga_hex_dump((void*)SecCoreData, 64, 19);
+
+  // MicroSecondDelay(5000000);
+  // ASSERT (PeiCoreEntryPoint != NULL);
+  (*PeiCoreEntryPoint) (SecCoreData, (EFI_PEI_PPI_DESCRIPTOR *)&mPeiSecPlatformInformationPpi);
+  edkii_vga_sprintf(10, "SPb-%x-%x-%x,%x-%x-%x",
+    SecCoreData,
+    SecCoreData->BootFirmwareVolumeBase, 
+    PeiCoreEntryPoint,
+    mPeiSecPlatformInformationPpi->Flags,
+    mPeiSecPlatformInformationPpi->Guid,
+    mPeiSecPlatformInformationPpi->Ppi
+  );
+  // edkii_vga_print(0, "SePh2[4] Fatal");
+
+// int test = 1;
+//   while (test);
   //
   // Should not come here.
   //
@@ -313,3 +374,4 @@ SecTemporaryRamSupport (
 
   return EFI_SUCCESS;
 }
+

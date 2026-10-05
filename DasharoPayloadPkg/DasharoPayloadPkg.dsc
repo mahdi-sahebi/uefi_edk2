@@ -24,12 +24,6 @@
   OUTPUT_DIRECTORY                    = Build/DasharoPayloadPkgX64
   FLASH_DEFINITION                    = DasharoPayloadPkg/DasharoPayloadPkg.fdf
 
-  #
-  # Override this if build output is located outside of EDK's root directory to
-  # make build paths reproducible in this scenario.
-  #
-  DEFINE EDK2_WORKSPACE               = $(WORKSPACE)
-
   DEFINE SOURCE_DEBUG_ENABLE          = FALSE
   DEFINE PS2_KEYBOARD_ENABLE          = FALSE
 
@@ -117,15 +111,11 @@
   DEFINE RAM_DISK_ENABLE                = FALSE
   DEFINE APU_CONFIG_ENABLE              = FALSE
   DEFINE USE_PLATFORM_GOP               = FALSE
-  DEFINE USE_AMD_PLATFORM_GOP           = FALSE
   DEFINE USE_LAPTOP_LID_LIB             = FALSE
   DEFINE USE_UEFIVAR_BACKED_TPM_PPI     = FALSE
   DEFINE CAPSULE_SUPPORT                = FALSE
   DEFINE CAPSULE_MAIN_FW_GUID           =
   DEFINE GRAPHICAL_CAPSULE_PROGRESS     = TRUE
-
-  DEFINE AMD_GOP_DRIVER_GUID    = 2C4CB22B-E0F8-4457-A238-576A3D0201D6
-  DEFINE AMD_GOP_VBIOS_GUID     = C38A9A34-2005-496E-94F2-8E1020B8FC6E
 
   #
   # Network definition
@@ -158,37 +148,11 @@
 
 [BuildOptions]
   *_*_*_CC_FLAGS                 = -D DISABLE_NEW_DEPRECATED_INTERFACES -Wno-stringop-overflow -mno-mmx -mno-sse
-!if $(TPM_ENABLE) == TRUE
-  *_*_*_CC_FLAGS                 = -D TPM_ENABLED
-!endif
 !if $(USE_CBMEM_FOR_CONSOLE) == FALSE
   GCC:RELEASE_*_*_CC_FLAGS       = -DMDEPKG_NDEBUG
   INTEL:RELEASE_*_*_CC_FLAGS     = /D MDEPKG_NDEBUG
   MSFT:RELEASE_*_*_CC_FLAGS      = /D MDEPKG_NDEBUG
-!else
-  #
-  # With the console enabled, ASSERT() stays compiled in, which embeds the
-  # absolute __FILE__ source path of each module into the image. Remap the
-  # EDK II workspace prefix to a relative path so the strings (and therefore
-  # the image) are reproducible regardless of where coreboot is checked out.
-  # -ffile-prefix-map covers __FILE__ (and any debug info); GCC >= 8 / Clang >= 10.
-  #
-  # Using overridable $(EDK2_WORKSPACE) that defaults to $(WORKSPACE) because
-  # $(WORKSPACE) is adjusted by the build system to point at EDK's root
-  # directory, which leaves out paths to auto-generated files in $PWD/Build/
-  # uncovered by -ffile-prefix-map option.
-  #
-  GCC:RELEASE_*_*_CC_FLAGS       = -ffile-prefix-map=$(EDK2_WORKSPACE)/=
 !endif
-  #
-  # Strip the absolute build path that GenFw embeds into the PE/COFF debug
-  # directory (NB10/RSDS CodeView entry) of RELEASE images, and zero the
-  # timestamp. Without this the payload is not bit-for-bit reproducible: the
-  # path depends on where coreboot was checked out (e.g. the EDK II workspace
-  # under payloads/external/edk2/workspace). Mirrors upstream OvmfPkg, which
-  # does the same in its release DSCs (TianoCore PR #1513).
-  #
-  RELEASE_*_*_GENFW_FLAGS        = --zero
 
 
 ################################################################################
@@ -312,21 +276,13 @@
   # coreboot will expose proper ACPI Timer I/O port from QEMU too
   # No need to use OVMF HPET Timer libraries
   TimerLib|DasharoPayloadPkg/Library/AcpiTimerLib/AcpiTimerLib.inf
-!elseif $(CPU_TIMER_LIB_ENABLE) == TRUE
-  # QEMU_PLATFORM and CPU_TIMER_LIB_ENABLE are mutually exclusive
-  TimerLib|UefiCpuPkg/Library/CpuTimerLib/BaseCpuTimerLib.inf
 !else
-  # coreboot always uses TSC for timestamps, force correct timer library so performance
-  # measurements are accurate, regardless of the timer built for other modules. Mismatch
-  # of the timers will result in incorrect tick and nanosecond calculations due to
-  # different timer frequency.
-!if $(PERFORMANCE_MEASUREMENT_ENABLE) == TRUE
-  TimerLib|DasharoPayloadPkg/Library/CpuTimerLib/BaseCpuTimerLib.inf
+!if $(CPU_TIMER_LIB_ENABLE) == TRUE
+  TimerLib|UefiCpuPkg/Library/CpuTimerLib/BaseCpuTimerLib.inf
 !else
   TimerLib|DasharoPayloadPkg/Library/AcpiTimerLib/AcpiTimerLib.inf
 !endif
-!endif # $(QEMU_PLATFORM) == FASLE && $(CPU_TIMER_LIB_ENABLE) == FALSE
-
+!endif
   ResetSystemLib|DasharoPayloadPkg/Library/ResetSystemLib/ResetSystemLib.inf
 !if (($(USE_CBMEM_FOR_CONSOLE) == TRUE) && ($(TARGET) == RELEASE))
   SerialPortLib|UefiPayloadPkg/Library/CbSerialPortLib/CbSerialPortLib.inf
@@ -448,7 +404,7 @@
 OrderedCollectionLib|MdePkg/Library/BaseOrderedCollectionRedBlackTreeLib/BaseOrderedCollectionRedBlackTreeLib.inf
 
 [LibraryClasses.IA32.SEC]
-  DebugLib|DasharoPayloadPkg/Library/SecDebugLibSerialPort/SecDebugLibSerialPort.inf
+  DebugLib|MdePkg/Library/BaseDebugLibNull/BaseDebugLibNull.inf
   PcdLib|MdePkg/Library/BasePcdLibNull/BasePcdLibNull.inf
   HobLib|MdePkg/Library/PeiHobLib/PeiHobLib.inf
   MemoryAllocationLib|MdePkg/Library/PeiMemoryAllocationLib/PeiMemoryAllocationLib.inf
@@ -457,7 +413,6 @@ OrderedCollectionLib|MdePkg/Library/BaseOrderedCollectionRedBlackTreeLib/BaseOrd
   PerformanceLib|MdeModulePkg/Library/PeiPerformanceLib/PeiPerformanceLib.inf
 
 [LibraryClasses.common.SEC]
-  SerialPortLib|MdeModulePkg/Library/BaseSerialPortLib16550/BaseSerialPortLib16550.inf
 !if $(QEMU_PLATFORM) == TRUE
   TimerLib|OvmfPkg/Library/AcpiTimerLib/BaseRomAcpiTimerLib.inf
 !endif
@@ -613,11 +568,7 @@ OrderedCollectionLib|MdePkg/Library/BaseOrderedCollectionRedBlackTreeLib/BaseOrd
   gEfiMdeModulePkgTokenSpaceGuid.PcdStatusCodeUseMemory|FALSE
 
   gEfiMdePkgTokenSpaceGuid.PcdReportStatusCodePropertyMask|0x7
-  gEfiMdePkgTokenSpaceGuid.PcdDebugPrintErrorLevel|0x80000002
-  gEfiMdeModulePkgTokenSpaceGuid.PcdSerialUseMmio|FALSE
-  gEfiMdeModulePkgTokenSpaceGuid.PcdSerialRegisterBase|0x2F8
-  gEfiMdeModulePkgTokenSpaceGuid.PcdSerialRegisterStride|1
-  gEfiMdeModulePkgTokenSpaceGuid.PcdSerialBaudRate|115200
+  gEfiMdePkgTokenSpaceGuid.PcdDebugPrintErrorLevel|0x8000004F
 !if $(USE_CBMEM_FOR_CONSOLE) == FALSE
   !if $(SOURCE_DEBUG_ENABLE)
     gEfiMdePkgTokenSpaceGuid.PcdDebugPropertyMask|0x17
@@ -711,11 +662,6 @@ OrderedCollectionLib|MdePkg/Library/BaseOrderedCollectionRedBlackTreeLib/BaseOrd
   gEfiMdeModulePkgTokenSpaceGuid.PcdConOutColumn|100
 
   gEfiSecurityPkgTokenSpaceGuid.PcdTpmInstanceGuid|{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
-  gEfiSecurityPkgTokenSpaceGuid.PcdActiveTpmInterfaceType|0xFF
-  gEfiSecurityPkgTokenSpaceGuid.PcdTpm2HashMask|0x0000001F
-  gEfiSecurityPkgTokenSpaceGuid.PcdCRBIdleByPass|0xFF
-  gEfiSecurityPkgTokenSpaceGuid.PcdTcg2NumberOfPCRBanks|0
-  gEfiSecurityPkgTokenSpaceGuid.PcdTpmBaseAddress|0xFED40000
 
   # No need to initialize TPM again, coreboot already did that
   gEfiSecurityPkgTokenSpaceGuid.PcdTpm2InitializationPolicy|0
@@ -1018,9 +964,10 @@ OrderedCollectionLib|MdePkg/Library/BaseOrderedCollectionRedBlackTreeLib/BaseOrd
 
 !if $(USE_PLATFORM_GOP) == TRUE
   DasharoPayloadPkg/PlatformGopPolicy/PlatformGopPolicy.inf
-!elseif $(USE_AMD_PLATFORM_GOP) == FALSE
+!else
   DasharoPayloadPkg/GraphicsOutputDxe/GraphicsOutputDxe.inf
 !endif
+
 
   #
   # Network Support

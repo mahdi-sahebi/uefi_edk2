@@ -16,8 +16,6 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Library/CustomizedDisplayLib.h>
 #include <Library/BlParseLib.h>
 #include <Library/CapsuleLib.h>
-#include <Library/DebugLib.h>
-#include <Library/GxVgaLib.h>
 #include <Library/HobLib.h>
 #include <Library/Tpm2CommandLib.h>
 #include <Library/Tcg2PhysicalPresenceLib.h>
@@ -955,8 +953,6 @@ PlatformBootManagerBeforeConsole (
   BOOLEAN                        BootMenuEnable;
   UINTN                          VarSize;
 
-  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: PlatformBootManagerBeforeConsole entry\n"));
-
   //
   // This variable communicates EDK's intent to coreboot and shouldn't exist
   // longer than a single boot.
@@ -1252,7 +1248,8 @@ WarnIfRecoveryBoot (
   BootLogoEnableLogo ();
 }
 
-#ifdef TPM_ENABLED
+
+
 typedef struct {
   TPM_ALG_ID AlgId;
   CHAR16    *Name;
@@ -1412,7 +1409,6 @@ WarnIfSinglePCRBank (
   DrainInput();
   BootLogoEnableLogo();
 }
-#endif
 
 STATIC
 VOID
@@ -2038,8 +2034,6 @@ PlatformBootManagerAfterConsole (
   EFI_EVENT                      Event;
   EFI_INPUT_KEY                  Enter;
 
-  DEBUG ((DEBUG_WARN, "[GX] G4DELDBG: PlatformBootManagerAfterConsole entry\n"));
-
   Black.Blue = Black.Green = Black.Red = Black.Reserved = 0;
   White.Blue = White.Green = White.Red = White.Reserved = 0xFF;
 
@@ -2068,9 +2062,7 @@ PlatformBootManagerAfterConsole (
     }
   }
 
-#ifdef TPM_ENABLED
   WarnIfSinglePCRBank ();
-#endif
   WarnIfBatteryLow ();
   WarnIfRecoveryBoot ();
   WarnIfFirmwareUpdateMode ();
@@ -2178,15 +2170,11 @@ PlatformBootManagerAfterConsole (
   //
   // Register UEFI Shell
   //
-  GxVgaCheckpoint (8, "[GX] module=PlatformBootManager event=shell-register status=start");
-  DEBUG ((DEBUG_WARN, "[GX] module=PlatformBootManager event=shell-register status=start\n"));
   DEBUG((DEBUG_INFO, "Registering UEFI Shell boot option\n"));
   SyncFvBootOption (PcdGetPtr (PcdShellFile),
                     L"UEFI Shell",
                     FALSE,
                     FALSE);
-  GxVgaCheckpoint (8, "[GX] module=PlatformBootManager event=shell-register status=success");
-  DEBUG ((DEBUG_WARN, "[GX] module=PlatformBootManager event=shell-register status=success\n"));
 
   BootMenuKey = GetKeyStringFromScanCode (FixedPcdGet16(PcdBootMenuKey), L"F12");
   SetupMenuKey = GetKeyStringFromScanCode (FixedPcdGet16(PcdSetupMenuKey), L"ESC");
