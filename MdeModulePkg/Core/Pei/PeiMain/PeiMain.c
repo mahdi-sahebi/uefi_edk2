@@ -32,10 +32,10 @@ char mde_1_g_buffer[80];
 
 void mde_1_edkii_vga_write_at_offset(unsigned int line, unsigned int offset, const char *string)
 {
-	if (!string)
+	if (!string || line >= 25 || offset >= mde_1__VGA_COLUMNS)
 		return;
 
-	unsigned short *p = (unsigned short *)mde_1__VGA_FB + (mde_1__VGA_COLUMNS * line) + offset;
+	volatile unsigned short *p = (volatile unsigned short *)mde_1__VGA_FB + (mde_1__VGA_COLUMNS * line) + offset;
 	unsigned int i, len = AsciiStrLen(string);
 
 	for (i = 0; i < (mde_1__VGA_COLUMNS - offset); i++) {
@@ -63,6 +63,7 @@ void mde_1_edkii_vga_sprintf(
   AsciiVSPrint(mde_1_g_buffer, sizeof(mde_1_g_buffer), format, marker);
   VA_END (marker);
   
+  DEBUG ((DEBUG_ERROR, "[GX-PeiCore] row=%u %a\n", row, mde_1_g_buffer));
   mde_1_edkii_vga_print (row, mde_1_g_buffer);
 }
 
@@ -159,18 +160,9 @@ void mde_1_edkii_vga_hex_dump(const unsigned char *addr, unsigned int len, int s
 
 static void delay_s(int n)
 {
-  volatile unsigned long t = 25;
-  volatile unsigned long x = (unsigned long)n * 10000UL;
-
-  while (x--) {
-    for (unsigned long i1 = 0; i1 < 1000UL; ++i1) {
-        for (int i = 0; i < 20; ++i) {
-            t = t * 14823424UL + x + 1UL;
-        }
-    }
-  }
-
-  mde_1_edkii_vga_sprintf(24, "%x", t);
+  // Early PEI has no calibrated timer yet. Keep checkpoints non-blocking
+  // instead of executing hundreds of millions of iterations per marker.
+  (void)n;
 }
 /////////////////////////////////////////////////////
 

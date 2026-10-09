@@ -44,10 +44,10 @@ char mde_2_g_buffer[80];
 
 void mde_5_edkii_vga_write_at_offset(unsigned int line, unsigned int offset, const char *string)
 {
-	if (!string)
+	if (!string || line >= 25 || offset >= mde_2__VGA_COLUMNS)
 		return;
 
-	unsigned short *p = (unsigned short *)mde_2__VGA_FB + (mde_2__VGA_COLUMNS * line) + offset;
+	volatile unsigned short *p = (volatile unsigned short *)mde_2__VGA_FB + (mde_2__VGA_COLUMNS * line) + offset;
 	unsigned int i, len = AsciiStrLen(string);
 
 	for (i = 0; i < (mde_2__VGA_COLUMNS - offset); i++) {
@@ -75,6 +75,7 @@ void mde_5_edkii_vga_sprintf(
   AsciiVSPrint(mde_2_g_buffer, sizeof(mde_2_g_buffer), format, marker);
   VA_END (marker);
   
+  DEBUG ((DEBUG_ERROR, "[GX-SmmStorePei] row=%u %a\n", row, mde_2_g_buffer));
   mde_5_edkii_vga_print (row, mde_2_g_buffer);
 }
 
@@ -212,6 +213,7 @@ SmmStorePeiInitialize (
   mde_5_edkii_vga_print(0, "SmmStore");
 
 
+  ZeroMem (&SmmStoreInfo, sizeof (SmmStoreInfo));
   Status = ParseSMMSTOREInfo (&SmmStoreInfo);
   
   mde_5_edkii_vga_sprintf(0, "SMM-%x-%x-%x-%x,-%x-%x-%x",
@@ -233,8 +235,17 @@ SmmStorePeiInitialize (
     return Status;
   }
 
+  if ((SmmStoreInfo.BlockSize == 0) || (SmmStoreInfo.NumBlocks < 3) ||
+      (SmmStoreInfo.NumBlocks > MAX_UINT32 / SmmStoreInfo.BlockSize)) {
+    DEBUG ((DEBUG_ERROR, "[GX-SmmStorePei] invalid block geometry\n"));
+    return EFI_INVALID_PARAMETER;
+  }
   NvStorageSize = SmmStoreInfo.NumBlocks * SmmStoreInfo.BlockSize;
   NvStorageBase = SmmStoreInfo.MmioAddress;
+  if ((NvStorageBase == 0) || (NvStorageSize - 1 > MAX_UINT32 - NvStorageBase)) {
+    DEBUG ((DEBUG_ERROR, "[GX-SmmStorePei] invalid MMIO store range\n"));
+    return EFI_INVALID_PARAMETER;
+  }
   DEBUG ((
     DEBUG_INFO,
     "SmmStorePei: NvStorageBase: 0x%x, NvStorageSize: 0x%x\n",
@@ -291,7 +302,10 @@ SmmStorePeiInitialize (
     VariableFlashInfo.FtwWorkingLength
   );
 
-  BuildGuidDataHob (&gVariableFlashInfoHobGuid, &VariableFlashInfo, sizeof (VariableFlashInfo));
+  if (BuildGuidDataHob (&gVariableFlashInfoHobGuid, &VariableFlashInfo, sizeof (VariableFlashInfo)) == NULL) {
+    DEBUG ((DEBUG_ERROR, "[GX-SmmStorePei] cannot allocate variable geometry HOB\n"));
+    return EFI_OUT_OF_RESOURCES;
+  }
   
   
   mde_5_edkii_vga_sprintf(2, "2b-%x-%x-%x-%x,%x,%x",

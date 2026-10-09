@@ -124,6 +124,7 @@ SecStartup (
   //
   // //edkii_vga_print(0, "EDK II Started - 1");
   ProcessLibraryConstructorList ();
+  DEBUG ((DEBUG_ERROR, "[GX-SEC] entry: temporary RAM=%x size=%x\n", TempRamBase, SizeOfRam));
 
   //
   // Initialize floating point operating environment

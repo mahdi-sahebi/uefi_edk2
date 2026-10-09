@@ -24,10 +24,10 @@ char mde_2_g_buffer[80];
 
 void edkii_vga_write_at_offset(unsigned int line, unsigned int offset, const char *string)
 {
-	if (!string)
+	if (!string || line >= 25 || offset >= mde_2__VGA_COLUMNS)
 		return;
 
-	unsigned short *p = (unsigned short *)mde_2__VGA_FB + (mde_2__VGA_COLUMNS * line) + offset;
+	volatile unsigned short *p = (volatile unsigned short *)mde_2__VGA_FB + (mde_2__VGA_COLUMNS * line) + offset;
 	unsigned int i, len = AsciiStrLen(string);
 
 	for (i = 0; i < (mde_2__VGA_COLUMNS - offset); i++) {
@@ -55,6 +55,7 @@ void edkii_vga_sprintf(
   AsciiVSPrint(mde_2_g_buffer, sizeof(mde_2_g_buffer), format, marker);
   VA_END (marker);
   
+  DEBUG ((DEBUG_ERROR, "[GX-SEC] row=%u %a\n", row, mde_2_g_buffer));
   edkii_vga_print (row, mde_2_g_buffer);
 }
 

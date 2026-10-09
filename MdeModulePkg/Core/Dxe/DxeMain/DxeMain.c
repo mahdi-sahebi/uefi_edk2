@@ -13,6 +13,8 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #define GX_DXE_VGA_COLUMNS  80
 #define GX_DXE_VGA_ROWS     25
 
+STATIC BOOLEAN  mGxDxeLibrariesReady = FALSE;
+
 STATIC
 VOID
 GxDxeCheckpoint (
@@ -33,7 +35,11 @@ GxDxeCheckpoint (
     Vga[Index] = (UINT16)(0x0F00 | (UINT8)Message[Index]);
   }
   DEBUG ((DEBUG_ERROR, "[GX-DXE] seq=%u %a\n", Sequence, Message));
-  MicroSecondDelay (500000);
+  // Early entry checkpoints precede HOB, PCD and TimerLib initialization.
+  // Calling TimerLib here used to assert in GetHobList and stop DXE entry.
+  if (mGxDxeLibrariesReady) {
+    MicroSecondDelay (500000);
+  }
 }
 
 //
@@ -350,6 +356,8 @@ DxeMain (
   // Call constructor for all libraries
   //
   ProcessLibraryConstructorList (gDxeCoreImageHandle, gDxeCoreST);
+  mGxDxeLibrariesReady = TRUE;
+  GxDxeCheckpoint (8, "DXE library constructors completed");
   PERF_CROSSMODULE_END ("PEI");
   PERF_CROSSMODULE_BEGIN ("DXE");
 

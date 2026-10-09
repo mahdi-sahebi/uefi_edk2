@@ -46,10 +46,10 @@ char mde_2_g_buffer[80];
 
 void mde_4_edkii_vga_write_at_offset(unsigned int line, unsigned int offset, const char *string)
 {
-	if (!string)
+	if (!string || line >= 25 || offset >= mde_2__VGA_COLUMNS)
 		return;
 
-	unsigned short *p = (unsigned short *)mde_2__VGA_FB + (mde_2__VGA_COLUMNS * line) + offset;
+	volatile unsigned short *p = (volatile unsigned short *)mde_2__VGA_FB + (mde_2__VGA_COLUMNS * line) + offset;
 	unsigned int i, len = AsciiStrLen(string);
 
 	for (i = 0; i < (mde_2__VGA_COLUMNS - offset); i++) {
@@ -77,6 +77,7 @@ void mde_4_edkii_vga_sprintf(
   AsciiVSPrint(mde_2_g_buffer, sizeof(mde_2_g_buffer), format, marker);
   VA_END (marker);
   
+  DEBUG ((DEBUG_ERROR, "[GX-FTW] row=%u %a\n", row, mde_2_g_buffer));
   mde_4_edkii_vga_print (row, mde_2_g_buffer);
 }
 
@@ -172,18 +173,9 @@ void mde_4_edkii_vga_hex_dump(const unsigned char *addr, unsigned int len, int s
 
 static void delay_s(int n)
 {
-  volatile unsigned long t = 25;
-  volatile unsigned long x = (unsigned long)n * 10000UL;
-
-  while (x--) {
-    for (unsigned long i1 = 0; i1 < 1000UL; ++i1) {
-        for (int i = 0; i < 200; ++i) {
-            t = t * 14823424UL + x + 1UL;
-        }
-    }
-  }
-
-  mde_4_edkii_vga_sprintf(24, "%x", t);
+  // The ACPI timer HOB is published by a later PEIM. Do not replace this
+  // multi-billion-iteration debug loop with a pre-HOB TimerLib delay.
+  (void)n;
 }
 
 
@@ -198,6 +190,47 @@ EFI_PEI_PPI_DESCRIPTOR  mPpiListVariable = {
   &gEdkiiFaultTolerantWriteGuid,
   NULL
 };
+
+STATIC
+BOOLEAN
+FtwGeometryIsValid (
+  IN EFI_PHYSICAL_ADDRESS  WorkSpaceAddress,
+  IN UINTN                 WorkSpaceLength,
+  IN EFI_PHYSICAL_ADDRESS  SpareAreaAddress,
+  IN UINTN                 SpareAreaLength
+  )
+{
+  return (WorkSpaceAddress != 0) && (SpareAreaAddress != 0) &&
+         (WorkSpaceLength >= sizeof (EFI_FAULT_TOLERANT_WORKING_BLOCK_HEADER)) &&
+         (SpareAreaLength >= WorkSpaceLength) &&
+         (WorkSpaceAddress <= MAX_UINTN) && (SpareAreaAddress <= MAX_UINTN) &&
+         (WorkSpaceLength - 1 <= MAX_UINTN - WorkSpaceAddress) &&
+         (SpareAreaLength - 1 <= MAX_UINTN - SpareAreaAddress);
+}
+
+// The caller validates geometry before any memory access. Stop before an
+// unsigned subtraction can wrap below the start of the spare area.
+STATIC
+EFI_PHYSICAL_ADDRESS
+FtwFindSpareWorkspace (
+  IN EFI_PHYSICAL_ADDRESS  SpareAreaAddress,
+  IN UINTN                 SpareAreaLength,
+  IN UINTN                 WorkSpaceLength
+  )
+{
+  EFI_PHYSICAL_ADDRESS  Address;
+
+  Address = SpareAreaAddress + (SpareAreaLength - WorkSpaceLength);
+  for (;;) {
+    if (CompareGuid (&gEdkiiWorkingBlockSignatureGuid, (EFI_GUID *)(UINTN)Address)) {
+      return Address;
+    }
+    if (Address - SpareAreaAddress < sizeof (EFI_GUID)) {
+      return 0;
+    }
+    Address -= sizeof (EFI_GUID);
+  }
+}
 
 /**
   Get the last Write Header pointer.
@@ -453,6 +486,10 @@ PeimFaultTolerantWriteInitialize (
   // MicroSecondDelay(3000000);
 
   Status = GetVariableFlashFtwWorkingInfo (&WorkSpaceAddress, &Size);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "[GX-FTW] working geometry lookup failed: %r\n", Status));
+    return Status;
+  }
   mde_4_edkii_vga_sprintf(3, "FTWb-%x-%x-%x",
     Status,//0
     WorkSpaceAddress,//ff010000
@@ -461,6 +498,10 @@ PeimFaultTolerantWriteInitialize (
   // ASSERT_EFI_ERROR (Status);
 
   Status = SafeUint64ToUintn (Size, &WorkSpaceLength);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "[GX-FTW] working length is not addressable: %r\n", Status));
+    return Status;
+  }
   // This driver currently assumes the size will be UINTN so assert the value is safe for now.
   mde_4_edkii_vga_sprintf(4, "4a-%x-%x",
     Status,//0
@@ -468,6 +509,10 @@ PeimFaultTolerantWriteInitialize (
   // ASSERT_EFI_ERROR (Status);
 
   Status = GetVariableFlashFtwSpareInfo (&SpareAreaAddress, &Size);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "[GX-FTW] spare geometry lookup failed: %r\n", Status));
+    return Status;
+  }
   mde_4_edkii_vga_sprintf(5, "5a-%x-%x-%x",
     Status,//0
     SpareAreaAddress,//ff020000
@@ -475,6 +520,10 @@ PeimFaultTolerantWriteInitialize (
   // ASSERT_EFI_ERROR (Status);
 
   Status = SafeUint64ToUintn (Size, &SpareAreaLength);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "[GX-FTW] spare length is not addressable: %r\n", Status));
+    return Status;
+  }
   mde_4_edkii_vga_sprintf(6, "6a-%x-%x-%x",
     Status,//
     SpareAreaLength,//
@@ -485,7 +534,11 @@ PeimFaultTolerantWriteInitialize (
   //
   // The address of FTW working base and spare base must not be 0.
   //
-  ASSERT ((WorkSpaceAddress != 0) && (SpareAreaAddress != 0));
+  if (!FtwGeometryIsValid (WorkSpaceAddress, WorkSpaceLength, SpareAreaAddress, SpareAreaLength)) {
+    DEBUG ((DEBUG_ERROR, "[GX-FTW] invalid geometry: work=%Lx/%Lx spare=%Lx/%Lx\n",
+      WorkSpaceAddress, (UINT64)WorkSpaceLength, SpareAreaAddress, (UINT64)SpareAreaLength));
+    return EFI_INVALID_PARAMETER;
+  }
 
   
   mde_4_edkii_vga_sprintf(7, "7a-%x-%x-%x,%x,%x",
@@ -600,18 +653,10 @@ PeimFaultTolerantWriteInitialize (
     //
     // If the working block workspace is not valid, try to find workspace in the spare block.
     //
-    WorkSpaceInSpareArea = SpareAreaAddress + SpareAreaLength - WorkSpaceLength;
-    while (WorkSpaceInSpareArea >= SpareAreaAddress) {
-      if (CompareGuid (&gEdkiiWorkingBlockSignatureGuid, (EFI_GUID *)(UINTN)WorkSpaceInSpareArea)) {
-        //
-        // Found the workspace.
-        //
-        DEBUG ((DEBUG_INFO, "FtwPei: workspace in spare block is at 0x%x.\n", (UINTN)WorkSpaceInSpareArea));
-        FtwWorkingBlockHeader = (EFI_FAULT_TOLERANT_WORKING_BLOCK_HEADER *)(UINTN)WorkSpaceInSpareArea;
-        break;
-      }
-
-      WorkSpaceInSpareArea = WorkSpaceInSpareArea - sizeof (EFI_GUID);
+    WorkSpaceInSpareArea = FtwFindSpareWorkspace (SpareAreaAddress, SpareAreaLength, WorkSpaceLength);
+    if (WorkSpaceInSpareArea != 0) {
+      DEBUG ((DEBUG_INFO, "FtwPei: workspace in spare block is at 0x%x.\n", (UINTN)WorkSpaceInSpareArea));
+      FtwWorkingBlockHeader = (EFI_FAULT_TOLERANT_WORKING_BLOCK_HEADER *)(UINTN)WorkSpaceInSpareArea;
     }
 
     if ((FtwWorkingBlockHeader != NULL) && IsValidWorkSpace (FtwWorkingBlockHeader, WorkSpaceLength)) {
@@ -645,7 +690,7 @@ PeimFaultTolerantWriteInitialize (
     mPpiListVariable.Guid->Data3,
     mPpiListVariable.Guid->Data4,
     mPpiListVariable.Ppi,
-    *(unsigned int*)(mPpiListVariable.Ppi)
+    0 // This is a signal-only PPI; its interface is intentionally NULL.
   );
 
 
@@ -653,17 +698,18 @@ PeimFaultTolerantWriteInitialize (
   //
   // Install gEdkiiFaultTolerantWriteGuid PPI to inform the check for FTW last write data has been done.
   //
-  int res2 = PeiServicesInstallPpi (&mPpiListVariable);
+  Status = PeiServicesInstallPpi (&mPpiListVariable);
+  DEBUG ((DEBUG_ERROR, "[GX-FTW] completion PPI installed: %r\n", Status));
   
   mde_4_edkii_vga_sprintf(11, "11-%x,%x-%x-%x-%x,%x-%x-%x",
-    res2,
+    Status,
     mPpiListVariable.Flags,
     mPpiListVariable.Guid->Data1,
     mPpiListVariable.Guid->Data2,
     mPpiListVariable.Guid->Data3,
     mPpiListVariable.Guid->Data4,
     mPpiListVariable.Ppi,
-    *(unsigned int*)(mPpiListVariable.Ppi)
+    0 // Do not dereference a signal-only PPI interface for diagnostics.
   );
 
   // // int i = 10;
@@ -671,5 +717,5 @@ PeimFaultTolerantWriteInitialize (
   //   // i = 20;
   // }
 
-  return res2;
+  return Status;
 }

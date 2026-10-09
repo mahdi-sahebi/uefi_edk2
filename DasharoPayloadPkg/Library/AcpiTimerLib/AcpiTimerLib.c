@@ -54,7 +54,11 @@ AcpiTimerLibConstructor (
   // Find the acpi board information guid hob
   //
   GuidHob = GetFirstGuidHob (&gUefiAcpiBoardInfoGuid);
-  ASSERT (GuidHob != NULL);
+  if (GuidHob == NULL) {
+    // BlSupportPei publishes this HOB after SmmStorePei and FTW run.
+    // A HOB list existing does not imply that the ACPI HOB exists yet.
+    return EFI_SUCCESS;
+  }
 
   pAcpiBoardInfo = (ACPI_BOARD_INFO *)GET_GUID_HOB_DATA (GuidHob);
 

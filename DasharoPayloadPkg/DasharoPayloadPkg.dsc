@@ -404,7 +404,9 @@
 OrderedCollectionLib|MdePkg/Library/BaseOrderedCollectionRedBlackTreeLib/BaseOrderedCollectionRedBlackTreeLib.inf
 
 [LibraryClasses.IA32.SEC]
-  DebugLib|MdePkg/Library/BaseDebugLibNull/BaseDebugLibNull.inf
+  DebugLib|MdePkg/Library/BaseDebugLibSerialPort/BaseDebugLibSerialPort.inf
+  # SEC has no ACPI HOB yet; use the same constructor-free PCI access as PEI.
+  PciLib|MdePkg/Library/BasePciLibCf8/BasePciLibCf8.inf
   PcdLib|MdePkg/Library/BasePcdLibNull/BasePcdLibNull.inf
   HobLib|MdePkg/Library/PeiHobLib/PeiHobLib.inf
   MemoryAllocationLib|MdePkg/Library/PeiMemoryAllocationLib/PeiMemoryAllocationLib.inf
@@ -568,9 +570,8 @@ OrderedCollectionLib|MdePkg/Library/BaseOrderedCollectionRedBlackTreeLib/BaseOrd
   gEfiMdeModulePkgTokenSpaceGuid.PcdStatusCodeUseMemory|FALSE
 
   gEfiMdePkgTokenSpaceGuid.PcdReportStatusCodePropertyMask|0x7
-  # Keep serial DEBUG output at DEBUG_ERROR so DXE checkpoints remain visible
-  # without flooding the port with INFO/DEBUG/LOAD messages.
-  gEfiMdePkgTokenSpaceGuid.PcdDebugPrintErrorLevel|0x80000000
+  # Keep normal bring-up output as well as our DEBUG_ERROR checkpoints.
+  gEfiMdePkgTokenSpaceGuid.PcdDebugPrintErrorLevel|0x8000004F
 !if $(USE_CBMEM_FOR_CONSOLE) == FALSE
   !if $(SOURCE_DEBUG_ENABLE)
     gEfiMdePkgTokenSpaceGuid.PcdDebugPropertyMask|0x17
