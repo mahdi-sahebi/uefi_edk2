@@ -32,7 +32,7 @@ GxDxeCheckpoint (
   for (Index = 0; Message[Index] != '\0' && Index < GX_DXE_VGA_COLUMNS; Index++) {
     Vga[Index] = (UINT16)(0x0F00 | (UINT8)Message[Index]);
   }
-  DEBUG ((DEBUG_ERROR, "[GX-DXE] seq=%u %a\n", Sequence, Message));
+  DEBUG ((DEBUG_ERROR, "[GX-VGA] row=%u %a\n", Row, Message));
   MicroSecondDelay (500000);
 }
 

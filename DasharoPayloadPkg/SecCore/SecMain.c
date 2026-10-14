@@ -74,7 +74,7 @@ SecStartup (
 {
   //////////////////////////// mahdi
   edkii_vga_clear();
-  edkii_vga_print(0, "EDK II Started ");
+  edkii_vga_sprintf(0, "%a", "EDK II Started ");
   ///////////////////////////
 // MicroSecondDelay (5000000);
   EFI_SEC_PEI_HAND_OFF        SecCoreData;
@@ -207,7 +207,7 @@ SecStartupPhase2(
   // edkii_vga_print(0, "EDK II- Testing the delay - 1");
   // MicroSecondDelay(5000000);
   // edkii_vga_clear();
-  edkii_vga_print(0, "EDK II SecStartupPhase2");
+  edkii_vga_sprintf(0, "%a", "EDK II SecStartupPhase2");
 
   EFI_SEC_PEI_HAND_OFF        *SecCoreData;
   EFI_PEI_CORE_ENTRY_POINT    PeiCoreEntryPoint;
