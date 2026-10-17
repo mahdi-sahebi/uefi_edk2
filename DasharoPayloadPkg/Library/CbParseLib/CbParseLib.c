@@ -10,21 +10,16 @@
 **/
 
 #include <Uefi/UefiBaseType.h>
-#include <Uefi/UefiMultiPhase.h>
-#include <Pi/PiBootMode.h>
-#include <Pi/PiHob.h>
 #include <Library/BaseLib.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/DebugLib.h>
-#include <Library/CpuLib.h>
-#include <Library/HobLib.h>
 #include <Library/PcdLib.h>
 #include <Library/PciLib.h>
 #include <Library/IoLib.h>
 #include <Library/BlParseLib.h>
 #include <IndustryStandard/Acpi.h>
 #include <Coreboot.h>
-#include <UniversalPayload/PciRootBridges.h>
+
 
 /**
   Convert a packed value from cbuint64 to a UINT64 value.
@@ -403,10 +398,7 @@ ParseCbMemTable (
   return Status;
 }
 
-#define MSR_TOP_MEM 0xC001001A
-#define MSR_TOM2    0xC001001D
-#define TOLUD       0xBC
-#define TOUUD       0xA8
+
 
 /**
   Acquire the memory information from the coreboot table in memory.
@@ -429,28 +421,9 @@ ParseMemoryInfo (
   struct cb_memory_range   *Range;
   UINTN                    Index;
   MEMROY_MAP_ENTRY         MemoryMap;
-  MEMROY_MAP_ENTRY         NewMemoryMap;
-  UINT64                   Tolud;
-  UINT64                   Touud;
-  UINT64                   PcieBase;
-  UINT64                   PcieBaseEnd;
+  UINT32                   Tolud;
 
-  PcieBase = PcdGet64(PcdPciExpressBaseAddress);
-  PcieBaseEnd = PcieBase + PcdGet64(PcdPciExpressBaseSize);
-
-  Tolud = 0;
-  Touud = 0;
-
-  if (PciRead16(PCI_LIB_ADDRESS(0, 0, 0, 0x00)) == 0x8086) /* Intel */ {
-    Tolud = PciRead32(PCI_LIB_ADDRESS(0, 0, 0, TOLUD)) & 0xFFF00000;
-    Touud = PciRead32(PCI_LIB_ADDRESS(0, 0, 0, TOUUD)) & 0xFFF00000;
-    Touud |= RShiftU64(PciRead32(PCI_LIB_ADDRESS(0, 0, 0, TOUUD + 4)), 32);
-  } else if (PciRead16(PCI_LIB_ADDRESS(0, 0, 0, 0x00)) == 0x1022) /* AMD */ {
-    Tolud = AsmReadMsr64(MSR_TOP_MEM);
-    Touud = AsmReadMsr64(MSR_TOM2);
-  }
-
-  DEBUG ((DEBUG_INFO, "Tolud: %016lx\nTouud: %016lx\n", Tolud, Touud));
+  Tolud = PciRead32(PCI_LIB_ADDRESS(0,0,0,0xbc)) & 0xFFF00000;
 
   //
   // Get the coreboot memory table
@@ -474,46 +447,13 @@ ParseMemoryInfo (
       /* Only MMIO is marked reserved */
       case CB_MEM_RESERVED:
         /*
-         * Reserved memory Below TOLUD/TOUUD can't be MMIO except legacy VGA
-         * which is reported elsewhere as reserved.
+         * Reserved memory Below TOLUD can't be MMIO except legacy VGA which
+         * is reported elsewhere as reserved.
          */
-        if (MemoryMap.Base >= BASE_4GB && Touud != 0) {
-          if (MemoryMap.Base < Touud) {
-            MemoryMap.Type = EFI_RESOURCE_MEMORY_RESERVED;
-            MemoryMap.Flag = EFI_RESOURCE_ATTRIBUTE_PRESENT;
-          } else {
-            MemoryMap.Type = EFI_RESOURCE_MEMORY_MAPPED_IO;
-            MemoryMap.Flag = EFI_RESOURCE_ATTRIBUTE_PRESENT;
-          }
-        } else if (MemoryMap.Base < BASE_4GB && Tolud != 0) {
-          if (MemoryMap.Base < Tolud) {
-            /*
-             * Special case, coreboot tables live near TOLUD. Check if range
-             * needs splitting for reserved memory and MMIO.
-             */
-            if ((MemoryMap.Base + MemoryMap.Size) > Tolud) {
-              MemoryMap.Type = EFI_RESOURCE_MEMORY_RESERVED;
-              MemoryMap.Flag = EFI_RESOURCE_ATTRIBUTE_PRESENT;
-              MemoryMap.Size = Tolud - MemoryMap.Base;
-
-              DEBUG ((DEBUG_INFO, "%d. %016lx - %016lx [%02x]\n",
-                      Index, MemoryMap.Base, MemoryMap.Base + MemoryMap.Size - 1, MemoryMap.Type));
-              MemInfoCallback (&MemoryMap, Params);
-
-              MemoryMap.Base = Tolud;
-              MemoryMap.Size = cb_unpack64(Range->size) - MemoryMap.Size;
-              MemoryMap.Type = EFI_RESOURCE_MEMORY_MAPPED_IO;
-              MemoryMap.Flag = EFI_RESOURCE_ATTRIBUTE_PRESENT;
-            } else {
-              MemoryMap.Type = EFI_RESOURCE_MEMORY_RESERVED;
-              MemoryMap.Flag = EFI_RESOURCE_ATTRIBUTE_PRESENT;
-            }
-          } else {
-            MemoryMap.Type = EFI_RESOURCE_MEMORY_MAPPED_IO;
-            MemoryMap.Flag = EFI_RESOURCE_ATTRIBUTE_PRESENT;
-          }
+        if (MemoryMap.Base < Tolud) {
+          MemoryMap.Type = EFI_RESOURCE_MEMORY_RESERVED;
+          MemoryMap.Flag = EFI_RESOURCE_ATTRIBUTE_PRESENT;
         } else {
-          /* Fallback, if not Intel/AMD or TOLUD/TOUUD is zero, treat everything as MMIO */
           MemoryMap.Type = EFI_RESOURCE_MEMORY_MAPPED_IO;
           MemoryMap.Flag = EFI_RESOURCE_ATTRIBUTE_PRESENT;
         }
@@ -529,7 +469,6 @@ ParseMemoryInfo (
       /* ACPI/SMBIOS/CBMEM has it's own tag */
       case CB_MEM_ACPI:
       case CB_MEM_TABLE:
-      case CB_MEM_SOFT_RESERVED:
         MemoryMap.Type = EFI_RESOURCE_MEMORY_RESERVED;
         MemoryMap.Flag = EFI_RESOURCE_ATTRIBUTE_PRESENT;
         break;
@@ -537,40 +476,10 @@ ParseMemoryInfo (
         continue;
     }
 
-    /*
-     * PCIe MMCONF must be reserved, so override the type and split the range if needed.
-     */
-    if (MemoryMap.Base == PcieBase && (MemoryMap.Base + MemoryMap.Size) == PcieBaseEnd) {
-      /* Range exactly covers MMCONF, don't report it. It will be done later */
-      continue;
-    } else if (MemoryMap.Base <= PcieBase && (MemoryMap.Base + MemoryMap.Size) >= PcieBaseEnd) {
-      /* MMCONF is a subrange of the memory range */
-      if (MemoryMap.Base < PcieBase) {
-        NewMemoryMap.Base = MemoryMap.Base;
-        NewMemoryMap.Size = PcieBase - MemoryMap.Base;
-        NewMemoryMap.Type = MemoryMap.Type;
-        NewMemoryMap.Flag = MemoryMap.Flag;
+    DEBUG ((DEBUG_INFO, "%d. %016lx - %016lx [%02x]\n",
+            Index, MemoryMap.Base, MemoryMap.Base + MemoryMap.Size - 1, MemoryMap.Type));
 
-        DEBUG ((DEBUG_INFO, "%d. %016lx - %016lx [%02x]\n",
-                Index, NewMemoryMap.Base, NewMemoryMap.Base + NewMemoryMap.Size - 1, NewMemoryMap.Type));
-
-        MemInfoCallback (&NewMemoryMap, Params);
-      }
-      if ((MemoryMap.Base + MemoryMap.Size) > PcieBaseEnd) {
-        MemoryMap.Size -= (PcieBaseEnd - MemoryMap.Base);
-        MemoryMap.Base = PcieBaseEnd;
-
-        DEBUG ((DEBUG_INFO, "%d. %016lx - %016lx [%02x]\n",
-                Index, MemoryMap.Base, MemoryMap.Base + MemoryMap.Size - 1, MemoryMap.Type));
-
-        MemInfoCallback (&MemoryMap, Params);
-      }
-    } else {
-      DEBUG ((DEBUG_INFO, "%d. %016lx - %016lx [%02x]\n",
-              Index, MemoryMap.Base, MemoryMap.Base + MemoryMap.Size - 1, MemoryMap.Type));
-
-      MemInfoCallback (&MemoryMap, Params);
-    }
+    MemInfoCallback (&MemoryMap, Params);
   }
 
   return RETURN_SUCCESS;
@@ -760,37 +669,13 @@ ParseSMMSTOREInfo (
   DEBUG ((DEBUG_INFO, "communication buffer: 0x%x\n", CbSSRec->com_buffer));
   DEBUG ((DEBUG_INFO, "communication buffer size: 0x%x\n", CbSSRec->com_buffer_size));
   DEBUG ((DEBUG_INFO, "MMIO address of store: 0x%x\n", CbSSRec->mmap_addr));
-  if (CbSSRec->size > OFFSET_OF(struct cb_smmstorev2, mmap_addr64)) {
-    DEBUG ((DEBUG_INFO, "MMIO address of store (64bit): 0x%x\n", CbSSRec->mmap_addr64));
-  }
 
   SMMSTOREInfo->ComBuffer = CbSSRec->com_buffer;
   SMMSTOREInfo->ComBufferSize = CbSSRec->com_buffer_size;
   SMMSTOREInfo->BlockSize = CbSSRec->block_size;
   SMMSTOREInfo->NumBlocks = CbSSRec->num_blocks;
+  SMMSTOREInfo->MmioAddress = CbSSRec->mmap_addr;
   SMMSTOREInfo->ApmCmd = CbSSRec->apm_cmd;
-
-  /*
-   * Detect if 64-bit mmap address is available by comapring the LB entry
-   * size. If the entry is smaller by the size of UINT64 than the new
-   * structure size, it means the MMIo is 32-bit, otherwise new structure is
-   * used and 64-bit address.
-   */
-  if (CbSSRec->size <= OFFSET_OF(struct cb_smmstorev2, mmap_addr64)) {
-    if (CbSSRec->mmap_addr == 0) {
-      return RETURN_NO_MAPPING;
-    }
-    SMMSTOREInfo->MmioAddress = CbSSRec->mmap_addr;
-  } else {
-    SMMSTOREInfo->MmioAddress = CbSSRec->mmap_addr64;
-    /* If the map is not set, maybe 32-bit address is, try to use it */
-    if (CbSSRec->mmap_addr64 == 0) {
-      if (CbSSRec->mmap_addr == 0) {
-        return RETURN_NO_MAPPING;
-      }
-      SMMSTOREInfo->MmioAddress = CbSSRec->mmap_addr;
-    }
-  }
 
   return RETURN_SUCCESS;
 }
@@ -1107,6 +992,20 @@ ParseVBootWorkbuf (
   return RETURN_SUCCESS;
 }
 
+PACKED struct timestamp_entry {
+	UINT32	entry_id;
+	UINT64	entry_stamp;
+};
+
+PACKED struct timestamp_table {
+	UINT64	base_time;
+	UINT16	max_entries;
+	UINT16	tick_freq_mhz;
+	UINT32	num_entries;
+	struct timestamp_entry entries[0]; /* Variable number of entries */
+};
+
+
 /**
   Parse the coreboot timestamps
 
@@ -1120,56 +1019,19 @@ ParseTimestampTable (
   OUT FIRMWARE_SEC_PERFORMANCE *Performance
   )
 {
-  struct cb_cbmem_entry  *CbEntry;
-  struct timestamp_table *CbTsRec;
-  UINT64  Frequency;
-  UINT64  NanoSeconds;
-  UINT64  Remainder;
-  UINT64  Ticks;
-  INTN    Shift;
-
+  struct timestamp_table                  *CbTsRec;
 
   if (Performance == NULL) {
     return RETURN_INVALID_PARAMETER;
   }
 
-  CbEntry = FindCbTag (CB_TAG_TIMESTAMPS);
-  if (CbEntry == NULL) {
-    DEBUG ((DEBUG_ERROR, "coreboot timestamp entry not found\n"));
-    return RETURN_NOT_FOUND;
-  }
-
-  CbTsRec = (struct timestamp_table *)(UINTN)CbEntry->address;
+  CbTsRec = FindCbTag (CB_TAG_TIMESTAMPS);
   if (CbTsRec == NULL) {
-    DEBUG ((DEBUG_ERROR, "coreboot timestamp table not found\n"));
     return RETURN_NOT_FOUND;
   }
-
-  Frequency = MultU64x32 (CbTsRec->tick_freq_mhz, 1000000u);
-  Ticks = CbTsRec->base_time;
-
-  //
-  //          Ticks
-  // Time = --------- x 1,000,000,000
-  //        Frequency
-  //
-  NanoSeconds = MultU64x32 (DivU64x64Remainder (Ticks, Frequency, &Remainder), 1000000000u);
-
-  //
-  // Ensure (Remainder * 1,000,000,000) will not overflow 64-bit.
-  // Since 2^29 < 1,000,000,000 = 0x3B9ACA00 < 2^30, Remainder should < 2^(64-30) = 2^34,
-  // i.e. highest bit set in Remainder should <= 33.
-  //
-  Shift        = MAX (0, HighBitSet64 (Remainder) - 33);
-  Remainder    = RShiftU64 (Remainder, (UINTN)Shift);
-  Frequency    = RShiftU64 (Frequency, (UINTN)Shift);
-  NanoSeconds += DivU64x64Remainder (MultU64x32 (Remainder, 1000000000u), Frequency, NULL);
 
   /* ResetEnd must be reported in nanoseconds, not ticks */
-  Performance->ResetEnd = NanoSeconds;
-
-  DEBUG ((DEBUG_INFO, "coreboot Performance->ResetEnd: %llu\n", Performance->ResetEnd));
-
+  Performance->ResetEnd = DivU64x32(CbTsRec->base_time, CbTsRec->tick_freq_mhz);
   return RETURN_SUCCESS;
 }
 
@@ -1327,50 +1189,4 @@ ParseIsDiskCapsulesBoot (
   }
 
   return BootInfo->is_disk_capsules_boot != 0;
-}
-
-/**
-  Find the bootloaders RootBridge info and create Payload Root Bridges HOB.
-
-  @retval RETURN_SUCCESS           Successfully created the Payload Root Bridges HOB.
-  @retval RETURN_NOT_FOUND         Failed to find the Root Bridges HOB information.
-  @retval RETURN_OUT_OF_RESOURCES  Failed to create the Payload Root Bridges HOB.
-**/
-RETURN_STATUS
-EFIAPI
-ParseRootBridgeInfo (
-  VOID
-  )
-{
-  RETURN_STATUS                       Status;
-  UNIVERSAL_PAYLOAD_PCI_ROOT_BRIDGES  *BlRootBridgesHob = NULL;
-  UNIVERSAL_PAYLOAD_PCI_ROOT_BRIDGES  *PldRootBridgesHob;
-  struct cb_cbmem_ref  *CbMemRef;
-
-  Status           = RETURN_NOT_FOUND;
-  CbMemRef         = FindCbTag (CB_TAG_RB_INFO);
-
-  if (CbMemRef != NULL) {
-    BlRootBridgesHob = (UNIVERSAL_PAYLOAD_PCI_ROOT_BRIDGES *)(UINTN)CbMemRef->cbmem_addr;
-  }
-
-  if (BlRootBridgesHob != NULL) {
-    //
-    // Migrate bootloader root bridge info hob from bootloader to payload.
-    //
-    PldRootBridgesHob = BuildGuidHob (
-                          &gUniversalPayloadPciRootBridgeInfoGuid,
-                          BlRootBridgesHob->Header.Length
-                          );
-    ASSERT (PldRootBridgesHob != NULL);
-    if (PldRootBridgesHob != NULL) {
-      CopyMem (PldRootBridgesHob, BlRootBridgesHob, BlRootBridgesHob->Header.Length);
-      DEBUG ((DEBUG_INFO, "Create PCI root bridge info guid hob\n"));
-      Status = RETURN_SUCCESS;
-    } else {
-      Status = RETURN_OUT_OF_RESOURCES;
-    }
-  }
-
-  return Status;
 }

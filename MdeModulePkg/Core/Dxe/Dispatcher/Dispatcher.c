@@ -32,7 +32,6 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 **/
 
 #include "DxeMain.h"
-#include <Library/DebugLib.h>
 
 //
 // The Driver List contains one copy of every driver that has been discovered.
@@ -411,8 +410,6 @@ CoreDispatcher (
 
   PERF_FUNCTION_BEGIN ();
 
-  DEBUG ((DEBUG_ERROR, "MY_DEBUG: ENTER CoreDispatcher()\\n"));
-
   if (gDispatcherRunning) {
     //
     // If the dispatcher is running don't let it be restarted.
@@ -421,7 +418,6 @@ CoreDispatcher (
   }
 
   gDispatcherRunning = TRUE;
-  DEBUG ((DEBUG_ERROR, "MY_DEBUG: gDispatcherRunning = TRUE\\n"));
 
   Status = CoreCreateEventEx (
              EVT_NOTIFY_SIGNAL,
@@ -463,7 +459,6 @@ CoreDispatcher (
                    0,
                    &DriverEntry->ImageHandle
                    );
-        DEBUG ((DEBUG_ERROR, "MY_DEBUG: AFTER CoreLoadImage: Driver=%g, Status=%r, ImageHandle=%p\\n", &DriverEntry->FileName, Status, DriverEntry->ImageHandle));
 
         //
         // Update the driver state to reflect that it's been loaded
@@ -510,9 +505,7 @@ CoreDispatcher (
         //
         // Produce a firmware volume block protocol for FvImage so it gets dispatched from.
         //
-        DEBUG ((DEBUG_ERROR, "MY_DEBUG: BEFORE CoreProcessFvImageFile: Driver=%g\\n", &DriverEntry->FileName));
         Status = CoreProcessFvImageFile (DriverEntry->Fv, DriverEntry->FvHandle, &DriverEntry->FileName);
-        DEBUG ((DEBUG_ERROR, "MY_DEBUG: AFTER CoreProcessFvImageFile: Driver=%g, Status=%r\\n", &DriverEntry->FileName, Status));
       } else {
         REPORT_STATUS_CODE_WITH_EXTENDED_DATA (
           EFI_PROGRESS_CODE,
@@ -522,9 +515,7 @@ CoreDispatcher (
           );
         ASSERT (DriverEntry->ImageHandle != NULL);
 
-        DEBUG ((DEBUG_ERROR, "MY_DEBUG: BEFORE CoreStartImage: Driver=%g, ImageHandle=%p\\n", &DriverEntry->FileName, DriverEntry->ImageHandle));
         Status = CoreStartImage (DriverEntry->ImageHandle, NULL, NULL);
-        DEBUG ((DEBUG_ERROR, "MY_DEBUG: AFTER CoreStartImage: Driver=%g, Status=%r\\n", &DriverEntry->FileName, Status));
 
         REPORT_STATUS_CODE_WITH_EXTENDED_DATA (
           EFI_PROGRESS_CODE,
@@ -581,8 +572,6 @@ CoreDispatcher (
   CoreCloseEvent (DxeDispatchEvent);
 
   gDispatcherRunning = FALSE;
-
-  DEBUG ((DEBUG_ERROR, "MY_DEBUG: EXIT CoreDispatcher(): ReturnStatus=%r\\n", ReturnStatus));
 
   PERF_FUNCTION_END ();
 
