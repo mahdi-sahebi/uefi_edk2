@@ -11,6 +11,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 //////////////////////////// mahdi
 #include "edkii_vga.h"
+VOID EFIAPI SecSerialPortConfigure (IN UINT32 BootloaderParameter);
 #include <Library/TimerLib.h>
 /////////////////////////////////
 
@@ -73,7 +74,9 @@ SecStartup (
   )
 {
   //////////////////////////// mahdi
+  SecSerialPortConfigure (BootloaderParameter);
   edkii_vga_clear();
+  DEBUG ((DEBUG_ERROR, "[GX-VGA] row=0 EDK II Started \n"));
   edkii_vga_print(0, "EDK II Started ");
   ///////////////////////////
 // MicroSecondDelay (5000000);
@@ -207,6 +210,7 @@ SecStartupPhase2(
   // edkii_vga_print(0, "EDK II- Testing the delay - 1");
   // MicroSecondDelay(5000000);
   // edkii_vga_clear();
+  DEBUG ((DEBUG_ERROR, "[GX-VGA] row=0 EDK II SecStartupPhase2\n"));
   edkii_vga_print(0, "EDK II SecStartupPhase2");
 
   EFI_SEC_PEI_HAND_OFF        *SecCoreData;

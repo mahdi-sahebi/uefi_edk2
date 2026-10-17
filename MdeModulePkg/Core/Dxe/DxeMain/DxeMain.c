@@ -8,6 +8,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 #include "DxeMain.h"
 #include <Library/TimerLib.h>
+VOID EFIAPI SecSerialPortConfigure (IN UINT32 BootloaderParameter);
 
 #define GX_DXE_VGA_FB       0xB8000
 #define GX_DXE_VGA_COLUMNS  80
@@ -274,6 +275,7 @@ DxeMain (
   EFI_VECTOR_HANDOFF_INFO       *VectorInfo;
   VOID                          *EntryPoint;
 
+  SecSerialPortConfigure (0);
   GxDxeCheckpoint (0, "DxeCore entry");
 
   //

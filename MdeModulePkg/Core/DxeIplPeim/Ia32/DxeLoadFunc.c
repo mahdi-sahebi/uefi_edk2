@@ -104,6 +104,11 @@ void mde_9_vga_hex_dump(const unsigned char *addr, unsigned int len, int start_r
         
         // Write offset character by character
         unsigned long ptr_val = (unsigned long)(addr + i);
+        DEBUG ((DEBUG_ERROR, "[GX-VGA] row=%u %p:", row, addr + i));
+        for (j = 0; j < 16 && (i + j < len); j++) {
+            DEBUG ((DEBUG_ERROR, " %02x", addr[i + j]));
+        }
+        DEBUG ((DEBUG_ERROR, "\n"));
         for (j = 28; j > 0; j -= 4) {
             char nibble = (ptr_val >> j) & 0x0F;
             char c = (nibble < 10) ? ('0' + nibble) : ('A' + nibble - 10);

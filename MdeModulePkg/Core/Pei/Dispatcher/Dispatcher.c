@@ -74,6 +74,7 @@ void mde_2_edkii_vga_sprintf(
   AsciiVSPrint(mde_2_g_buffer, sizeof(mde_2_g_buffer), format, marker);
   VA_END (marker);
   
+  DEBUG ((DEBUG_ERROR, "[GX-VGA] row=%u %a\n", row, mde_2_g_buffer));
   mde_2_edkii_vga_print (row, mde_2_g_buffer);
 }
 
@@ -117,6 +118,11 @@ void mde_2_edkii_vga_hex_dump(const unsigned char *addr, unsigned int len, int s
         
         // Write offset character by character
         unsigned long ptr_val = (unsigned long)(addr + i);
+        DEBUG ((DEBUG_ERROR, "[GX-VGA] row=%u %p:", row, addr + i));
+        for (j = 0; j < 16 && (i + j < len); j++) {
+            DEBUG ((DEBUG_ERROR, " %02x", addr[i + j]));
+        }
+        DEBUG ((DEBUG_ERROR, "\n"));
         for (j = 28; j > 0; j -= 4) {
             char nibble = (ptr_val >> j) & 0x0F;
             char c = (nibble < 10) ? ('0' + nibble) : ('A' + nibble - 10);
@@ -546,6 +552,7 @@ DelayedDispatchDispatcher (
     }
   }
   
+  DEBUG ((DEBUG_ERROR, "[GX-VGA] row=20 End of DelayedDispath\n"));
   mde_2_edkii_vga_print(20, "End of DelayedDispath");//End of DelayedDispath
   
   return Dispatched;

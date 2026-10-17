@@ -223,6 +223,9 @@ FindCbTag (
   UINTN              Idx;
 
   Header = (struct cb_header *) GetParameterBase ();
+  if (Header == NULL) {
+    return NULL;
+  }
 
   TagPtr = NULL;
   TmpPtr = (UINT8 *)Header + Header->header_bytes;

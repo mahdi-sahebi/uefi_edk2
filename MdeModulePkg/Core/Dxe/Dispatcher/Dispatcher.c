@@ -464,6 +464,7 @@ CoreDispatcher (
         // Update the driver state to reflect that it's been loaded
         //
         if (EFI_ERROR (Status)) {
+          DEBUG ((DEBUG_ERROR, "DXE load failed for %g: %r\n", &DriverEntry->FileName, Status));
           CoreAcquireDispatcherLock ();
 
           if (Status == EFI_SECURITY_VIOLATION) {
@@ -516,6 +517,10 @@ CoreDispatcher (
         ASSERT (DriverEntry->ImageHandle != NULL);
 
         Status = CoreStartImage (DriverEntry->ImageHandle, NULL, NULL);
+
+        if (EFI_ERROR (Status)) {
+          DEBUG ((DEBUG_ERROR, "DXE start failed for %g: %r\n", &DriverEntry->FileName, Status));
+        }
 
         REPORT_STATUS_CODE_WITH_EXTENDED_DATA (
           EFI_PROGRESS_CODE,
