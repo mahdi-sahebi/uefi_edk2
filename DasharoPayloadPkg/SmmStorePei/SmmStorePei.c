@@ -75,8 +75,8 @@ void mde_5_edkii_vga_sprintf(
   AsciiVSPrint(mde_2_g_buffer, sizeof(mde_2_g_buffer), format, marker);
   VA_END (marker);
   
-  DEBUG ((DEBUG_ERROR, "[GX-VGA] row=%u %a\n", row, mde_2_g_buffer));
   mde_5_edkii_vga_print (row, mde_2_g_buffer);
+  DEBUG ((DEBUG_ERROR, "[GX-VGA] row=%u %a\n", row, mde_2_g_buffer));
 }
 
 void mde_5_edkii_vga_clear()
@@ -215,8 +215,8 @@ SmmStorePeiInitialize (
 
 
   mde_5_edkii_vga_clear();
-  DEBUG ((DEBUG_ERROR, "[GX-VGA] row=0 SmmStore\n"));
   mde_5_edkii_vga_print(0, "SmmStore");
+  DEBUG ((DEBUG_ERROR, "[GX-VGA] row=0 SmmStore\n"));
 
 
   Status = ParseSMMSTOREInfo (&SmmStoreInfo);

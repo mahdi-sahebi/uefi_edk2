@@ -77,8 +77,8 @@ void mde_4_edkii_vga_sprintf(
   AsciiVSPrint(mde_2_g_buffer, sizeof(mde_2_g_buffer), format, marker);
   VA_END (marker);
   
-  DEBUG ((DEBUG_ERROR, "[GX-VGA] row=%u %a\n", row, mde_2_g_buffer));
   mde_4_edkii_vga_print (row, mde_2_g_buffer);
+  DEBUG ((DEBUG_ERROR, "[GX-VGA] row=%u %a\n", row, mde_2_g_buffer));
 }
 
 void mde_4_edkii_vga_clear()

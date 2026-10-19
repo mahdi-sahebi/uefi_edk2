@@ -63,8 +63,8 @@ void mde_1_edkii_vga_sprintf(
   AsciiVSPrint(mde_1_g_buffer, sizeof(mde_1_g_buffer), format, marker);
   VA_END (marker);
   
-  DEBUG ((DEBUG_ERROR, "[GX-VGA] row=%u %a\n", row, mde_1_g_buffer));
   mde_1_edkii_vga_print (row, mde_1_g_buffer);
+  DEBUG ((DEBUG_ERROR, "[GX-VGA] row=%u %a\n", row, mde_1_g_buffer));
 }
 
 void mde_1_edkii_vga_clear()
@@ -703,6 +703,7 @@ PeiCore (
   // Initialize libraries that the PEI Core is linked against
   //
   ProcessLibraryConstructorList (NULL, (CONST EFI_PEI_SERVICES **)&PrivateData.Ps);
+  DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] CHECKPOINT PEI constructors complete context=%p\n", Data));
 
   
   mde_1_edkii_vga_sprintf(19, "[%d]d-Ps:%X, SC:%X, OD:%X", 

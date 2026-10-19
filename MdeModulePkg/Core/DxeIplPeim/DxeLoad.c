@@ -921,7 +921,10 @@ DxeLoadCore (
   // Transfer control to the DXE Core
   // The hand off state is simply a pointer to the HOB list
   //
+  DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] CHECKPOINT DXE IPL -> DXE entry=0x%lx hob=%p\n",
+    DxeCoreEntryPoint, HobList.Raw));
   HandOffToDxeCore (DxeCoreEntryPoint, HobList);
+  DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] ERROR DXE Core returned to DXE IPL\n"));
   
   mde_6_edkii_vga_sprintf(8, "8d-%x-%x-%x-%x",
     Status,
