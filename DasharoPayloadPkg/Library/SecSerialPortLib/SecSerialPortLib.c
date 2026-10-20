@@ -9,7 +9,9 @@
 #include <Library/IoLib.h>
 #include <Library/SerialPortLib.h>
 
+#ifndef SEC_UART_DEFAULT_BASE
 #define SEC_UART_DEFAULT_BASE  0x3F8
+#endif
 #define SEC_UART_TX_READY      BIT5
 #define SEC_UART_WAIT_LIMIT    1000000
 

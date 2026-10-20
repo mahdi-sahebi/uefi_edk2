@@ -59,9 +59,40 @@ void mde_5_edkii_vga_write_at_offset(unsigned int line, unsigned int offset, con
 }
 
 
+static void
+log_vga_row(unsigned int line)
+{
+    volatile const unsigned short *cells;
+    char text[81];
+    unsigned int i;
+
+    if (line >= 25)
+        return;
+    cells = (volatile const unsigned short *)0xB8000 + 80 * line;
+    for (i = 0; i < 80; i++) {
+        unsigned char ch = cells[i] & 0xff;
+        text[i] = ch ? (char)ch : ' ';
+    }
+    while (i > 0 && text[i - 1] == ' ')
+        i--;
+    text[i] = '\0';
+    if (i != 0)
+        DEBUG ((DEBUG_ERROR, "[GX-VGA] row=%u %a\n", line, text));
+}
+
 void mde_5_edkii_vga_print(unsigned int line, const char *string)
 {
-	mde_5_edkii_vga_write_at_offset(line, 0, string);
+    unsigned int i;
+
+    mde_5_edkii_vga_write_at_offset(line, 0, string);
+    if (string == NULL)
+        return;
+    for (i = 0; string[i] != '\0'; i++) {
+        if (string[i] != ' ') {
+            log_vga_row(line);
+            break;
+        }
+    }
 }
 
 void mde_5_edkii_vga_sprintf(
@@ -76,7 +107,6 @@ void mde_5_edkii_vga_sprintf(
   VA_END (marker);
   
   mde_5_edkii_vga_print (row, mde_2_g_buffer);
-  DEBUG ((DEBUG_ERROR, "[GX-VGA] row=%u %a\n", row, mde_2_g_buffer));
 }
 
 void mde_5_edkii_vga_clear()
@@ -119,11 +149,6 @@ void mde_5_edkii_vga_hex_dump(const unsigned char *addr, unsigned int len, int s
         
         // Write offset character by character
         unsigned long ptr_val = (unsigned long)(addr + i);
-        DEBUG ((DEBUG_ERROR, "[GX-VGA] row=%u %p:", row, addr + i));
-        for (j = 0; j < 16 && (i + j < len); j++) {
-            DEBUG ((DEBUG_ERROR, " %02x", addr[i + j]));
-        }
-        DEBUG ((DEBUG_ERROR, "\n"));
         for (j = 28; j > 0; j -= 4) {
             char nibble = (ptr_val >> j) & 0x0F;
             char c = (nibble < 10) ? ('0' + nibble) : ('A' + nibble - 10);
@@ -169,6 +194,7 @@ void mde_5_edkii_vga_hex_dump(const unsigned char *addr, unsigned int len, int s
             char buf[2] = {c, '\0'};
             mde_5_edkii_vga_write_at_offset(row, offset_pos + j, buf);
         }
+        log_vga_row(row);
     }
 }
 
@@ -216,7 +242,7 @@ SmmStorePeiInitialize (
 
   mde_5_edkii_vga_clear();
   mde_5_edkii_vga_print(0, "SmmStore");
-  DEBUG ((DEBUG_ERROR, "[GX-VGA] row=0 SmmStore\n"));
+
 
 
   Status = ParseSMMSTOREInfo (&SmmStoreInfo);

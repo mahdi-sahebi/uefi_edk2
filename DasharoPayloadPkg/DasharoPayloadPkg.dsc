@@ -41,6 +41,7 @@
   #
   # Serial port set up
   #
+  DEFINE SOL_UART_BASE                = 0x3f8
   DEFINE BAUD_RATE                    = 115200
   DEFINE SERIAL_CLOCK_RATE            = 1843200
   DEFINE SERIAL_LINE_CONTROL          = 3 # 8-bits, no parity
@@ -147,7 +148,7 @@
   DEFINE NETWORK_IPXE                   = FALSE
 
 [BuildOptions]
-  *_*_*_CC_FLAGS                 = -D DISABLE_NEW_DEPRECATED_INTERFACES -Wno-stringop-overflow -mno-mmx -mno-sse
+  *_*_*_CC_FLAGS                 = -D DISABLE_NEW_DEPRECATED_INTERFACES -Wno-stringop-overflow -mno-mmx -mno-sse -DSEC_UART_DEFAULT_BASE=$(SOL_UART_BASE)
   # Keep DEBUG_ERROR available in RELEASE; the PCD mask filters serial output.
 
 
@@ -593,7 +594,7 @@ OrderedCollectionLib|MdePkg/Library/BaseOrderedCollectionRedBlackTreeLib/BaseOrd
   # The following parameters are set by Library/PlatformHookLib
   #
   gEfiMdeModulePkgTokenSpaceGuid.PcdSerialUseMmio|FALSE
-  gEfiMdeModulePkgTokenSpaceGuid.PcdSerialRegisterBase|0x3f8
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSerialRegisterBase|$(SOL_UART_BASE)
   gEfiMdeModulePkgTokenSpaceGuid.PcdSerialBaudRate|$(BAUD_RATE)
   gEfiMdeModulePkgTokenSpaceGuid.PcdSerialRegisterStride|1
 

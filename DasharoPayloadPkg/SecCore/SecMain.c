@@ -74,12 +74,11 @@ SecStartup (
   )
 {
   //////////////////////////// mahdi
+  SecSerialPortConfigure (BootloaderParameter);
   edkii_vga_clear();
   edkii_vga_print(0, "EDK II Started ");
-  SecSerialPortConfigure (BootloaderParameter);
   DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] CHECKPOINT SEC entry arg=0x%x fv=%p stack=0x%x+0x%x\n",
     BootloaderParameter, BootFirmwareVolume, TempRamBase, SizeOfRam));
-  DEBUG ((DEBUG_ERROR, "[GX-VGA] row=0 EDK II Started \n"));
   ///////////////////////////
 // MicroSecondDelay (5000000);
   EFI_SEC_PEI_HAND_OFF        SecCoreData;
@@ -215,7 +214,6 @@ SecStartupPhase2(
   // MicroSecondDelay(5000000);
   // edkii_vga_clear();
   edkii_vga_print(0, "EDK II SecStartupPhase2");
-  DEBUG ((DEBUG_ERROR, "[GX-VGA] row=0 EDK II SecStartupPhase2\n"));
 
   EFI_SEC_PEI_HAND_OFF        *SecCoreData;
   EFI_PEI_CORE_ENTRY_POINT    PeiCoreEntryPoint;

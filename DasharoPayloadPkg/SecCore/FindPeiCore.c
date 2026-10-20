@@ -301,7 +301,6 @@ FindAndReportEntryPoints (
   // Find PEI Core entry point
   //
   edkii_vga_print(8, "FEd-!");
-  DEBUG ((DEBUG_ERROR, "[GX-VGA] row=8 FEd-!\n"));
   Status = PeCoffLoaderGetEntryPoint ((VOID *) (UINTN) PeiCoreImageBase, (VOID**) PeiCoreEntryPoint);
   edkii_vga_sprintf(8, "FEd-%x", 
     // (UINT32)(UINTN)iptr_sec,
