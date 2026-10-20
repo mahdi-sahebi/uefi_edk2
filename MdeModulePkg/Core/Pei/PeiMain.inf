@@ -68,6 +68,9 @@
   PcdLib
   TimerLib
   SafeIntLib
+  IoLib
+  PrintLib
+  DebugAgentLib
 
 [Guids]
   gPeiAprioriFileNameGuid       ## SOMETIMES_CONSUMES   ## File

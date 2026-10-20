@@ -18,6 +18,180 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Library/HobLib.h>
 #include <Library/SafeIntLib.h>
 #include <Library/VariableFlashInfoLib.h>
+#include <Guid/VariableFlashInfo.h>
+// #include <Library/TimerLib.h>
+
+
+
+
+/////////////////////////////////////////////////////
+
+#include <stdarg.h> 
+
+#include <Library/IoLib.h>
+#include <Library/PrintLib.h>
+#include <Library/BaseLib.h>
+#include <Library/DebugLib.h>
+#include <Library/BaseMemoryLib.h>
+#include <Library/PcdLib.h>
+// #include <Library/CpuLib.h>
+// #include <Library/PeCoffGetEntryPointLib.h>
+// #include <Library/PeCoffExtraActionLib.h>
+#include <Library/DebugAgentLib.h>
+
+#define mde_2__VGA_FB 0xB8000
+#define mde_2__VGA_COLUMNS 80
+
+char mde_2_g_buffer[80];
+
+void mde_4_edkii_vga_write_at_offset(unsigned int line, unsigned int offset, const char *string)
+{
+	if (!string)
+		return;
+
+	unsigned short *p = (unsigned short *)mde_2__VGA_FB + (mde_2__VGA_COLUMNS * line) + offset;
+	unsigned int i, len = AsciiStrLen(string);
+
+	for (i = 0; i < (mde_2__VGA_COLUMNS - offset); i++) {
+		if (i < len)
+			p[i] = 0x0F00 | (unsigned char)string[i];
+		else
+			p[i] = 0x0F00;
+	}
+}
+
+
+void mde_4_edkii_vga_print(unsigned int line, const char *string)
+{
+	mde_4_edkii_vga_write_at_offset(line, 0, string);
+}
+
+void mde_4_edkii_vga_sprintf(
+  unsigned int row,
+  const char* format,
+  ...)
+{
+  VA_LIST  marker;
+  
+  VA_START (marker, format);
+  AsciiVSPrint(mde_2_g_buffer, sizeof(mde_2_g_buffer), format, marker);
+  VA_END (marker);
+  
+  mde_4_edkii_vga_print (row, mde_2_g_buffer);
+}
+
+void mde_4_edkii_vga_clear()
+{
+  mde_4_edkii_vga_print(0, "                                                                                                    ");
+  mde_4_edkii_vga_print(1, "                                                                                                    ");
+  mde_4_edkii_vga_print(2, "                                                                                                    ");
+  mde_4_edkii_vga_print(3, "                                                                                                    ");
+  mde_4_edkii_vga_print(4, "                                                                                                    ");
+  mde_4_edkii_vga_print(5, "                                                                                                    ");
+  mde_4_edkii_vga_print(6, "                                                                                                    ");
+  mde_4_edkii_vga_print(7, "                                                                                                    ");
+  mde_4_edkii_vga_print(8, "                                                                                                    ");
+  mde_4_edkii_vga_print(9, "                                                                                                    ");
+  mde_4_edkii_vga_print(10, "                                                                                                    ");
+  mde_4_edkii_vga_print(11, "                                                                                                    ");
+  mde_4_edkii_vga_print(12, "                                                                                                    ");
+  mde_4_edkii_vga_print(13, "                                                                                                    ");
+  mde_4_edkii_vga_print(14, "                                                                                                    ");
+  mde_4_edkii_vga_print(15, "                                                                                                    ");
+  mde_4_edkii_vga_print(16, "                                                                                                    ");
+  mde_4_edkii_vga_print(17, "                                                                                                    ");
+  mde_4_edkii_vga_print(18, "                                                                                                    ");
+  mde_4_edkii_vga_print(19, "                                                                                                    ");
+  mde_4_edkii_vga_print(20, "                                                                                                    ");
+  mde_4_edkii_vga_print(21, "                                                                                                    ");
+  mde_4_edkii_vga_print(22, "                                                                                                    ");
+  mde_4_edkii_vga_print(23, "                                                                                                    ");
+  mde_4_edkii_vga_print(24, "                                                                                                    ");
+}
+
+void mde_4_edkii_vga_hex_dump(const unsigned char *addr, unsigned int len, int start_row) 
+{
+    unsigned int i;
+    
+    for (i = 0; i < len; i += 16) {
+        unsigned int j;
+        int row = start_row + (i / 16);
+        int offset_pos = 0;
+        
+        // Write offset character by character
+        unsigned long ptr_val = (unsigned long)(addr + i);
+        for (j = 28; j > 0; j -= 4) {
+            char nibble = (ptr_val >> j) & 0x0F;
+            char c = (nibble < 10) ? ('0' + nibble) : ('A' + nibble - 10);
+            char buf[2] = {c, '\0'};
+            mde_4_edkii_vga_write_at_offset(row, offset_pos++, buf);
+        }
+        {
+            char last_nibble = ptr_val & 0x0F;
+            char c = (last_nibble < 10) ? ('0' + last_nibble) : ('A' + last_nibble - 10);
+            char buf[2] = {c, '\0'};
+            mde_4_edkii_vga_write_at_offset(row, offset_pos++, buf);
+        }
+        mde_4_edkii_vga_write_at_offset(row, offset_pos++, ": ");
+        
+        // Write hex bytes
+        for (j = 0; j < 16 && (i + j < len); j++) {
+            unsigned char byte = addr[i + j];
+            // Write high nibble
+            char high = (byte >> 4) & 0x0F;
+            char c1 = (high < 10) ? ('0' + high) : ('A' + high - 10);
+            char buf1[2] = {c1, '\0'};
+            mde_4_edkii_vga_write_at_offset(row, offset_pos++, buf1);
+            // Write low nibble
+            char low = byte & 0x0F;
+            char c2 = (low < 10) ? ('0' + low) : ('A' + low - 10);
+            char buf2[2] = {c2, '\0'};
+            mde_4_edkii_vga_write_at_offset(row, offset_pos++, buf2);
+            // Write space
+            mde_4_edkii_vga_write_at_offset(row, offset_pos++, " ");
+        }
+        
+        // Pad remaining hex spaces
+        for (; j < 16; j++) {
+            mde_4_edkii_vga_write_at_offset(row, offset_pos++, "   ");
+        }
+        
+        // Write ASCII representation
+        mde_4_edkii_vga_write_at_offset(row, offset_pos++, "  ");
+        
+        for (j = 0; j < 16 && (i + j < len); j++) {
+            unsigned char byte = addr[i + j];
+            char c = (byte >= 0x20 && byte <= 0x7e) ? (char)byte : '.';
+            char buf[2] = {c, '\0'};
+            mde_4_edkii_vga_write_at_offset(row, offset_pos + j, buf);
+        }
+    }
+}
+
+
+
+static void delay_s(int n)
+{
+  volatile unsigned long t = 25;
+  volatile unsigned long x = (unsigned long)n * 10000UL;
+
+  while (x--) {
+    for (unsigned long i1 = 0; i1 < 1000UL; ++i1) {
+        for (int i = 0; i < 200; ++i) {
+            t = t * 14823424UL + x + 1UL;
+        }
+    }
+  }
+
+  mde_4_edkii_vga_sprintf(24, "%x", t);
+}
+
+
+/////////////////////////////////////////////////////
+
+
+
+
 
 EFI_PEI_PPI_DESCRIPTOR  mPpiListVariable = {
   (EFI_PEI_PPI_DESCRIPTOR_PPI | EFI_PEI_PPI_DESCRIPTOR_TERMINATE_LIST),
@@ -188,6 +362,15 @@ IsValidWorkSpace (
   return TRUE;
 }
 
+
+
+
+
+
+
+
+
+
 /**
   Main entry for Fault Tolerant Write PEIM.
 
@@ -226,41 +409,150 @@ PeimFaultTolerantWriteInitialize (
   WorkSpaceAddress = 0;
   WorkSpaceLength  = 0;
 
+  mde_4_edkii_vga_clear();
+
+  mde_4_edkii_vga_sprintf(0, "FTWa-%x", 0);
+  delay_s(1);
+  mde_4_edkii_vga_sprintf(0, "FTWa-%x", 1);
+  delay_s(1);
+  mde_4_edkii_vga_sprintf(0, "FTWa-%x", 2);
+  delay_s(1);
+  mde_4_edkii_vga_sprintf(0, "FTWa-%x", 3);
+  delay_s(2);
+
+
+
+  //
+  // Direct HOB probe - bypasses VariableFlashInfoLib entirely so we can
+  // tell, independent of what the library/PCD-fallback reports, whether
+  // gVariableFlashInfoHobGuid actually exists in the HOB list at the
+  // moment FtwPei dispatches. If this prints "NOTFOUND", SmmStorePei's
+  // HOB genuinely is not visible here (real dispatch-order or HOB-list
+  // problem). If it prints a non-null pointer, the HOB exists and the
+  // bug is specifically inside VariableFlashInfoLib's consumption of it.
+  //
+  {
+    VARIABLE_FLASH_INFO  *DirectInfo;
+    extern EFI_GUID     gVariableFlashInfoHobGuid;
+
+    EFI_HOB_GUID_TYPE  *DirectHob = GetFirstGuidHob (&gVariableFlashInfoHobGuid);
+    if (DirectHob == NULL) {
+      mde_4_edkii_vga_sprintf(1, "HOB-NOTFOUND");
+    } else {
+      DirectInfo = (VARIABLE_FLASH_INFO *)GET_GUID_HOB_DATA (DirectHob);
+      mde_4_edkii_vga_sprintf(1, "HOB-FOUND-%x-%x-%x-%x-%x", //HOB-FOUND
+        (UINTN)DirectHob,//80CA0
+        (UINTN)DirectInfo->NvVariableBaseAddress,//ff000000
+        (UINTN)DirectInfo->NvVariableLength,//10000
+        (UINTN)DirectInfo->FtwWorkingBaseAddress,//FF010000
+        (UINTN)DirectInfo->FtwSpareBaseAddress);//FF020000
+    }
+  }
+
+  delay_s(2);
+  // MicroSecondDelay(3000000);
+
   Status = GetVariableFlashFtwWorkingInfo (&WorkSpaceAddress, &Size);
-  ASSERT_EFI_ERROR (Status);
+  mde_4_edkii_vga_sprintf(3, "FTWb-%x-%x-%x",
+    Status,//0
+    WorkSpaceAddress,//ff010000
+    Size);//0
+
+  // ASSERT_EFI_ERROR (Status);
 
   Status = SafeUint64ToUintn (Size, &WorkSpaceLength);
   // This driver currently assumes the size will be UINTN so assert the value is safe for now.
-  ASSERT_EFI_ERROR (Status);
+  mde_4_edkii_vga_sprintf(4, "4a-%x-%x",
+    Status,//0
+    WorkSpaceLength);//10000
+  // ASSERT_EFI_ERROR (Status);
 
   Status = GetVariableFlashFtwSpareInfo (&SpareAreaAddress, &Size);
-  ASSERT_EFI_ERROR (Status);
+  mde_4_edkii_vga_sprintf(5, "5a-%x-%x-%x",
+    Status,//0
+    SpareAreaAddress,//ff020000
+    Size);//0
+  // ASSERT_EFI_ERROR (Status);
 
   Status = SafeUint64ToUintn (Size, &SpareAreaLength);
+  mde_4_edkii_vga_sprintf(6, "6a-%x-%x-%x",
+    Status,//
+    SpareAreaLength,//
+    Size);//
   // This driver currently assumes the size will be UINTN so assert the value is safe for now.
-  ASSERT_EFI_ERROR (Status);
+  // ASSERT_EFI_ERROR (Status);
 
   //
   // The address of FTW working base and spare base must not be 0.
   //
   ASSERT ((WorkSpaceAddress != 0) && (SpareAreaAddress != 0));
 
+  
+  mde_4_edkii_vga_sprintf(7, "7a-%x-%x-%x,%x,%x",
+    Status,//0
+    SpareAreaLength,//20000
+    Size,//20000
+    WorkSpaceAddress,//0
+    SpareAreaAddress//ff010000
+  );
+
+
+
   FtwWorkingBlockHeader = (EFI_FAULT_TOLERANT_WORKING_BLOCK_HEADER *)(UINTN)WorkSpaceAddress;
   if (IsValidWorkSpace (FtwWorkingBlockHeader, WorkSpaceLength)) {
+    
+    mde_4_edkii_vga_sprintf(8, "8a-%x-%x",
+      FtwWorkingBlockHeader,
+      WorkSpaceLength);
     Status = FtwGetLastWriteHeader (
                FtwWorkingBlockHeader,
                WorkSpaceLength,
                &FtwLastWriteHeader
                );
+               
+    mde_4_edkii_vga_sprintf(8, "8b-%x-%x-%x-%x",
+      Status,
+      FtwWorkingBlockHeader,
+      WorkSpaceLength,
+      FtwLastWriteHeader);
+
     if (!EFI_ERROR (Status)) {
+      
+      mde_4_edkii_vga_sprintf(8, "8c-%x-%x-%x-%x",
+        Status,
+        FtwWorkingBlockHeader,
+        WorkSpaceLength,
+        FtwLastWriteHeader);
+
       Status = FtwGetLastWriteRecord (
                  FtwLastWriteHeader,
                  &FtwLastWriteRecord
                  );
+                 
+      mde_4_edkii_vga_sprintf(8, "8d-%x-%x-%x-%x-%x",
+        Status,
+        FtwWorkingBlockHeader,
+        WorkSpaceLength,
+        FtwLastWriteHeader,
+        FtwLastWriteRecord);
+
     }
+
+
+    mde_4_edkii_vga_sprintf(9, "9a-%x-%x",
+      Status,
+      FtwLastWriteRecord);
 
     if (!EFI_ERROR (Status)) {
       ASSERT (FtwLastWriteRecord != NULL);
+
+
+      mde_4_edkii_vga_sprintf(9, "9b-%x-%x-%x-%x",
+        Status,
+        FtwLastWriteRecord,
+        FtwLastWriteRecord->SpareComplete,
+        FtwLastWriteRecord->DestinationComplete);
+
       if ((FtwLastWriteRecord->SpareComplete == FTW_VALID_STATE) && (FtwLastWriteRecord->DestinationComplete != FTW_VALID_STATE)) {
         //
         // If FTW last write was still in progress with SpareComplete set and DestinationComplete not set.
@@ -278,7 +570,29 @@ PeimFaultTolerantWriteInitialize (
           (UINTN)FtwLastWrite.SpareAddress,
           (UINTN)FtwLastWrite.Length
           ));
+          
+
+        mde_4_edkii_vga_sprintf(9, "9c-%x-%x-%x-%x,%x-%x-%x",
+          Status,
+          FtwLastWriteRecord,
+          FtwLastWriteRecord->SpareComplete,
+          FtwLastWriteRecord->DestinationComplete,
+          FtwLastWrite.TargetAddress,
+          FtwLastWrite.SpareAddress,
+          FtwLastWrite.Length);
+          
         BuildGuidDataHob (&gEdkiiFaultTolerantWriteGuid, (VOID *)&FtwLastWrite, sizeof (FAULT_TOLERANT_WRITE_LAST_WRITE_DATA));
+        
+
+        mde_4_edkii_vga_sprintf(10, "a-%x-%x-%x-%x,%x-%x-%x",
+          gEdkiiFaultTolerantWriteGuid.Data1,
+          gEdkiiFaultTolerantWriteGuid.Data2,
+          gEdkiiFaultTolerantWriteGuid.Data3,
+          gEdkiiFaultTolerantWriteGuid.Data4,
+          FtwLastWrite.TargetAddress,
+          FtwLastWrite.SpareAddress,
+          FtwLastWrite.Length
+          );
       }
     }
   } else {
@@ -323,8 +637,39 @@ PeimFaultTolerantWriteInitialize (
     }
   }
 
+
+  mde_4_edkii_vga_sprintf(11, "11-%x-%x-%x-%x,%x-%x-%x",
+    mPpiListVariable.Flags,
+    mPpiListVariable.Guid->Data1,
+    mPpiListVariable.Guid->Data2,
+    mPpiListVariable.Guid->Data3,
+    mPpiListVariable.Guid->Data4,
+    mPpiListVariable.Ppi,
+    *(unsigned int*)(mPpiListVariable.Ppi)
+  );
+
+
+  // MicroSecondDelay(3000000);
   //
   // Install gEdkiiFaultTolerantWriteGuid PPI to inform the check for FTW last write data has been done.
   //
-  return PeiServicesInstallPpi (&mPpiListVariable);
+  int res2 = PeiServicesInstallPpi (&mPpiListVariable);
+  
+  mde_4_edkii_vga_sprintf(11, "11-%x,%x-%x-%x-%x,%x-%x-%x",
+    res2,
+    mPpiListVariable.Flags,
+    mPpiListVariable.Guid->Data1,
+    mPpiListVariable.Guid->Data2,
+    mPpiListVariable.Guid->Data3,
+    mPpiListVariable.Guid->Data4,
+    mPpiListVariable.Ppi,
+    *(unsigned int*)(mPpiListVariable.Ppi)
+  );
+
+  // // int i = 10;
+  // while (1) {
+  //   // i = 20;
+  // }
+
+  return res2;
 }

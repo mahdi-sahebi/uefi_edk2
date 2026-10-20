@@ -92,6 +92,7 @@
   ReportStatusCodeLib
   DxeServicesLib
   DebugAgentLib
+  TimerLib
   CpuExceptionHandlerLib
   PcdLib
   ImagePropertiesRecordLib

@@ -34,7 +34,6 @@
   IoLib
   HobLib
   BaseMemoryLib
-  CpuLib
 
 [Guids]
   gUefiAcpiBoardInfoGuid

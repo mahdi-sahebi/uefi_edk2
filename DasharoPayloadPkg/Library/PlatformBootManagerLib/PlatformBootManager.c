@@ -1248,7 +1248,8 @@ WarnIfRecoveryBoot (
   BootLogoEnableLogo ();
 }
 
-#ifdef TPM_ENABLED
+
+
 typedef struct {
   TPM_ALG_ID AlgId;
   CHAR16    *Name;
@@ -1408,7 +1409,6 @@ WarnIfSinglePCRBank (
   DrainInput();
   BootLogoEnableLogo();
 }
-#endif
 
 STATIC
 VOID
@@ -2062,9 +2062,7 @@ PlatformBootManagerAfterConsole (
     }
   }
 
-#ifdef TPM_ENABLED
   WarnIfSinglePCRBank ();
-#endif
   WarnIfBatteryLow ();
   WarnIfRecoveryBoot ();
   WarnIfFirmwareUpdateMode ();

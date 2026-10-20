@@ -7,6 +7,34 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 **/
 
 #include "DxeMain.h"
+#include <Library/TimerLib.h>
+
+#define GX_DXE_VGA_FB       0xB8000
+#define GX_DXE_VGA_COLUMNS  80
+#define GX_DXE_VGA_ROWS     25
+
+STATIC
+VOID
+GxDxeCheckpoint (
+  IN UINTN       Sequence,
+  IN CONST CHAR8 *Message
+  )
+{
+  volatile UINT16 *Vga;
+  UINTN           Index;
+  UINTN           Row;
+
+  Row = Sequence % GX_DXE_VGA_ROWS;
+  Vga = (volatile UINT16 *)(UINTN)GX_DXE_VGA_FB + Row * GX_DXE_VGA_COLUMNS;
+  for (Index = 0; Index < GX_DXE_VGA_COLUMNS; Index++) {
+    Vga[Index] = 0x0F00;
+  }
+  for (Index = 0; Message[Index] != '\0' && Index < GX_DXE_VGA_COLUMNS; Index++) {
+    Vga[Index] = (UINT16)(0x0F00 | (UINT8)Message[Index]);
+  }
+  DEBUG ((DEBUG_ERROR, "[GX-DXE] seq=%u %a\n", Sequence, Message));
+  MicroSecondDelay (500000);
+}
 
 //
 // DXE Core Global Variables for Protocols from PEI
@@ -246,6 +274,8 @@ DxeMain (
   EFI_VECTOR_HANDOFF_INFO       *VectorInfo;
   VOID                          *EntryPoint;
 
+  GxDxeCheckpoint (0, "DxeCore entry");
+
   //
   // Setup the default exception handlers
   //
@@ -282,18 +312,21 @@ DxeMain (
   // Start the Handle Services.
   //
   Status = CoreInitializeHandleServices ();
+  GxDxeCheckpoint (1, "Handle services initialized");
   ASSERT_EFI_ERROR (Status);
 
   //
   // Start the Image Services.
   //
   Status = CoreInitializeImageServices (HobStart);
+  GxDxeCheckpoint (2, "Image services initialized");
   ASSERT_EFI_ERROR (Status);
 
   //
   // Initialize the Global Coherency Domain Services
   //
   Status = CoreInitializeGcdServices (&HobStart, MemoryBaseAddress, MemoryLength);
+  GxDxeCheckpoint (3, "GCD services initialized");
   ASSERT_EFI_ERROR (Status);
 
   //
@@ -542,11 +575,13 @@ DxeMain (
   // Initialize the DXE Dispatcher
   //
   CoreInitializeDispatcher ();
+  GxDxeCheckpoint (4, "DXE dispatcher initialized");
 
   //
   // Invoke the DXE Dispatcher
   //
   CoreDispatcher ();
+  GxDxeCheckpoint (5, "DXE dispatcher completed");
 
   //
   // Display Architectural protocols that were not loaded if this is DEBUG build
@@ -568,6 +603,7 @@ DxeMain (
   //
   Status = CoreAllEfiServicesAvailable ();
   if (EFI_ERROR (Status)) {
+    GxDxeCheckpoint (6, "DXE architectural protocol failure");
     //
     // Report Status code that some Architectural Protocols are not present.
     //
@@ -590,6 +626,7 @@ DxeMain (
   //
   // Transfer control to the BDS Architectural Protocol
   //
+  GxDxeCheckpoint (7, "BDS handoff");
   gBds->Entry (gBds);
 
   //

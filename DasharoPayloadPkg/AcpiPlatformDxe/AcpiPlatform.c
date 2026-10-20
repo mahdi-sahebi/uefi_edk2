@@ -112,15 +112,6 @@ InstallTablesFromXsdt (
       }
     }
 
-    // Skip TPM tables
-    if (!AsciiStrnCmp ((CHAR8 *) &CurrentTable->Signature, "TPM2", 4)) {
-      continue;
-    }
-
-    if (!AsciiStrnCmp ((CHAR8 *) &CurrentTable->Signature, "TCPA", 4)) {
-      continue;
-    }
-
     //
     // Install the XSDT tables
     //
@@ -219,16 +210,6 @@ InstallTablesFromRsdt (
         ASSERT_EFI_ERROR (Status);
       }
     }
-
-    // Skip TPM tables
-    if (!AsciiStrnCmp ((CHAR8 *) &CurrentTable->Signature, "TPM2", 4)) {
-      continue;
-    }
-
-    if (!AsciiStrnCmp ((CHAR8 *) &CurrentTable->Signature, "TCPA", 4)) {
-      continue;
-    }
-
     //
     // Install the RSDT tables
     //

@@ -10,6 +10,199 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 #include "DxeIpl.h"
 
+
+
+
+
+
+/////////////////////////////////////////////////////
+
+#include <stdarg.h> 
+
+#include <Library/IoLib.h>
+#include <Library/PrintLib.h>
+#include <Library/BaseLib.h>
+#include <Library/DebugLib.h>
+#include <Library/BaseMemoryLib.h>
+#include <Library/PcdLib.h>
+#include <Library/TimerLib.h>
+// #include <Library/CpuLib.h>
+// #include <Library/PeCoffGetEntryPointLib.h>
+// #include <Library/PeCoffExtraActionLib.h>
+#include <Library/DebugAgentLib.h>
+
+#define mde_6__VGA_FB 0xB8000
+#define mde_6__VGA_COLUMNS 80
+
+char mde_6_g_buffer[80];
+
+void mde_6_edkii_vga_clear(void);
+void mde_6_edkii_vga_sprintf(unsigned int row, const char* format, ...);
+void mde_6_edkii_vga_print(unsigned int line, const char *string);
+void mde_6_edkii_vga_write_at_offset(unsigned int line, unsigned int offset, const char *string);
+void mn_6_delay_s(int n);
+
+// unsigned int mn_6_strlen(char *String)
+// {
+//     UINTN Length = 0;
+
+//     if (String == NULL) {
+//         return 0;
+//     }
+
+//     while (*String != '\0') {
+//         String++;
+//         Length++;
+//     }
+
+//     return Length;
+// }
+
+void mde_6_edkii_vga_write_at_offset(unsigned int line, unsigned int offset, const char *string)
+{
+	if (!string || line >= 25 || offset >= mde_6__VGA_COLUMNS)
+		return;
+
+	unsigned short *p = (unsigned short *)mde_6__VGA_FB + (mde_6__VGA_COLUMNS * line) + offset;
+	unsigned int i, len = AsciiStrLen(string);
+
+	for (i = 0; i < (mde_6__VGA_COLUMNS - offset); i++) {
+		if (i < len)
+			p[i] = 0x0F00 | (unsigned char)string[i];
+		else
+			p[i] = 0x0F00;
+	}
+}
+
+
+void mde_6_edkii_vga_print(unsigned int line, const char *string)
+{
+	mde_6_edkii_vga_write_at_offset(line, 0, string);
+}
+
+void mde_6_edkii_vga_sprintf(
+  unsigned int row,
+  const char* format,
+  ...)
+{
+  VA_LIST  marker;
+  
+  VA_START (marker, format);
+  AsciiVSPrint(mde_6_g_buffer, sizeof(mde_6_g_buffer), format, marker);
+  VA_END (marker);
+  
+  mde_6_edkii_vga_print (row, mde_6_g_buffer);
+  DEBUG ((DEBUG_ERROR, "[DXE-VGA] row=%u %a\n", row, mde_6_g_buffer));
+  MicroSecondDelay (500000);
+}
+
+void mde_6_edkii_vga_clear()
+{
+  mde_6_edkii_vga_print(0, "                                                                                                    ");
+  mde_6_edkii_vga_print(1, "                                                                                                    ");
+  mde_6_edkii_vga_print(2, "                                                                                                    ");
+  mde_6_edkii_vga_print(3, "                                                                                                    ");
+  mde_6_edkii_vga_print(4, "                                                                                                    ");
+  mde_6_edkii_vga_print(5, "                                                                                                    ");
+  mde_6_edkii_vga_print(6, "                                                                                                    ");
+  mde_6_edkii_vga_print(7, "                                                                                                    ");
+  mde_6_edkii_vga_print(8, "                                                                                                    ");
+  mde_6_edkii_vga_print(9, "                                                                                                    ");
+  mde_6_edkii_vga_print(10, "                                                                                                    ");
+  mde_6_edkii_vga_print(11, "                                                                                                    ");
+  mde_6_edkii_vga_print(12, "                                                                                                    ");
+  mde_6_edkii_vga_print(13, "                                                                                                    ");
+  mde_6_edkii_vga_print(14, "                                                                                                    ");
+  mde_6_edkii_vga_print(15, "                                                                                                    ");
+  mde_6_edkii_vga_print(16, "                                                                                                    ");
+  mde_6_edkii_vga_print(17, "                                                                                                    ");
+  mde_6_edkii_vga_print(18, "                                                                                                    ");
+  mde_6_edkii_vga_print(19, "                                                                                                    ");
+  mde_6_edkii_vga_print(20, "                                                                                                    ");
+  mde_6_edkii_vga_print(21, "                                                                                                    ");
+  mde_6_edkii_vga_print(22, "                                                                                                    ");
+  mde_6_edkii_vga_print(23, "                                                                                                    ");
+  mde_6_edkii_vga_print(24, "                                                                                                    ");
+}
+
+void mde_6_edkii_vga_hex_dump(const unsigned char *addr, unsigned int len, int start_row) 
+{
+    unsigned int i;
+
+    DEBUG ((DEBUG_ERROR, "[DXE-VGA] hex-dump addr=%p len=%u start-row=%d\n",
+      addr, len, start_row));
+    
+    for (i = 0; i < len; i += 16) {
+        unsigned int j;
+        int row = start_row + (i / 16);
+        int offset_pos = 0;
+        
+        // Write offset character by character
+        unsigned long ptr_val = (unsigned long)(addr + i);
+        for (j = 28; j > 0; j -= 4) {
+            char nibble = (ptr_val >> j) & 0x0F;
+            char c = (nibble < 10) ? ('0' + nibble) : ('A' + nibble - 10);
+            char buf[2] = {c, '\0'};
+            mde_6_edkii_vga_write_at_offset(row, offset_pos++, buf);
+        }
+        {
+            char last_nibble = ptr_val & 0x0F;
+            char c = (last_nibble < 10) ? ('0' + last_nibble) : ('A' + last_nibble - 10);
+            char buf[2] = {c, '\0'};
+            mde_6_edkii_vga_write_at_offset(row, offset_pos++, buf);
+        }
+        mde_6_edkii_vga_write_at_offset(row, offset_pos++, ": ");
+        
+        // Write hex bytes
+        for (j = 0; j < 16 && (i + j < len); j++) {
+            unsigned char byte = addr[i + j];
+            // Write high nibble
+            char high = (byte >> 4) & 0x0F;
+            char c1 = (high < 10) ? ('0' + high) : ('A' + high - 10);
+            char buf1[2] = {c1, '\0'};
+            mde_6_edkii_vga_write_at_offset(row, offset_pos++, buf1);
+            // Write low nibble
+            char low = byte & 0x0F;
+            char c2 = (low < 10) ? ('0' + low) : ('A' + low - 10);
+            char buf2[2] = {c2, '\0'};
+            mde_6_edkii_vga_write_at_offset(row, offset_pos++, buf2);
+            // Write space
+            mde_6_edkii_vga_write_at_offset(row, offset_pos++, " ");
+        }
+        
+        // Pad remaining hex spaces
+        for (; j < 16; j++) {
+            mde_6_edkii_vga_write_at_offset(row, offset_pos++, "   ");
+        }
+        
+        // Write ASCII representation
+        mde_6_edkii_vga_write_at_offset(row, offset_pos++, "  ");
+        
+        for (j = 0; j < 16 && (i + j < len); j++) {
+            unsigned char byte = addr[i + j];
+            char c = (byte >= 0x20 && byte <= 0x7e) ? (char)byte : '.';
+            char buf[2] = {c, '\0'};
+            mde_6_edkii_vga_write_at_offset(row, offset_pos + j, buf);
+        }
+    }
+    MicroSecondDelay (500000);
+}
+
+
+
+void mn_6_delay_s(int n)
+{
+  (void)n;
+}
+
+
+/////////////////////////////////////////////////////
+
+
+
+
+
+
 //
 // Module Globals used in the DXE to PEI hand off
 // These must be module globals, so the stack can be switched
@@ -70,14 +263,34 @@ PeimInitializeDxeIpl (
   IN CONST EFI_PEI_SERVICES     **PeiServices
   )
 {
-  EFI_STATUS     Status;
-  EFI_BOOT_MODE  BootMode;
+  EFI_STATUS     Status = 0;
+  EFI_BOOT_MODE  BootMode = 0;
   VOID           *Dummy;
+
+  mde_6_edkii_vga_clear();
+  mde_6_edkii_vga_sprintf(0, "DxeIpla-%x",
+    0//0
+  );
+  mn_6_delay_s(2);
+
 
   BootMode = GetBootModeHob ();
 
+  mde_6_edkii_vga_sprintf(0, "DxeIplb-%x",
+    BootMode//4
+  );
+  mn_6_delay_s(2);
+
   if (BootMode != BOOT_ON_S3_RESUME) {
     Status = PeiServicesRegisterForShadow (FileHandle);
+    
+    mde_6_edkii_vga_sprintf(1, "1a-%x-%x",//1a
+      BootMode,//4
+      Status//frist time: 0//second time: 80000014
+    );
+    mn_6_delay_s(2);
+
+    
     if (Status == EFI_SUCCESS) {
       //
       // EFI_SUCESS means it is the first time to call register for shadow.
@@ -99,6 +312,14 @@ PeimInitializeDxeIpl (
                NULL,
                (VOID **)&Dummy
                );
+               
+    mde_6_edkii_vga_sprintf(1, "1b-%x-%x",
+      BootMode,//4
+      Status//0
+    );
+    mn_6_delay_s(2);
+
+    
     ASSERT_EFI_ERROR (Status);
     if (EFI_ERROR (Status)) {
       return Status;
@@ -109,20 +330,48 @@ PeimInitializeDxeIpl (
     // and section extraction.
     //
     Status = InstallIplPermanentMemoryPpis (NULL, NULL, NULL);
+    mde_6_edkii_vga_sprintf(1, "1c-%x-%x",
+      BootMode,
+      Status
+    );
+    mn_6_delay_s(2);
     ASSERT_EFI_ERROR (Status);
   } else {
+    
+    mde_6_edkii_vga_sprintf(1, "1f-%x",
+      BootMode
+    );
+    mn_6_delay_s(2);
     //
     // Install memory discovered PPI notification to install PPIs for
     // decompression and section extraction.
     //
     Status = PeiServicesNotifyPpi (&mMemoryDiscoveredNotifyList);
+    
+    mde_6_edkii_vga_sprintf(1, "1g-%x-%x",
+      BootMode,
+      Status
+    );
+    mn_6_delay_s(2);
     ASSERT_EFI_ERROR (Status);
   }
+
+  
+    mde_6_edkii_vga_sprintf(2, "2a-%x",
+      BootMode
+    );
+    mn_6_delay_s(2);
 
   //
   // Install DxeIpl PPI.
   //
   Status = PeiServicesInstallPpi (&mDxeIplPpiList);
+  
+  mde_6_edkii_vga_sprintf(2, "2b-%x-%x",
+    BootMode,
+    Status
+  );
+  mn_6_delay_s(2);
   ASSERT_EFI_ERROR (Status);
 
   return Status;
@@ -147,15 +396,31 @@ InstallIplPermanentMemoryPpis (
   IN VOID                       *Ppi
   )
 {
-  EFI_STATUS              Status;
+  EFI_STATUS              Status = EFI_SUCCESS;;
   EFI_GUID                *ExtractHandlerGuidTable;
-  UINTN                   ExtractHandlerNumber;
+  UINTN                   ExtractHandlerNumber = 0;
   EFI_PEI_PPI_DESCRIPTOR  *GuidPpi;
+
+  
+  mde_6_edkii_vga_clear();
+  mde_6_edkii_vga_sprintf(0, "DxePPIa-%x",
+    0//0
+  );
+  mn_6_delay_s(2);
 
   //
   // Get custom extract guided section method guid list
   //
   ExtractHandlerNumber = ExtractGuidedSectionGetGuidList (&ExtractHandlerGuidTable);
+
+  mde_6_edkii_vga_sprintf(0, "DxePPIb-%x-%x-%x-%x-%x",
+    ExtractHandlerNumber,//0
+    ExtractHandlerGuidTable->Data1,//0
+    ExtractHandlerGuidTable->Data2,//0
+    ExtractHandlerGuidTable->Data3,//0
+    ExtractHandlerGuidTable->Data4//5f52170c
+  );
+  mn_6_delay_s(2);
 
   //
   // Install custom guided section extraction PPI
@@ -172,10 +437,30 @@ InstallIplPermanentMemoryPpis (
     }
   }
 
+  mde_6_edkii_vga_sprintf(0, "DxePPIc-%x-%x-%x-%x-%x",
+    ExtractHandlerNumber,
+    ExtractHandlerGuidTable->Data1,
+    ExtractHandlerGuidTable->Data2,
+    ExtractHandlerGuidTable->Data3,
+    ExtractHandlerGuidTable->Data4
+  );
+  mn_6_delay_s(2);
+
   //
   // Install Decompress PPI.
   //
   Status = PeiServicesInstallPpi (&mDecompressPpiList);
+  
+  mde_6_edkii_vga_sprintf(1, "DxePPId-%x-%x,%x-%x-%x-%x",
+    Status,
+    ExtractHandlerNumber,
+    ExtractHandlerGuidTable->Data1,
+    ExtractHandlerGuidTable->Data2,
+    ExtractHandlerGuidTable->Data3,
+    ExtractHandlerGuidTable->Data4
+  );
+  mn_6_delay_s(2);
+
   ASSERT_EFI_ERROR (Status);
 
   return Status;
@@ -250,12 +535,12 @@ DxeLoadCore (
   IN EFI_PEI_HOB_POINTERS   HobList
   )
 {
-  EFI_STATUS                       Status;
+  EFI_STATUS                       Status = EFI_SUCCESS;;
   EFI_FV_FILE_INFO                 DxeCoreFileInfo;
-  EFI_PHYSICAL_ADDRESS             DxeCoreAddress;
+  EFI_PHYSICAL_ADDRESS             DxeCoreAddress = 0;
   UINT64                           DxeCoreSize;
   EFI_PHYSICAL_ADDRESS             DxeCoreEntryPoint;
-  EFI_BOOT_MODE                    BootMode;
+  EFI_BOOT_MODE                    BootMode = 0;
   EFI_PEI_FILE_HANDLE              FileHandle;
   EFI_PEI_READ_ONLY_VARIABLE2_PPI  *Variable;
   EFI_PEI_LOAD_FILE_PPI            *LoadFile;
@@ -268,18 +553,60 @@ DxeLoadCore (
   EFI_MEMORY_TYPE_INFORMATION      MemoryData[EfiMaxMemoryType + 1];
   VOID                             *CapsuleOnDiskModePpi;
 
+  mde_6_edkii_vga_clear();
+  mde_6_edkii_vga_sprintf(0, "DxeLoadCorea-%x-%x-%x-%x-%x-%x",
+    // This->Entry,
+    // PeiServices,
+    (UINTN)HobList.Raw,
+    HobList.Capsule->BaseAddress,
+    HobList.Capsule->Length,
+    HobList.Capsule->Header.HobLength,
+    HobList.Guid->Header.HobType,//1
+    HobList.Header->HobType//1
+  );
+
+  mde_6_edkii_vga_hex_dump(HobList.Raw, 128, 1);
+  mn_6_delay_s(5);
+  mde_6_edkii_vga_clear();
+
   //
   // if in S3 Resume, restore configure
   //
   BootMode = GetBootModeHob ();
 
+  mde_6_edkii_vga_sprintf(0, "DxeLoadCoreb-%x-%x",
+    // This,
+    // PeiServices,
+    HobList.Guid->Header.HobType,//
+    BootMode//4
+  );
+  mn_6_delay_s(2);
+
   if (BootMode == BOOT_ON_S3_RESUME) {
+    
+    mde_6_edkii_vga_sprintf(1, "1a-%x-%x",
+      // This,
+      // PeiServices,
+      HobList.Guid->Header.HobType,
+      BootMode
+    );
+    mn_6_delay_s(2);
     Status = PeiServicesLocatePpi (
                &gEfiPeiS3Resume2PpiGuid,
                0,
                NULL,
                (VOID **)&S3Resume
                );
+    
+    mde_6_edkii_vga_sprintf(1, "1b-%x-%x-%x",
+      // This,
+      // PeiServices,
+      HobList.Guid->Header.HobType,
+      BootMode,
+      Status
+    );
+    mn_6_delay_s(2);
+
     if (EFI_ERROR (Status)) {
       //
       // Report Status code that S3Resume PPI can not be found
@@ -295,13 +622,39 @@ DxeLoadCore (
     Status = S3Resume->S3RestoreConfig2 (S3Resume);
     ASSERT_EFI_ERROR (Status);
   } else if (BootMode == BOOT_IN_RECOVERY_MODE) {
+    
+    mde_6_edkii_vga_sprintf(1, "1f-%x-%x",
+      // This,
+      // PeiServices,
+      HobList.Guid->Header.HobType,
+      BootMode
+    );
+    mn_6_delay_s(2);
+
     REPORT_STATUS_CODE (EFI_PROGRESS_CODE, (EFI_SOFTWARE_PEI_MODULE | EFI_SW_PEI_PC_RECOVERY_BEGIN));
+    
+    mde_6_edkii_vga_sprintf(1, "1g-%x-%x",
+      // This,
+      // PeiServices,
+      HobList.Guid->Header.HobType,
+      BootMode
+    );
+    mn_6_delay_s(2);
     Status = PeiServicesLocatePpi (
                &gEfiPeiRecoveryModulePpiGuid,
                0,
                NULL,
                (VOID **)&PeiRecovery
                );
+
+    mde_6_edkii_vga_sprintf(1, "1h-%x-%x-%x",
+      Status,
+      // This,
+      // PeiServices,
+      HobList.Guid->Header.HobType,
+      BootMode
+    );
+    mn_6_delay_s(2);
 
     if (EFI_ERROR (Status)) {
       DEBUG ((DEBUG_ERROR, "Locate Recovery PPI Failed.(Status = %r)\n", Status));
@@ -315,8 +668,26 @@ DxeLoadCore (
       CpuDeadLoop ();
     }
 
+    
+    mde_6_edkii_vga_sprintf(2, "2a-%x",
+      0
+    );
+    mn_6_delay_s(2);
+
     REPORT_STATUS_CODE (EFI_PROGRESS_CODE, (EFI_SOFTWARE_PEI_MODULE | EFI_SW_PEI_PC_CAPSULE_LOAD));
+    
+    mde_6_edkii_vga_sprintf(2, "2b-%x",
+      0
+    );
+    mn_6_delay_s(2);
+
     Status = PeiRecovery->LoadRecoveryCapsule (PeiServices, PeiRecovery);
+    
+    mde_6_edkii_vga_sprintf(2, "2c-%x",
+      Status
+    );
+    mn_6_delay_s(2);
+
     if (EFI_ERROR (Status)) {
       DEBUG ((DEBUG_ERROR, "Load Recovery Capsule Failed.(Status = %r)\n", Status));
       //
@@ -329,11 +700,30 @@ DxeLoadCore (
       CpuDeadLoop ();
     }
 
+    mde_6_edkii_vga_sprintf(2, "2d-%x",
+      Status
+    );
+    mn_6_delay_s(2);
+
     REPORT_STATUS_CODE (EFI_PROGRESS_CODE, (EFI_SOFTWARE_PEI_MODULE | EFI_SW_PEI_PC_CAPSULE_START));
+    
+    mde_6_edkii_vga_sprintf(2, "2e-%x-%x",
+      Status,
+      BootMode
+    );
+    mn_6_delay_s(2);
+
     //
     // Now should have a HOB with the DXE core
     //
   } else if (BootMode == BOOT_ON_FLASH_UPDATE) {
+    
+    mde_6_edkii_vga_sprintf(3, "3a-%x",
+      BootMode
+    );
+    mn_6_delay_s(2);
+
+
     //
     // If Capsule On Disk mode, call storage stack to read Capsule Relocation file
     // IoMmmu is highly recommmended to enable before reading
@@ -344,6 +734,12 @@ DxeLoadCore (
                NULL,
                &CapsuleOnDiskModePpi
                );
+               
+    mde_6_edkii_vga_sprintf(3, "3a-%x",
+      BootMode
+    );
+    mn_6_delay_s(2);
+
     if (!EFI_ERROR (Status)) {
       Status = PeiServicesLocatePpi (
                  &gEdkiiPeiCapsuleOnDiskPpiGuid,
@@ -361,8 +757,19 @@ DxeLoadCore (
     }
   }
 
+  
+  mde_6_edkii_vga_sprintf(4, "4a-%x",
+    BootMode//4
+  );
+  mn_6_delay_s(2);
+
   if (GetFirstGuidHob ((CONST EFI_GUID *)&gEfiMemoryTypeInformationGuid) == NULL) {
-    //
+    
+    mde_6_edkii_vga_sprintf(5, "5a-%x",
+      BootMode
+    );
+    mn_6_delay_s(2);
+    
     // Don't build GuidHob if GuidHob has been installed.
     //
     Status = PeiServicesLocatePpi (
@@ -371,6 +778,13 @@ DxeLoadCore (
                NULL,
                (VOID **)&Variable
                );
+                
+    mde_6_edkii_vga_sprintf(5, "5b-%x-%x-%x",
+      BootMode,
+      Status,
+      gEfiPeiReadOnlyVariable2PpiGuid.Data1
+    );
+    mn_6_delay_s(2);
     if (!EFI_ERROR (Status)) {
       DataSize = sizeof (MemoryData);
       Status   = Variable->GetVariable (
@@ -394,17 +808,40 @@ DxeLoadCore (
     }
   }
 
-  //
+
+  mde_6_edkii_vga_sprintf(6, "6a-%x",
+    BootMode//4
+  );
+  mn_6_delay_s(2);
+  
   // Look in all the FVs present in PEI and find the DXE Core FileHandle
   //
   FileHandle = DxeIplFindDxeCore ();
+
+  mde_6_edkii_vga_sprintf(6, "6b-%x",
+    BootMode//4
+  );
+  mn_6_delay_s(2);
 
   //
   // Load the DXE Core from a Firmware Volume.
   //
   Instance = 0;
   do {
+    
+    mde_6_edkii_vga_sprintf(7, "7a-%x-%x",
+      Status,  //0
+      Instance //0
+    );
+    mn_6_delay_s(2);
+
     Status = PeiServicesLocatePpi (&gEfiPeiLoadFilePpiGuid, Instance++, NULL, (VOID **)&LoadFile);
+    
+    mde_6_edkii_vga_sprintf(7, "7b-%x-%x",
+      Status, //0
+      Instance//1
+    );
+    mn_6_delay_s(2);
     //
     // These must exist an instance of EFI_PEI_LOAD_FILE_PPI to support to load DxeCore file handle successfully.
     //
@@ -418,12 +855,32 @@ DxeLoadCore (
                          &DxeCoreEntryPoint,
                          &AuthenticationState
                          );
+                         
+    mde_6_edkii_vga_sprintf(7, "7c-%x-%x,%x-%x-%x-%x",
+      Status, //0
+      Instance,//1
+      (UINTN)DxeCoreAddress,
+      (UINTN)DxeCoreSize,
+      (UINTN)DxeCoreEntryPoint,
+      (UINTN)AuthenticationState,
+      (UINTN)LoadFile
+    );
   } while (EFI_ERROR (Status));
 
-  //
+  
+  mde_6_edkii_vga_sprintf(8, "8a-%x",
+    0//0
+  );
+  mn_6_delay_s(2);
+  
   // Get the DxeCore File Info from the FileHandle for the DxeCore GUID file name.
   //
   Status = PeiServicesFfsGetFileInfo (FileHandle, &DxeCoreFileInfo);
+  
+  mde_6_edkii_vga_sprintf(8, "8b-%x",
+    Status//0
+  );
+  mn_6_delay_s(2);
   ASSERT_EFI_ERROR (Status);
 
   //
@@ -436,18 +893,39 @@ DxeLoadCore (
     DxeCoreEntryPoint
     );
 
-  //
+  mde_6_edkii_vga_sprintf(8, "8c-%x-%x-%x-%x",
+    Status,//0
+    DxeCoreFileInfo.FileName.Data1,//d6a2cb7f
+    (unsigned int)DxeCoreAddress,//63463000
+    (unsigned int)DxeCoreEntryPoint//6347e3ee
+  );
+  mn_6_delay_s(2);
+  
   // Report Status Code EFI_SW_PEI_PC_HANDOFF_TO_NEXT
   //
   REPORT_STATUS_CODE (EFI_PROGRESS_CODE, (EFI_SOFTWARE_PEI_CORE | EFI_SW_PEI_CORE_PC_HANDOFF_TO_NEXT));
 
   DEBUG ((DEBUG_INFO | DEBUG_LOAD, "Loading DXE CORE at 0x%11p EntryPoint=0x%11p\n", (VOID *)(UINTN)DxeCoreAddress, FUNCTION_ENTRY_POINT (DxeCoreEntryPoint)));
 
+  mde_6_edkii_vga_sprintf(8, "8dd-%x-%x",
+    (UINTN)HandOffToDxeCore,//634d7924,
+    (UINTN)HobList.Raw
+  );
+  mn_6_delay_s(2);
   //
   // Transfer control to the DXE Core
   // The hand off state is simply a pointer to the HOB list
   //
   HandOffToDxeCore (DxeCoreEntryPoint, HobList);
+  
+  mde_6_edkii_vga_sprintf(8, "8d-%x-%x-%x-%x",
+    Status,
+    DxeCoreFileInfo.FileName.Data1,
+    (unsigned int)DxeCoreAddress,
+    (unsigned int)DxeCoreEntryPoint
+  );
+  mn_6_delay_s(2);
+
   //
   // If we get here, then the DXE Core returned.  This is an error
   // DxeCore should not return.
@@ -470,17 +948,36 @@ DxeIplFindDxeCore (
   VOID
   )
 {
-  EFI_STATUS           Status;
-  UINTN                Instance;
+  EFI_STATUS           Status = EFI_SUCCESS;;
+  UINTN                Instance = 0;
   EFI_PEI_FV_HANDLE    VolumeHandle;
   EFI_PEI_FILE_HANDLE  FileHandle;
 
+  
+  mde_6_edkii_vga_sprintf(9, "FindDxeCore-9a-%x",
+    0//0
+  );
+  mn_6_delay_s(2);
+
   Instance = 0;
   while (TRUE) {
+    mde_6_edkii_vga_sprintf(9, "FindDxeCore-9b-%x-%x",
+      Status, //0  //8000000e
+      Instance//0  //1
+    );
+    mn_6_delay_s(2);
+
     //
     // Traverse all firmware volume instances
     //
     Status = PeiServicesFfsFindNextVolume (Instance, &VolumeHandle);
+      
+    mde_6_edkii_vga_sprintf(9, "FindDxeCore-9c-%x-%x",
+      Status, //0  //0
+      Instance//0  //1
+    );
+    mn_6_delay_s(2);
+
     //
     // If some error occurs here, then we cannot find any firmware
     // volume that may contain DxeCore.
@@ -496,6 +993,13 @@ DxeIplFindDxeCore (
     //
     FileHandle = NULL;
     Status     = PeiServicesFfsFindNextFile (EFI_FV_FILETYPE_DXE_CORE, VolumeHandle, &FileHandle);
+    
+    mde_6_edkii_vga_sprintf(9, "FindDxeCore-9d-%x-%x",
+      Status,//8000000e // 0
+      Instance//0       // 1
+    );
+    mn_6_delay_s(2);
+
     if (!EFI_ERROR (Status)) {
       //
       // Find DxeCore FileHandle in this volume, then we skip other firmware volume and
@@ -510,6 +1014,11 @@ DxeIplFindDxeCore (
     Instance++;
   }
 
+  
+    mde_6_edkii_vga_sprintf(10, "FindDxeCore-10a-%x",
+      0
+    );
+    mn_6_delay_s(2);
   //
   // DxeCore cannot find in any firmware volume.
   //
@@ -582,7 +1091,7 @@ CustomGuidedSectionExtract (
   OUT       UINT32                                 *AuthenticationStatus
   )
 {
-  EFI_STATUS  Status;
+  EFI_STATUS  Status = EFI_SUCCESS;;
   UINT8       *ScratchBuffer;
   UINT32      ScratchBufferSize;
   UINT32      OutputBufferSize;
