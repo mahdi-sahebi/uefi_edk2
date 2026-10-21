@@ -461,9 +461,11 @@ UefiMain (
     // Now initialize the shell library (it requires Shell Parameters protocol)
     //
     Status = ShellInitialize ();
+    DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] Shell initialize status=%r\n", Status));
     ASSERT_EFI_ERROR (Status);
 
     Status = CommandInit ();
+    DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] Shell commands status=%r\n", Status));
     ASSERT_EFI_ERROR (Status);
 
     Status = ShellInitEnvVarList ();

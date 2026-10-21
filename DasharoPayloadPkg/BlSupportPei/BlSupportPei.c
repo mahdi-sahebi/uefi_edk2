@@ -1478,6 +1478,8 @@ BlPeiEntryPoint (
   // while (1) {
   //   // i = 20;
   // }
+  DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] BlSupportPei complete acpi_hob=%p smmstore_hob=%p\n",
+    GetFirstGuidHob (&gUefiAcpiBoardInfoGuid), GetFirstGuidHob (&gEfiSmmStoreInfoHobGuid)));
   return EFI_SUCCESS;
 }
 

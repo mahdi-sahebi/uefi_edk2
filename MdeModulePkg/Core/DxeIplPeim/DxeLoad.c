@@ -296,6 +296,7 @@ PeimInitializeDxeIpl (
   EFI_BOOT_MODE  BootMode = 0;
   VOID           *Dummy;
 
+  DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] DXE IPL PEIM entry file=%p\n", FileHandle));
   mde_6_edkii_vga_clear();
   mde_6_edkii_vga_sprintf(0, "DxeIpla-%x",
     0//0
@@ -581,6 +582,8 @@ DxeLoadCore (
   EDKII_PEI_CAPSULE_ON_DISK_PPI    *PeiCapsuleOnDisk;
   EFI_MEMORY_TYPE_INFORMATION      MemoryData[EfiMaxMemoryType + 1];
   VOID                             *CapsuleOnDiskModePpi;
+
+  DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] DXE IPL load core entry hob=%p\n", HobList.Raw));
 
   mde_6_edkii_vga_clear();
   mde_6_edkii_vga_sprintf(0, "DxeLoadCorea-%x-%x-%x-%x-%x-%x",

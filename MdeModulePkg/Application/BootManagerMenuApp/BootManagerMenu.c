@@ -756,7 +756,11 @@ BootFromSelectOption (
     }
 
     if (ItemNum++ == SelectItem) {
+      DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] Boot menu launch option=%04x name=%s\n",
+        BootOptions[Index].OptionNumber, BootOptions[Index].Description));
       EfiBootManagerBoot (&BootOptions[Index]);
+      DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] Boot menu option returned status=%r\n",
+        BootOptions[Index].Status));
       break;
     }
   }
@@ -1042,6 +1046,8 @@ BootManagerMenuEntry (
   EfiBootManagerRefreshAllBootOption ();
 
   BootOption = EfiBootManagerGetLoadOptions (&BootOptionCount, LoadOptionTypeBoot);
+  DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] Boot menu options=%u ConIn=%p ConOut=%p\n",
+    BootOptionCount, gST->ConIn, gST->ConOut));
 
   if (!mModeInitialized) {
     //
@@ -1108,6 +1114,7 @@ BootManagerMenuEntry (
   // According to boot menu data to draw boot popup menu
   //
   DrawBootPopupMenu (&BootMenuData);
+  DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] Boot menu ready options=%u\n", BootMenuData.ItemCount));
 
   //
   // check user input to determine want to re-draw or boot from user selected item

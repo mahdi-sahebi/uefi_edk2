@@ -409,6 +409,12 @@ DelayedDispatchDispatcher (
   DELAYED_DISPATCH_ENTRY  *Entry;
   EFI_STATUS              Status;
 
+  // No timer is needed until a delayed entry exists. Early PEI has not yet
+  // published the ACPI board information HOB used by TimerLib.
+  if (DelayedDispatchTable->Count == 0) {
+    return FALSE;
+  }
+
   mde_2_edkii_vga_sprintf(12, "DelayedDis-%X,%X",
     DelayedDispatchTable,
     DelayedGroupId
