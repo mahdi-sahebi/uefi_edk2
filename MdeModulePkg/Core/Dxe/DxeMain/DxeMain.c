@@ -8,7 +8,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 #include "DxeMain.h"
 #include <Library/TimerLib.h>
-VOID EFIAPI SecSerialPortConfigure (IN UINT32 BootloaderParameter);
+#include <Library/SerialPortLib.h>
 
 #define GX_DXE_VGA_FB       0xB8000
 #define GX_DXE_VGA_COLUMNS  80
@@ -35,6 +35,25 @@ GxDxeCheckpoint (
   }
   DEBUG ((DEBUG_ERROR, "[GX-DXE] seq=%u %a\n", Sequence, Message));
   MicroSecondDelay (500000);
+}
+
+STATIC
+VOID
+GxDxeTraceStatus (
+  IN CONST CHAR8  *Stage,
+  IN EFI_STATUS   Status
+  )
+{
+  DEBUG ((DEBUG_ERROR, "[GX-DXE] %a status=%r\n", Stage, Status));
+}
+
+STATIC
+VOID
+GxDxeTrace (
+  IN CONST CHAR8  *Stage
+  )
+{
+  DEBUG ((DEBUG_ERROR, "[GX-DXE] %a\n", Stage));
 }
 
 //
@@ -275,7 +294,9 @@ DxeMain (
   EFI_VECTOR_HANDOFF_INFO       *VectorInfo;
   VOID                          *EntryPoint;
 
-  SecSerialPortConfigure (0);
+  // DXE Core has its own SerialPortLib instance. Use the build-selected SOL
+  // port instead of rescanning low memory for a potentially stale CB table.
+  SerialPortWrite ((UINT8 *)"[GX-DXE] serial entry\r\n", sizeof ("[GX-DXE] serial entry\r\n") - 1);
   GxDxeCheckpoint (0, "DxeCore entry");
 
   //
@@ -314,32 +335,37 @@ DxeMain (
   // Start the Handle Services.
   //
   Status = CoreInitializeHandleServices ();
-  GxDxeCheckpoint (1, "Handle services initialized");
+  GxDxeTraceStatus ("handle services", Status);
+  GxDxeCheckpoint (1, EFI_ERROR (Status) ? "Handle services FAILED" : "Handle services initialized");
   ASSERT_EFI_ERROR (Status);
 
   //
   // Start the Image Services.
   //
   Status = CoreInitializeImageServices (HobStart);
-  GxDxeCheckpoint (2, "Image services initialized");
+  GxDxeTraceStatus ("image services", Status);
+  GxDxeCheckpoint (2, EFI_ERROR (Status) ? "Image services FAILED" : "Image services initialized");
   ASSERT_EFI_ERROR (Status);
 
   //
   // Initialize the Global Coherency Domain Services
   //
   Status = CoreInitializeGcdServices (&HobStart, MemoryBaseAddress, MemoryLength);
-  GxDxeCheckpoint (3, "GCD services initialized");
+  GxDxeTraceStatus ("GCD services", Status);
+  GxDxeCheckpoint (3, EFI_ERROR (Status) ? "GCD services FAILED" : "GCD services initialized");
   ASSERT_EFI_ERROR (Status);
 
   //
   // Allocate the EFI System Table and EFI Runtime Service Table from EfiRuntimeServicesData
   // Use the templates to initialize the contents of the EFI System Table and EFI Runtime Services Table
   //
+  GxDxeTrace ("runtime tables begin");
   gDxeCoreST = AllocateRuntimeCopyPool (sizeof (EFI_SYSTEM_TABLE), &mEfiSystemTableTemplate);
   ASSERT (gDxeCoreST != NULL);
 
   gDxeCoreRT = AllocateRuntimeCopyPool (sizeof (EFI_RUNTIME_SERVICES), &mEfiRuntimeServicesTableTemplate);
   ASSERT (gDxeCoreRT != NULL);
+  GxDxeTrace ("runtime tables allocated");
 
   gDxeCoreST->RuntimeServices = gDxeCoreRT;
 
@@ -351,7 +377,9 @@ DxeMain (
   //
   // Call constructor for all libraries
   //
+  GxDxeTrace ("library constructors begin");
   ProcessLibraryConstructorList (gDxeCoreImageHandle, gDxeCoreST);
+  GxDxeTrace ("library constructors complete");
   PERF_CROSSMODULE_END ("PEI");
   PERF_CROSSMODULE_BEGIN ("DXE");
 
@@ -383,23 +411,27 @@ DxeMain (
   ImageContext.Handle    = (VOID *)(UINTN)gDxeCoreLoadedImage->ImageBase;
   ImageContext.ImageRead = PeCoffLoaderImageReadFromMemory;
   PeCoffLoaderRelocateImageExtraAction (&ImageContext);
+  GxDxeTrace ("PE/COFF image action complete");
 
   //
   // Install the DXE Services Table into the EFI System Tables's Configuration Table
   //
   Status = CoreInstallConfigurationTable (&gEfiDxeServicesTableGuid, gDxeCoreDS);
+  GxDxeTraceStatus ("DXE services table", Status);
   ASSERT_EFI_ERROR (Status);
 
   //
   // Install the HOB List into the EFI System Tables's Configuration Table
   //
   Status = CoreInstallConfigurationTable (&gEfiHobListGuid, HobStart);
+  GxDxeTraceStatus ("HOB configuration table", Status);
   ASSERT_EFI_ERROR (Status);
 
   //
   // Install Memory Type Information Table into the EFI System Tables's Configuration Table
   //
   Status = CoreInstallConfigurationTable (&gEfiMemoryTypeInformationGuid, &gMemoryTypeInformation);
+  GxDxeTraceStatus ("memory type table", Status);
   ASSERT_EFI_ERROR (Status);
 
   //
@@ -431,6 +463,7 @@ DxeMain (
     gDxeCoreLoadedImage,
     gDxeCoreImageHandle
     );
+  GxDxeTrace ("debug image table ready");
 
   DEBUG ((DEBUG_INFO | DEBUG_LOAD, "HOBLIST address in DXE = 0x%p\n", HobStart));
 
@@ -491,11 +524,13 @@ DxeMain (
   }
 
   DEBUG_CODE_END ();
+  GxDxeTrace ("HOB scan complete");
 
   //
   // Initialize the Event Services
   //
   Status = CoreInitializeEventServices ();
+  GxDxeTraceStatus ("event services", Status);
   ASSERT_EFI_ERROR (Status);
 
   //
@@ -507,11 +542,13 @@ DxeMain (
 
   CoreInitializeMemoryAttributesTable ();
   CoreInitializeMemoryProtection ();
+  GxDxeTrace ("memory protection ready");
 
   //
   // Get persisted vector hand-off info from GUIDeed HOB again due to HobStart may be updated,
   // and install configuration table
   //
+  GxDxeTrace ("vector handoff begin");
   GuidHob = GetNextGuidHob (&gEfiVectorHandoffInfoPpiGuid, HobStart);
   if (GuidHob != NULL) {
     VectorInfoList = (EFI_VECTOR_HANDOFF_INFO *)(GET_GUID_HOB_DATA (GuidHob));
@@ -525,8 +562,10 @@ DxeMain (
     VectorInfo = AllocateCopyPool (sizeof (EFI_VECTOR_HANDOFF_INFO) * Index, (VOID *)VectorInfoList);
     ASSERT (VectorInfo != NULL);
     Status = CoreInstallConfigurationTable (&gEfiVectorHandoffTableGuid, (VOID *)VectorInfo);
+    GxDxeTraceStatus ("vector handoff table", Status);
     ASSERT_EFI_ERROR (Status);
   }
+  GxDxeTrace ("vector handoff complete");
 
   //
   // Get the Protocols that were passed in from PEI to DXE through GUIDed HOBs
@@ -549,6 +588,7 @@ DxeMain (
              &gEfiDecompress,
              NULL
              );
+  GxDxeTraceStatus ("decompression protocol", Status);
   ASSERT_EFI_ERROR (Status);
 
   //
@@ -557,31 +597,37 @@ DxeMain (
   // Also register for the GUIDs of optional protocols.
   //
   CoreNotifyOnProtocolInstallation ();
+  GxDxeTrace ("architectural protocol notifications ready");
 
   //
   // Produce Firmware Volume Protocols, one for each FV in the HOB list.
   //
   Status = FwVolBlockDriverInit (gDxeCoreImageHandle, gDxeCoreST);
+  GxDxeTraceStatus ("firmware volume block", Status);
   ASSERT_EFI_ERROR (Status);
 
   Status = FwVolDriverInit (gDxeCoreImageHandle, gDxeCoreST);
+  GxDxeTraceStatus ("firmware volume driver", Status);
   ASSERT_EFI_ERROR (Status);
 
   //
   // Produce the Section Extraction Protocol
   //
   Status = InitializeSectionExtraction (gDxeCoreImageHandle, gDxeCoreST);
+  GxDxeTraceStatus ("section extraction", Status);
   ASSERT_EFI_ERROR (Status);
 
   //
   // Initialize the DXE Dispatcher
   //
+  GxDxeTrace ("DXE dispatcher init begin");
   CoreInitializeDispatcher ();
   GxDxeCheckpoint (4, "DXE dispatcher initialized");
 
   //
   // Invoke the DXE Dispatcher
   //
+  GxDxeTrace ("DXE dispatcher run begin");
   CoreDispatcher ();
   GxDxeCheckpoint (5, "DXE dispatcher completed");
 

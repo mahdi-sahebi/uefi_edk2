@@ -359,6 +359,8 @@ UefiMain (
   EFI_SIMPLE_TEXT_INPUT_PROTOCOL  *OldConIn;
   SPLIT_LIST                      *Split;
 
+  DEBUG ((DEBUG_ERROR, "[GX-SHELL] entry\n"));
+
   if (PcdGet8 (PcdShellSupportLevel) > 3) {
     return (EFI_UNSUPPORTED);
   }
@@ -367,6 +369,7 @@ UefiMain (
   // Clear the screen
   //
   Status = gST->ConOut->ClearScreen (gST->ConOut);
+  DEBUG ((DEBUG_ERROR, "[GX-SHELL] clear screen status=%r\n", Status));
   if (EFI_ERROR (Status)) {
     return (Status);
   }

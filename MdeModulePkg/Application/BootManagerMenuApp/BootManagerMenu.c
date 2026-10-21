@@ -1013,6 +1013,8 @@ BootManagerMenuEntry (
   UINTN                            BootTextColumn;
   UINTN                            BootTextRow;
 
+  DEBUG ((DEBUG_ERROR, "[GX-MENU] entry\n"));
+
   //
   // Set Logo status invalid when boot manager menu is launched
   //

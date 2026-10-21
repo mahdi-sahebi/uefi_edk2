@@ -81,6 +81,7 @@
   BaseLib
   UefiLib
   DebugLib
+  SerialPortLib
   DxeCoreEntryPoint
   PeCoffLib
   PeCoffGetEntryPointLib

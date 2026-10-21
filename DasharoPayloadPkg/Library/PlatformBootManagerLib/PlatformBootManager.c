@@ -268,6 +268,8 @@ SyncFvBootOption (
              );
 
   FileExists = !EFI_ERROR (Status);
+  DEBUG ((DEBUG_ERROR, "[GX-BDS] FV option %s present=%d lookup=%r\n",
+    Description, FileExists, Status));
 
   Status = EfiBootManagerInitializeLoadOption (
              &NewOption,
@@ -308,6 +310,8 @@ SyncFvBootOption (
     }
   }
 
+  DEBUG ((DEBUG_ERROR, "[GX-BDS] FV option %s index=%d result=%r\n",
+    Description, OptionIndex, Status));
   ASSERT_EFI_ERROR (Status);
 
   EfiBootManagerFreeLoadOption (&NewOption);
@@ -2170,11 +2174,13 @@ PlatformBootManagerAfterConsole (
   //
   // Register UEFI Shell
   //
+  DEBUG ((DEBUG_ERROR, "[GX-BDS] Shell registration begin\n"));
   DEBUG((DEBUG_INFO, "Registering UEFI Shell boot option\n"));
   SyncFvBootOption (PcdGetPtr (PcdShellFile),
                     L"UEFI Shell",
                     FALSE,
                     FALSE);
+  DEBUG ((DEBUG_ERROR, "[GX-BDS] Shell registration complete\n"));
 
   BootMenuKey = GetKeyStringFromScanCode (FixedPcdGet16(PcdBootMenuKey), L"F12");
   SetupMenuKey = GetKeyStringFromScanCode (FixedPcdGet16(PcdSetupMenuKey), L"ESC");
