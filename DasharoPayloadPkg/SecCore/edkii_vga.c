@@ -39,9 +39,40 @@ void edkii_vga_write_at_offset(unsigned int line, unsigned int offset, const cha
 }
 
 
+static void
+log_vga_row(unsigned int line)
+{
+    volatile const unsigned short *cells;
+    char text[81];
+    unsigned int i;
+
+    if (line >= 25)
+        return;
+    cells = (volatile const unsigned short *)0xB8000 + 80 * line;
+    for (i = 0; i < 80; i++) {
+        unsigned char ch = cells[i] & 0xff;
+        text[i] = ch ? (char)ch : ' ';
+    }
+    while (i > 0 && text[i - 1] == ' ')
+        i--;
+    text[i] = '\0';
+    if (i != 0)
+        DEBUG ((DEBUG_ERROR, "[GX-VGA] row=%u %a\n", line, text));
+}
+
 void edkii_vga_print(unsigned int line, const char *string)
 {
-	edkii_vga_write_at_offset(line, 0, string);
+    unsigned int i;
+
+    edkii_vga_write_at_offset(line, 0, string);
+    if (string == NULL)
+        return;
+    for (i = 0; string[i] != '\0'; i++) {
+        if (string[i] != ' ') {
+            log_vga_row(line);
+            break;
+        }
+    }
 }
 
 void edkii_vga_sprintf(
@@ -143,6 +174,7 @@ void edkii_vga_hex_dump(const unsigned char *addr, unsigned int len, int start_r
             char buf[2] = {c, '\0'};
             edkii_vga_write_at_offset(row, offset_pos + j, buf);
         }
+        log_vga_row(row);
     }
 }
 

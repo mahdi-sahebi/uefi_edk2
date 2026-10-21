@@ -464,6 +464,7 @@ CoreDispatcher (
         // Update the driver state to reflect that it's been loaded
         //
         if (EFI_ERROR (Status)) {
+          DEBUG ((DEBUG_ERROR, "DXE load failed for %g: %r\n", &DriverEntry->FileName, Status));
           CoreAcquireDispatcherLock ();
 
           if (Status == EFI_SECURITY_VIOLATION) {
@@ -515,7 +516,14 @@ CoreDispatcher (
           );
         ASSERT (DriverEntry->ImageHandle != NULL);
 
+        DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] CHECKPOINT DXE driver enter %g\n", &DriverEntry->FileName));
         Status = CoreStartImage (DriverEntry->ImageHandle, NULL, NULL);
+        DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] CHECKPOINT DXE driver returned %g status=%r\n",
+          &DriverEntry->FileName, Status));
+
+        if (EFI_ERROR (Status)) {
+          DEBUG ((DEBUG_ERROR, "DXE start failed for %g: %r\n", &DriverEntry->FileName, Status));
+        }
 
         REPORT_STATUS_CODE_WITH_EXTENDED_DATA (
           EFI_PROGRESS_CODE,

@@ -41,6 +41,7 @@
   #
   # Serial port set up
   #
+  DEFINE SOL_UART_BASE                = 0x3f8
   DEFINE BAUD_RATE                    = 115200
   DEFINE SERIAL_CLOCK_RATE            = 1843200
   DEFINE SERIAL_LINE_CONTROL          = 3 # 8-bits, no parity
@@ -147,12 +148,8 @@
   DEFINE NETWORK_IPXE                   = FALSE
 
 [BuildOptions]
-  *_*_*_CC_FLAGS                 = -D DISABLE_NEW_DEPRECATED_INTERFACES -Wno-stringop-overflow -mno-mmx -mno-sse
-!if $(USE_CBMEM_FOR_CONSOLE) == FALSE
-  GCC:RELEASE_*_*_CC_FLAGS       = -DMDEPKG_NDEBUG
-  INTEL:RELEASE_*_*_CC_FLAGS     = /D MDEPKG_NDEBUG
-  MSFT:RELEASE_*_*_CC_FLAGS      = /D MDEPKG_NDEBUG
-!endif
+  *_*_*_CC_FLAGS                 = -D DISABLE_NEW_DEPRECATED_INTERFACES -Wno-stringop-overflow -mno-mmx -mno-sse -DSEC_UART_DEFAULT_BASE=$(SOL_UART_BASE)
+  # Keep DEBUG_ERROR available in RELEASE; the PCD mask filters serial output.
 
 
 ################################################################################
@@ -404,7 +401,7 @@
 OrderedCollectionLib|MdePkg/Library/BaseOrderedCollectionRedBlackTreeLib/BaseOrderedCollectionRedBlackTreeLib.inf
 
 [LibraryClasses.IA32.SEC]
-  DebugLib|MdePkg/Library/BaseDebugLibNull/BaseDebugLibNull.inf
+  DebugLib|DasharoPayloadPkg/Library/SecDebugLibSerialPort/SecDebugLibSerialPort.inf
   PcdLib|MdePkg/Library/BasePcdLibNull/BasePcdLibNull.inf
   HobLib|MdePkg/Library/PeiHobLib/PeiHobLib.inf
   MemoryAllocationLib|MdePkg/Library/PeiMemoryAllocationLib/PeiMemoryAllocationLib.inf
@@ -413,6 +410,7 @@ OrderedCollectionLib|MdePkg/Library/BaseOrderedCollectionRedBlackTreeLib/BaseOrd
   PerformanceLib|MdeModulePkg/Library/PeiPerformanceLib/PeiPerformanceLib.inf
 
 [LibraryClasses.common.SEC]
+  SerialPortLib|DasharoPayloadPkg/Library/SecSerialPortLib/SecSerialPortLib.inf
 !if $(QEMU_PLATFORM) == TRUE
   TimerLib|OvmfPkg/Library/AcpiTimerLib/BaseRomAcpiTimerLib.inf
 !endif
@@ -439,6 +437,8 @@ OrderedCollectionLib|MdePkg/Library/BaseOrderedCollectionRedBlackTreeLib/BaseOrd
   PerformanceLib|MdeModulePkg/Library/PeiPerformanceLib/PeiPerformanceLib.inf
 
 [LibraryClasses.common.DXE_CORE]
+  DebugLib|MdePkg/Library/BaseDebugLibSerialPort/BaseDebugLibSerialPort.inf
+  SerialPortLib|DasharoPayloadPkg/Library/SecSerialPortLib/SecSerialPortLib.inf
   PcdLib|MdePkg/Library/BasePcdLibNull/BasePcdLibNull.inf
   HobLib|MdePkg/Library/DxeCoreHobLib/DxeCoreHobLib.inf
   MemoryAllocationLib|MdeModulePkg/Library/DxeCoreMemoryAllocationLib/DxeCoreMemoryAllocationLib.inf
@@ -560,14 +560,10 @@ OrderedCollectionLib|MdePkg/Library/BaseOrderedCollectionRedBlackTreeLib/BaseOrd
 !endif
 
 [PcdsPatchableInModule.common]
-!if ($(TARGET) == DEBUG || $(USE_CBMEM_FOR_CONSOLE) == TRUE)
   gEfiMdeModulePkgTokenSpaceGuid.PcdStatusCodeUseSerial|TRUE
-!else
-  gEfiMdeModulePkgTokenSpaceGuid.PcdStatusCodeUseSerial|FALSE
-!endif
   gEfiMdeModulePkgTokenSpaceGuid.PcdStatusCodeUseMemory|FALSE
 
-  gEfiMdePkgTokenSpaceGuid.PcdReportStatusCodePropertyMask|0x7
+  gEfiMdePkgTokenSpaceGuid.PcdReportStatusCodePropertyMask|0x6
   # Keep serial DEBUG output at DEBUG_ERROR so DXE checkpoints remain visible
   # without flooding the port with INFO/DEBUG/LOAD messages.
   gEfiMdePkgTokenSpaceGuid.PcdDebugPrintErrorLevel|0x80000000
@@ -575,13 +571,17 @@ OrderedCollectionLib|MdePkg/Library/BaseOrderedCollectionRedBlackTreeLib/BaseOrd
   !if $(SOURCE_DEBUG_ENABLE)
     gEfiMdePkgTokenSpaceGuid.PcdDebugPropertyMask|0x17
   !else
-    gEfiMdePkgTokenSpaceGuid.PcdDebugPropertyMask|0x2F
+    !if $(TARGET) == DEBUG
+      gEfiMdePkgTokenSpaceGuid.PcdDebugPropertyMask|0x2F
+    !else
+      gEfiMdePkgTokenSpaceGuid.PcdDebugPropertyMask|0x02
+    !endif
   !endif
 !else
   !if $(TARGET) == DEBUG
     gEfiMdePkgTokenSpaceGuid.PcdDebugPropertyMask|0x07
   !else
-    gEfiMdePkgTokenSpaceGuid.PcdDebugPropertyMask|0x03
+    gEfiMdePkgTokenSpaceGuid.PcdDebugPropertyMask|0x02
   !endif
 !endif
 
@@ -594,7 +594,7 @@ OrderedCollectionLib|MdePkg/Library/BaseOrderedCollectionRedBlackTreeLib/BaseOrd
   # The following parameters are set by Library/PlatformHookLib
   #
   gEfiMdeModulePkgTokenSpaceGuid.PcdSerialUseMmio|FALSE
-  gEfiMdeModulePkgTokenSpaceGuid.PcdSerialRegisterBase|0x3f8
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSerialRegisterBase|$(SOL_UART_BASE)
   gEfiMdeModulePkgTokenSpaceGuid.PcdSerialBaudRate|$(BAUD_RATE)
   gEfiMdeModulePkgTokenSpaceGuid.PcdSerialRegisterStride|1
 
@@ -743,7 +743,7 @@ OrderedCollectionLib|MdePkg/Library/BaseOrderedCollectionRedBlackTreeLib/BaseOrd
   SecurityPkg/HddPassword/HddPasswordPei.inf
 !endif
 
-[LibraryClasses.common.DXE_CORE,LibraryClasses.common.DXE_DRIVER,LibraryClasses.common.UEFI_APPLICATION]
+[LibraryClasses.common.DXE_DRIVER,LibraryClasses.common.UEFI_APPLICATION]
   DebugLib|MdeModulePkg/Library/PeiDxeDebugLibReportStatusCode/PeiDxeDebugLibReportStatusCode.inf
 
 [Components.X64]

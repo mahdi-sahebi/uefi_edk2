@@ -48,6 +48,18 @@ SerialStatusCodeReportWorker (
 
   Buffer[0] = '\0';
 
+  // The serial diagnostic channel carries only errors.  A progress or
+  // non-error DEBUG status code must not bypass PcdDebugPrintErrorLevel.
+  if ((Data != NULL) &&
+      ReportStatusCodeExtractDebugInfo (Data, &ErrorLevel, &Marker, &Format))
+  {
+    if ((ErrorLevel & DEBUG_ERROR) == 0) {
+      return EFI_SUCCESS;
+    }
+  } else if ((CodeType & EFI_STATUS_CODE_TYPE_MASK) != EFI_ERROR_CODE) {
+    return EFI_SUCCESS;
+  }
+
   if ((Data != NULL) &&
       ReportStatusCodeExtractAssertInfo (CodeType, Value, Data, &Filename, &Description, &LineNumber))
   {

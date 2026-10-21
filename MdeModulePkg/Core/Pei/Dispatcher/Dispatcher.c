@@ -58,9 +58,40 @@ void mde_2_edkii_vga_write_at_offset(unsigned int line, unsigned int offset, con
 }
 
 
+static void
+log_vga_row(unsigned int line)
+{
+    volatile const unsigned short *cells;
+    char text[81];
+    unsigned int i;
+
+    if (line >= 25)
+        return;
+    cells = (volatile const unsigned short *)0xB8000 + 80 * line;
+    for (i = 0; i < 80; i++) {
+        unsigned char ch = cells[i] & 0xff;
+        text[i] = ch ? (char)ch : ' ';
+    }
+    while (i > 0 && text[i - 1] == ' ')
+        i--;
+    text[i] = '\0';
+    if (i != 0)
+        DEBUG ((DEBUG_ERROR, "[GX-VGA] row=%u %a\n", line, text));
+}
+
 void mde_2_edkii_vga_print(unsigned int line, const char *string)
 {
-	mde_2_edkii_vga_write_at_offset(line, 0, string);
+    unsigned int i;
+
+    mde_2_edkii_vga_write_at_offset(line, 0, string);
+    if (string == NULL)
+        return;
+    for (i = 0; string[i] != '\0'; i++) {
+        if (string[i] != ' ') {
+            log_vga_row(line);
+            break;
+        }
+    }
 }
 
 void mde_2_edkii_vga_sprintf(
@@ -162,6 +193,7 @@ void mde_2_edkii_vga_hex_dump(const unsigned char *addr, unsigned int len, int s
             char buf[2] = {c, '\0'};
             mde_2_edkii_vga_write_at_offset(row, offset_pos + j, buf);
         }
+        log_vga_row(row);
     }
 }
 
@@ -547,6 +579,7 @@ DelayedDispatchDispatcher (
   }
   
   mde_2_edkii_vga_print(20, "End of DelayedDispath");//End of DelayedDispath
+
   
   return Dispatched;
 }
@@ -2222,7 +2255,10 @@ PeiDispatcher (
             PeimEntryPoint = (EFI_PEIM_ENTRY_POINT2)(UINTN)EntryPoint;
 
             PERF_START_IMAGE_BEGIN (PeimFileHandle);
+            DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] CHECKPOINT PEIM enter file=%p entry=%p\n",
+              PeimFileHandle, PeimEntryPoint));
             PeimEntryPoint (PeimFileHandle, (const EFI_PEI_SERVICES **)&Private->Ps);
+            DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] CHECKPOINT PEIM returned file=%p\n", PeimFileHandle));
             PERF_START_IMAGE_END (PeimFileHandle);
           }
 
@@ -2494,7 +2530,10 @@ if (!EFI_ERROR (Status)) {
         DebugFileInfo.FileName.Data3);
 }
 
+                  DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] CHECKPOINT PEIM enter file=%p entry=%p\n",
+                    PeimFileHandle, PeimEntryPoint));
                   PeimEntryPoint (PeimFileHandle, (const EFI_PEI_SERVICES **)PeiServices);
+                  DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] CHECKPOINT PEIM returned file=%p\n", PeimFileHandle));
                   
                   mde_2_edkii_vga_sprintf(15, "End of peim entry-%X",
                     PeimCount
@@ -2623,7 +2662,10 @@ if (!EFI_ERROR (Status)) {
               );
               
               ASSERT (PeimEntryPoint != NULL);
+              DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] CHECKPOINT PEIM enter file=%p entry=%p\n",
+                PeimFileHandle, PeimEntryPoint));
               PeimEntryPoint (PeimFileHandle, (const EFI_PEI_SERVICES **)PeiServices);
+              DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] CHECKPOINT PEIM returned file=%p\n", PeimFileHandle));
               // PERF_END (PeiServices, L"PEIM", PeimFileHandle, 0);
 
               mde_2_edkii_vga_sprintf(19, "19b-%X,%X-%X",

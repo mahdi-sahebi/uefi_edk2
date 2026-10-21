@@ -1,0 +1,21 @@
+## @file
+# Early SEC serial output using the UART described by coreboot.
+##
+
+[Defines]
+  INF_VERSION       = 0x00010005
+  BASE_NAME         = SecSerialPortLib
+  FILE_GUID         = 14F8783E-523A-409F-92A7-211DC059A43B
+  MODULE_TYPE       = BASE
+  VERSION_STRING    = 1.0
+  LIBRARY_CLASS     = SerialPortLib
+
+[Sources]
+  SecSerialPortLib.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  DasharoPayloadPkg/DasharoPayloadPkg.dec
+
+[LibraryClasses]
+  IoLib

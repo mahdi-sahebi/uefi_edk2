@@ -47,9 +47,40 @@ void mde_1_edkii_vga_write_at_offset(unsigned int line, unsigned int offset, con
 }
 
 
+static void
+log_vga_row(unsigned int line)
+{
+    volatile const unsigned short *cells;
+    char text[81];
+    unsigned int i;
+
+    if (line >= 25)
+        return;
+    cells = (volatile const unsigned short *)0xB8000 + 80 * line;
+    for (i = 0; i < 80; i++) {
+        unsigned char ch = cells[i] & 0xff;
+        text[i] = ch ? (char)ch : ' ';
+    }
+    while (i > 0 && text[i - 1] == ' ')
+        i--;
+    text[i] = '\0';
+    if (i != 0)
+        DEBUG ((DEBUG_ERROR, "[GX-VGA] row=%u %a\n", line, text));
+}
+
 void mde_1_edkii_vga_print(unsigned int line, const char *string)
 {
-	mde_1_edkii_vga_write_at_offset(line, 0, string);
+    unsigned int i;
+
+    mde_1_edkii_vga_write_at_offset(line, 0, string);
+    if (string == NULL)
+        return;
+    for (i = 0; string[i] != '\0'; i++) {
+        if (string[i] != ' ') {
+            log_vga_row(line);
+            break;
+        }
+    }
 }
 
 void mde_1_edkii_vga_sprintf(
@@ -151,6 +182,7 @@ void mde_1_edkii_vga_hex_dump(const unsigned char *addr, unsigned int len, int s
             char buf[2] = {c, '\0'};
             mde_1_edkii_vga_write_at_offset(row, offset_pos + j, buf);
         }
+        log_vga_row(row);
     }
 }
 
@@ -697,6 +729,7 @@ PeiCore (
   // Initialize libraries that the PEI Core is linked against
   //
   ProcessLibraryConstructorList (NULL, (CONST EFI_PEI_SERVICES **)&PrivateData.Ps);
+  DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] CHECKPOINT PEI constructors complete context=%p\n", Data));
 
   
   mde_1_edkii_vga_sprintf(19, "[%d]d-Ps:%X, SC:%X, OD:%X", 

@@ -473,6 +473,47 @@ SerialPortWritable (
   return TRUE;
 }
 
+// A diagnostic UART must not prevent boot when it stops responding.
+// This is a polling budget, not a wall-clock timeout; early PEI has no timer service.
+#define SERIAL_TX_POLL_LIMIT  1000000
+
+STATIC
+BOOLEAN
+SerialPortWaitForTransmit (
+  IN UINTN  Base
+  )
+{
+  UINTN  Retry;
+  UINT8  Status;
+
+  for (Retry = 0; Retry < SERIAL_TX_POLL_LIMIT; Retry++) {
+    Status = SerialPortReadRegister (Base, R_UART_LSR);
+    if (Status == 0xFF) {
+      return FALSE;
+    }
+    if ((Status & (B_UART_LSR_TEMT | B_UART_LSR_TXRDY)) == (B_UART_LSR_TEMT | B_UART_LSR_TXRDY)) {
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
+
+STATIC
+BOOLEAN
+SerialPortWaitForFlowControl (
+  IN UINTN  Base
+  )
+{
+  UINTN  Retry;
+
+  for (Retry = 0; Retry < SERIAL_TX_POLL_LIMIT; Retry++) {
+    if (SerialPortWritable (Base)) {
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
+
 /**
   Initialize the serial device hardware.
 
@@ -546,7 +587,8 @@ SerialPortInitialize (
   // Wait for the serial port to be ready.
   // Verify that both the transmit FIFO and the shift register are empty.
   //
-  while ((SerialPortReadRegister (SerialRegisterBase, R_UART_LSR) & (B_UART_LSR_TEMT | B_UART_LSR_TXRDY)) != (B_UART_LSR_TEMT | B_UART_LSR_TXRDY)) {
+  if (!SerialPortWaitForTransmit (SerialRegisterBase)) {
+    return RETURN_DEVICE_ERROR;
   }
 
   //
@@ -630,13 +672,15 @@ SerialPortWrite (
     //
     // Wait for both the transmit FIFO and shift register empty.
     //
-    while ((SerialPortReadRegister (SerialRegisterBase, R_UART_LSR) & (B_UART_LSR_TEMT | B_UART_LSR_TXRDY)) != (B_UART_LSR_TEMT | B_UART_LSR_TXRDY)) {
+    if (!SerialPortWaitForTransmit (SerialRegisterBase)) {
+      return 0;
     }
 
     //
     // Wait for the hardware flow control signal
     //
-    while (!SerialPortWritable (SerialRegisterBase)) {
+    if (!SerialPortWaitForFlowControl (SerialRegisterBase)) {
+      return 0;
     }
 
     return 0;
@@ -660,7 +704,8 @@ SerialPortWrite (
     // Wait for the serial port to be ready, to make sure both the transmit FIFO
     // and shift register empty.
     //
-    while ((SerialPortReadRegister (SerialRegisterBase, R_UART_LSR) & (B_UART_LSR_TEMT | B_UART_LSR_TXRDY)) != (B_UART_LSR_TEMT | B_UART_LSR_TXRDY)) {
+    if (!SerialPortWaitForTransmit (SerialRegisterBase)) {
+      return Result - NumberOfBytes;
     }
 
     //
@@ -670,7 +715,8 @@ SerialPortWrite (
       //
       // Wait for the hardware flow control signal
       //
-      while (!SerialPortWritable (SerialRegisterBase)) {
+      if (!SerialPortWaitForFlowControl (SerialRegisterBase)) {
+        return Result - NumberOfBytes;
       }
 
       //

@@ -75,9 +75,40 @@ void mde_6_edkii_vga_write_at_offset(unsigned int line, unsigned int offset, con
 }
 
 
+static void
+log_vga_row(unsigned int line)
+{
+    volatile const unsigned short *cells;
+    char text[81];
+    unsigned int i;
+
+    if (line >= 25)
+        return;
+    cells = (volatile const unsigned short *)0xB8000 + 80 * line;
+    for (i = 0; i < 80; i++) {
+        unsigned char ch = cells[i] & 0xff;
+        text[i] = ch ? (char)ch : ' ';
+    }
+    while (i > 0 && text[i - 1] == ' ')
+        i--;
+    text[i] = '\0';
+    if (i != 0)
+        DEBUG ((DEBUG_ERROR, "[GX-VGA] row=%u %a\n", line, text));
+}
+
 void mde_6_edkii_vga_print(unsigned int line, const char *string)
 {
-	mde_6_edkii_vga_write_at_offset(line, 0, string);
+    unsigned int i;
+
+    mde_6_edkii_vga_write_at_offset(line, 0, string);
+    if (string == NULL)
+        return;
+    for (i = 0; string[i] != '\0'; i++) {
+        if (string[i] != ' ') {
+            log_vga_row(line);
+            break;
+        }
+    }
 }
 
 void mde_6_edkii_vga_sprintf(
@@ -92,7 +123,7 @@ void mde_6_edkii_vga_sprintf(
   VA_END (marker);
   
   mde_6_edkii_vga_print (row, mde_6_g_buffer);
-  DEBUG ((DEBUG_ERROR, "[DXE-VGA] row=%u %a\n", row, mde_6_g_buffer));
+
   MicroSecondDelay (500000);
 }
 
@@ -128,9 +159,6 @@ void mde_6_edkii_vga_clear()
 void mde_6_edkii_vga_hex_dump(const unsigned char *addr, unsigned int len, int start_row) 
 {
     unsigned int i;
-
-    DEBUG ((DEBUG_ERROR, "[DXE-VGA] hex-dump addr=%p len=%u start-row=%d\n",
-      addr, len, start_row));
     
     for (i = 0; i < len; i += 16) {
         unsigned int j;
@@ -184,6 +212,7 @@ void mde_6_edkii_vga_hex_dump(const unsigned char *addr, unsigned int len, int s
             char buf[2] = {c, '\0'};
             mde_6_edkii_vga_write_at_offset(row, offset_pos + j, buf);
         }
+        log_vga_row(row);
     }
     MicroSecondDelay (500000);
 }
@@ -916,7 +945,10 @@ DxeLoadCore (
   // Transfer control to the DXE Core
   // The hand off state is simply a pointer to the HOB list
   //
+  DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] CHECKPOINT DXE IPL -> DXE entry=0x%lx hob=%p\n",
+    DxeCoreEntryPoint, HobList.Raw));
   HandOffToDxeCore (DxeCoreEntryPoint, HobList);
+  DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] ERROR DXE Core returned to DXE IPL\n"));
   
   mde_6_edkii_vga_sprintf(8, "8d-%x-%x-%x-%x",
     Status,

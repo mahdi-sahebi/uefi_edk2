@@ -11,6 +11,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 //////////////////////////// mahdi
 #include "edkii_vga.h"
+VOID EFIAPI SecSerialPortConfigure (IN UINT32 BootloaderParameter);
 #include <Library/TimerLib.h>
 /////////////////////////////////
 
@@ -73,8 +74,11 @@ SecStartup (
   )
 {
   //////////////////////////// mahdi
+  SecSerialPortConfigure (BootloaderParameter);
   edkii_vga_clear();
   edkii_vga_print(0, "EDK II Started ");
+  DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] CHECKPOINT SEC entry arg=0x%x fv=%p stack=0x%x+0x%x\n",
+    BootloaderParameter, BootFirmwareVolume, TempRamBase, SizeOfRam));
   ///////////////////////////
 // MicroSecondDelay (5000000);
   EFI_SEC_PEI_HAND_OFF        SecCoreData;
@@ -123,7 +127,9 @@ SecStartup (
   // Process all libraries constructor function linked to SecCore.
   //
   // //edkii_vga_print(0, "EDK II Started - 1");
+  DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] CHECKPOINT SEC constructors begin\n"));
   ProcessLibraryConstructorList ();
+  DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] CHECKPOINT SEC constructors complete\n"));
 
   //
   // Initialize floating point operating environment
@@ -229,6 +235,7 @@ SecStartupPhase2(
   if (PeiCoreEntryPoint == NULL)
   {
     // edkii_vga_print(0, "SePh2 - PeiCoreEntryPoint is NULL");
+    DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] ERROR SEC could not find PEI Core\n"));
     CpuDeadLoop ();
   }
 
@@ -244,7 +251,10 @@ SecStartupPhase2(
 
   // MicroSecondDelay(5000000);
   // ASSERT (PeiCoreEntryPoint != NULL);
+  DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] CHECKPOINT SEC -> PEI entry=%p handoff=%p\n",
+    PeiCoreEntryPoint, SecCoreData));
   (*PeiCoreEntryPoint) (SecCoreData, (EFI_PEI_PPI_DESCRIPTOR *)&mPeiSecPlatformInformationPpi);
+  DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] ERROR PEI Core returned to SEC\n"));
   edkii_vga_sprintf(10, "SPb-%x-%x-%x,%x-%x-%x",
     SecCoreData,
     SecCoreData->BootFirmwareVolumeBase, 
