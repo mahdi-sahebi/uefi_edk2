@@ -1254,6 +1254,7 @@ WarnIfRecoveryBoot (
 
 
 
+#ifdef PLATFORM_TPM_ENABLED
 typedef struct {
   TPM_ALG_ID AlgId;
   CHAR16    *Name;
@@ -1413,6 +1414,8 @@ WarnIfSinglePCRBank (
   DrainInput();
   BootLogoEnableLogo();
 }
+
+#endif // PLATFORM_TPM_ENABLED
 
 STATIC
 VOID
@@ -2066,7 +2069,9 @@ PlatformBootManagerAfterConsole (
     }
   }
 
+#ifdef PLATFORM_TPM_ENABLED
   WarnIfSinglePCRBank ();
+#endif
   WarnIfBatteryLow ();
   WarnIfRecoveryBoot ();
   WarnIfFirmwareUpdateMode ();
@@ -2124,10 +2129,12 @@ PlatformBootManagerAfterConsole (
   }
 
   //
-  // Process TPM PPI request
+  // Process TPM PPI request only when TPM support is built in.
   //
+#ifdef PLATFORM_TPM_ENABLED
   Tcg2PhysicalPresenceLibProcessRequest (NULL);
   TcgPhysicalPresenceLibProcessRequest ();
+#endif
 
   SaveSMBIOSFields();
 

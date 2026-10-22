@@ -148,7 +148,11 @@
   DEFINE NETWORK_IPXE                   = FALSE
 
 [BuildOptions]
+!if $(TPM_ENABLE) == TRUE
+  *_*_*_CC_FLAGS                 = -D DISABLE_NEW_DEPRECATED_INTERFACES -Wno-stringop-overflow -mno-mmx -mno-sse -DSEC_UART_DEFAULT_BASE=$(SOL_UART_BASE) -DPLATFORM_TPM_ENABLED
+!else
   *_*_*_CC_FLAGS                 = -D DISABLE_NEW_DEPRECATED_INTERFACES -Wno-stringop-overflow -mno-mmx -mno-sse -DSEC_UART_DEFAULT_BASE=$(SOL_UART_BASE)
+!endif
   # Keep DEBUG_ERROR available in RELEASE; the PCD mask filters serial output.
 
 

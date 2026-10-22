@@ -245,6 +245,7 @@ SmmStorePeiInitialize (
 
 
 
+  ZeroMem (&SmmStoreInfo, sizeof (SmmStoreInfo));
   Status = ParseSMMSTOREInfo (&SmmStoreInfo);
   
   mde_5_edkii_vga_sprintf(0, "SMM-%x-%x-%x-%x,-%x-%x-%x",
@@ -264,6 +265,16 @@ SmmStorePeiInitialize (
       Status
       ));
     return Status;
+  }
+
+  if ((SmmStoreInfo.MmioAddress == 0) ||
+      (SmmStoreInfo.BlockSize == 0) ||
+      (SmmStoreInfo.NumBlocks < 4) ||
+      (SmmStoreInfo.NumBlocks > MAX_UINT32 / SmmStoreInfo.BlockSize) ||
+      (SmmStoreInfo.MmioAddress > MAX_UINT32 - SmmStoreInfo.NumBlocks * SmmStoreInfo.BlockSize)) {
+    DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] SMMSTORE invalid geometry base=0x%lx blocks=%u block_size=0x%x\n",
+      SmmStoreInfo.MmioAddress, SmmStoreInfo.NumBlocks, SmmStoreInfo.BlockSize));
+    return EFI_INVALID_PARAMETER;
   }
 
   NvStorageSize = SmmStoreInfo.NumBlocks * SmmStoreInfo.BlockSize;
@@ -324,7 +335,15 @@ SmmStorePeiInitialize (
     VariableFlashInfo.FtwWorkingLength
   );
 
-  BuildGuidDataHob (&gVariableFlashInfoHobGuid, &VariableFlashInfo, sizeof (VariableFlashInfo));
+  if (BuildGuidDataHob (&gVariableFlashInfoHobGuid, &VariableFlashInfo,
+        sizeof (VariableFlashInfo)) == NULL) {
+    DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] SMMSTORE flash-info HOB allocation failed\n"));
+    return EFI_OUT_OF_RESOURCES;
+  }
+
+  DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] SMMSTORE flash-info HOB ready base=0x%x size=0x%x working=0x%x spare=0x%x\n",
+    NvStorageBase, NvStorageSize, VariableFlashInfo.FtwWorkingBaseAddress,
+    VariableFlashInfo.FtwSpareBaseAddress));
   
   
   mde_5_edkii_vga_sprintf(2, "2b-%x-%x-%x-%x,%x,%x",

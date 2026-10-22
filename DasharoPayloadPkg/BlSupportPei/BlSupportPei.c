@@ -610,10 +610,22 @@ ValidateFvHeader (
   UINT32                      FtwSpareSize;
 
 
+  if ((SmmStoreInfo == NULL) || (SmmStoreInfo->MmioAddress == 0) ||
+      (SmmStoreInfo->BlockSize == 0) || (SmmStoreInfo->NumBlocks < 4) ||
+      (SmmStoreInfo->NumBlocks > MAX_UINT32 / SmmStoreInfo->BlockSize) ||
+      (SmmStoreInfo->MmioAddress > MAX_UINT32 -
+       SmmStoreInfo->NumBlocks * SmmStoreInfo->BlockSize)) {
+    return EFI_INVALID_PARAMETER;
+  }
+
   NvStorageSize = SmmStoreInfo->NumBlocks * SmmStoreInfo->BlockSize;
   FtwSpareSize   = (SmmStoreInfo->NumBlocks / 2) * SmmStoreInfo->BlockSize;
   FtwWorkingSize = SmmStoreInfo->BlockSize;
   NvVariableSize = NvStorageSize - FtwSpareSize - FtwWorkingSize;
+  if (NvVariableSize < sizeof (EFI_FIRMWARE_VOLUME_HEADER) +
+      sizeof (VARIABLE_STORE_HEADER)) {
+    return EFI_INVALID_PARAMETER;
+  }
 
   FwVolHeader        = (EFI_FIRMWARE_VOLUME_HEADER *)(UINTN)SmmStoreInfo->MmioAddress;
   if (!FwVolHeader) {
@@ -638,6 +650,13 @@ ValidateFvHeader (
       "%a: No Firmware Volume header present\n",
       __FUNCTION__
       ));
+    return EFI_NOT_FOUND;
+  }
+
+  if ((FwVolHeader->HeaderLength < sizeof (EFI_FIRMWARE_VOLUME_HEADER)) ||
+      (FwVolHeader->HeaderLength > NvVariableSize - sizeof (VARIABLE_STORE_HEADER))) {
+    DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] BlSupportPei invalid variable FV header length=0x%x\n",
+      FwVolHeader->HeaderLength));
     return EFI_NOT_FOUND;
   }
 
@@ -1086,7 +1105,10 @@ BlPeiEntryPoint (
 
   if (!EFI_ERROR (Status)) {
     NewGfxInfo = BuildGuidHob (&gEfiGraphicsInfoHobGuid, sizeof (GfxInfo));
-    ASSERT (NewGfxInfo != NULL);
+    if (NewGfxInfo == NULL) {
+      DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] BlSupportPei graphics HOB allocation failed\n"));
+      return EFI_OUT_OF_RESOURCES;
+    }
     CopyMem (NewGfxInfo, &GfxInfo, sizeof (GfxInfo));
     DEBUG ((DEBUG_INFO, "Created graphics info hob\n"));
   }
@@ -1095,7 +1117,11 @@ BlPeiEntryPoint (
   Status = ParseGfxDeviceInfo (&GfxDeviceInfo);
   if (!EFI_ERROR (Status)) {
     NewGfxDeviceInfo = BuildGuidHob (&gEfiGraphicsDeviceInfoHobGuid, sizeof (GfxDeviceInfo));
-    
+    if (NewGfxDeviceInfo == NULL) {
+      DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] BlSupportPei graphics-device HOB allocation failed\n"));
+      return EFI_OUT_OF_RESOURCES;
+    }
+
     mde_3_edkii_vga_sprintf(3, "a-%x-%x-%x-%x,-%x-%x-%x-%x-%x",
       gEfiGraphicsDeviceInfoHobGuid.Data1,
       gEfiGraphicsDeviceInfoHobGuid.Data2,
@@ -1128,6 +1154,7 @@ BlPeiEntryPoint (
   //
   // Create guid hob for SMMSTORE
   //
+  ZeroMem (&SMMSTOREInfo, sizeof (SMMSTOREInfo));
   Status = ParseSMMSTOREInfo (&SMMSTOREInfo);
 
   mde_3_edkii_vga_sprintf(4, "a-%x-%x-%x-%x-%x-%x-%x",
@@ -1141,7 +1168,21 @@ BlPeiEntryPoint (
   );
   
   if (!EFI_ERROR (Status)) {
+    if ((SMMSTOREInfo.MmioAddress == 0) ||
+        (SMMSTOREInfo.BlockSize == 0) ||
+        (SMMSTOREInfo.NumBlocks < 4) ||
+        (SMMSTOREInfo.NumBlocks > MAX_UINT32 / SMMSTOREInfo.BlockSize) ||
+        (SMMSTOREInfo.MmioAddress > MAX_UINT32 -
+         SMMSTOREInfo.NumBlocks * SMMSTOREInfo.BlockSize)) {
+      DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] BlSupportPei invalid SMMSTORE geometry base=0x%lx blocks=%u block_size=0x%x\n",
+        SMMSTOREInfo.MmioAddress, SMMSTOREInfo.NumBlocks, SMMSTOREInfo.BlockSize));
+      return EFI_INVALID_PARAMETER;
+    }
     NewSMMSTOREInfo = BuildGuidHob (&gEfiSmmStoreInfoHobGuid, sizeof (SMMSTOREInfo));
+    if (NewSMMSTOREInfo == NULL) {
+      DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] BlSupportPei SMMSTORE HOB allocation failed\n"));
+      return EFI_OUT_OF_RESOURCES;
+    }
     
     mde_3_edkii_vga_sprintf(5, "a-%x-%x,%x-%x-%x-%x-%x-%x",
       gEfiSmmStoreInfoHobGuid.Data1,
