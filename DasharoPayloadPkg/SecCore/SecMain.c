@@ -223,7 +223,14 @@ SecStartupPhase2(
   // Find Pei Core entry point. It will report SEC and Pei Core debug information if remote debug
   // is enabled.
   //
+  DEBUG ((DEBUG_ERROR, "[GX-SEC] find PEI begin fv=%p size=0x%lx temp=%p+0x%lx stack=%p+0x%lx\n",
+    SecCoreData->BootFirmwareVolumeBase, (UINT64)SecCoreData->BootFirmwareVolumeSize,
+    SecCoreData->TemporaryRamBase, (UINT64)SecCoreData->TemporaryRamSize,
+    SecCoreData->StackBase, (UINT64)SecCoreData->StackSize));
+  edkii_vga_print (1, "SEC find PEI begin");
   FindAndReportEntryPoints ((EFI_FIRMWARE_VOLUME_HEADER *) SecCoreData->BootFirmwareVolumeBase, &PeiCoreEntryPoint);
+  DEBUG ((DEBUG_ERROR, "[GX-SEC] find PEI returned entry=%p\n", PeiCoreEntryPoint));
+  edkii_vga_print (1, "SEC find PEI returned");
   edkii_vga_sprintf(9, "SPa-%x-%x-%x,%x-%x-%x",
     SecCoreData,
     SecCoreData->BootFirmwareVolumeBase, 
@@ -344,6 +351,8 @@ SecTemporaryRamSupport (
   //
   // Migrate Heap
   //
+  DEBUG ((DEBUG_ERROR, "[GX-SEC] migrate begin old=0x%lx new=0x%lx size=0x%lx\n",
+    TemporaryMemoryBase, PermanentMemoryBase, (UINT64)CopySize));
   CopyMem (NewHeap, OldHeap, CopySize - PeiStackSize);
 
   //
@@ -380,6 +389,7 @@ SecTemporaryRamSupport (
     (UINT32) (UINTN) NewStack
     );
 
+  DEBUG ((DEBUG_ERROR, "[GX-SEC] migrate returned\n"));
   SaveAndSetDebugTimerInterrupt (OldStatus);
 
   return EFI_SUCCESS;

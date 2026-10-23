@@ -2284,6 +2284,9 @@ CoreInitializeMemoryServices (
   // Cache the PHIT HOB for later use
   //
   PhitHob = Hob.HandoffInformationTable;
+  DEBUG ((DEBUG_ERROR, "[GX-MEM] PHIT memory=0x%lx..0x%lx free=0x%lx..0x%lx end_hob=0x%lx\n",
+    PhitHob->EfiMemoryBottom, PhitHob->EfiMemoryTop,
+    PhitHob->EfiFreeMemoryBottom, PhitHob->EfiFreeMemoryTop, PhitHob->EfiEndOfHobList));
 
   if (PcdGet64 (PcdLoadModuleAtFixAddressEnable) != 0) {
     ReservedCodePageNumber  = PcdGet32 (PcdLoadFixAddressRuntimeCodePageNumber);
@@ -2512,7 +2515,8 @@ CoreInitializeMemoryServices (
   }
 
   DEBUG ((DEBUG_INFO, "CoreInitializeMemoryServices:\n"));
-  DEBUG ((DEBUG_INFO, "  BaseAddress - 0x%lx Length - 0x%lx MinimalMemorySizeNeeded - 0x%lx\n", BaseAddress, Length, MinimalMemorySizeNeeded));
+  DEBUG ((DEBUG_ERROR, "[GX-MEM] DXE selected base=0x%lx size=0x%lx minimum=0x%lx\n",
+    BaseAddress, Length, MinimalMemorySizeNeeded));
 
   //
   // If no memory regions are found that are big enough to initialize the DXE core, then ASSERT().

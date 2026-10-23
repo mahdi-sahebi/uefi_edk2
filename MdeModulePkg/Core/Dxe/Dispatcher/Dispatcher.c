@@ -32,6 +32,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 **/
 
 #include "DxeMain.h"
+#include <Library/PrintLib.h>
 
 //
 // The Driver List contains one copy of every driver that has been discovered.
@@ -407,6 +408,7 @@ CoreDispatcher (
   EFI_CORE_DRIVER_ENTRY  *DriverEntry;
   BOOLEAN                ReadyToRun;
   EFI_EVENT              DxeDispatchEvent;
+  CHAR8                  DriverMessage[80];
 
   PERF_FUNCTION_BEGIN ();
 
@@ -526,7 +528,11 @@ CoreDispatcher (
         ASSERT (DriverEntry->ImageHandle != NULL);
 
         DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] CHECKPOINT DXE driver enter %g\n", &DriverEntry->FileName));
+        AsciiSPrint (DriverMessage, sizeof (DriverMessage), "DXE start %g", &DriverEntry->FileName);
+        GxDxeCheckpoint (13, DriverMessage);
         Status = CoreStartImage (DriverEntry->ImageHandle, NULL, NULL);
+        AsciiSPrint (DriverMessage, sizeof (DriverMessage), "DXE return %g %r", &DriverEntry->FileName, Status);
+        GxDxeCheckpoint (13, DriverMessage);
         DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] CHECKPOINT DXE driver returned %g status=%r\n",
           &DriverEntry->FileName, Status));
 
@@ -589,6 +595,16 @@ CoreDispatcher (
   // Close DXE dispatch Event
   //
   CoreCloseEvent (DxeDispatchEvent);
+
+  // Report undispatched images once per completed dispatcher invocation.
+  for (Link = mDiscoveredList.ForwardLink; Link != &mDiscoveredList; Link = Link->ForwardLink) {
+    DriverEntry = CR (Link, EFI_CORE_DRIVER_ENTRY, Link, EFI_CORE_DRIVER_ENTRY_SIGNATURE);
+    if (!DriverEntry->Initialized) {
+      DEBUG ((DEBUG_ERROR, "[GX-DISPATCH] pending %g dependent=%u depex_error=%u unrequested=%u untrusted=%u before=%u after=%u\n",
+        &DriverEntry->FileName, DriverEntry->Dependent, DriverEntry->DepexProtocolError,
+        DriverEntry->Unrequested, DriverEntry->Untrusted, DriverEntry->Before, DriverEntry->After));
+    }
+  }
 
   gDispatcherRunning = FALSE;
   DEBUG ((DEBUG_ERROR, "[GX-DISPATCH] end status=%r\n", ReturnStatus));

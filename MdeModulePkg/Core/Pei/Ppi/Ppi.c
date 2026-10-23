@@ -971,6 +971,7 @@ ProcessNotify (
   EFI_GUID                   *SearchGuid;
   EFI_GUID                   *CheckGuid;
   EFI_PEI_NOTIFY_DESCRIPTOR  *NotifyDescriptor;
+  EFI_STATUS                 NotifyStatus;
 
   for (Index1 = NotifyStartIndex; Index1 < NotifyStopIndex; Index1++) {
     if (NotifyType == EFI_PEI_PPI_DESCRIPTOR_NOTIFY_CALLBACK) {
@@ -999,11 +1000,15 @@ ProcessNotify (
           SearchGuid,
           NotifyDescriptor->Notify
           ));
-        NotifyDescriptor->Notify (
+        DEBUG ((DEBUG_ERROR, "[GX-PEI-NOTIFY] enter ppi=%g callback=%p type=0x%x\n",
+          SearchGuid, NotifyDescriptor->Notify, NotifyType));
+        NotifyStatus = NotifyDescriptor->Notify (
                             (EFI_PEI_SERVICES **)GetPeiServicesTablePointer (),
                             NotifyDescriptor,
                             (PrivateData->PpiData.PpiList.PpiPtrs[Index2].Ppi)->Ppi
                             );
+        DEBUG ((DEBUG_ERROR, "[GX-PEI-NOTIFY] returned ppi=%g callback=%p status=%r\n",
+          SearchGuid, NotifyDescriptor->Notify, NotifyStatus));
       }
     }
   }

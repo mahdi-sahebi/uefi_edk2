@@ -956,7 +956,11 @@ PeiCore (
   //
   // Call PEIM dispatcher
   //
+  DEBUG ((DEBUG_ERROR, "[GX-PEI] dispatcher begin permanent_memory=%u hob=%p\n",
+    PrivateData.PeiMemoryInstalled, PrivateData.HobList.Raw));
   PeiDispatcher (SecCoreData, &PrivateData);
+  DEBUG ((DEBUG_ERROR, "[GX-PEI] dispatcher returned permanent_memory=%u pending=%u\n",
+    PrivateData.PeiMemoryInstalled, PrivateData.PeimNeedingDispatch));
 
   mde_1_edkii_vga_sprintf(21, "[%d]v-Sec:%X, PD:%X,BM:%X,PMI:%X", 
     g_counter,//3

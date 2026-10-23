@@ -215,3 +215,11 @@ The next image should be tested in this order:
 5. Save the complete trace and screen recording with the ROM hash. Fix the
    first failed or incomplete checkpoint pair, rebuild and repeat. Do not
    mark menu, Shell, USB, or splash hardware operation verified until observed.
+
+## Additional essential checkpoint coverage
+
+See [g4del_checkpoint_coverage.md](g4del_checkpoint_coverage.md) for the subsequent
+SEC/PEIM/callback/dependency/early-DXE instrumentation, runtime FMAP/config and
+FSP status additions, and the next capture interpretation guide. The earlier
+image hashes above identify the earlier build; use the new coverage report's
+validation record for the additional instrumentation.

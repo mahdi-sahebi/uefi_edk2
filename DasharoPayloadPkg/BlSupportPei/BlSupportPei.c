@@ -520,6 +520,8 @@ MemInfoCallback (
   Base            = MemoryMapEntry->Base;
   Size            = MemoryMapEntry->Size;
   Flag            = MemoryMapEntry->Flag;
+  DEBUG ((DEBUG_ERROR, "[GX-MEM] bootloader range type=%u base=0x%lx size=0x%lx flags=0x%lx\n",
+    Type, Base, Size, (UINT64)Flag));
 
   if ((Base  < BASE_1MB) && ((Base + Size) > BASE_1MB)) {
     Size -= (BASE_1MB - Base);

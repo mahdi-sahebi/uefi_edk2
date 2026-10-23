@@ -62,6 +62,7 @@ IsPpiInstalled (
              );
 
   if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "[GX-PEI-DEPEX] ppi=%g lookup=%r (operand FALSE)\n", &PpiGuid, Status));
     return FALSE;
   }
 

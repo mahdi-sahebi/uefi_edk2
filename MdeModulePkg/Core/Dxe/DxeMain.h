@@ -12,6 +12,13 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 #include <PiDxe.h>
 
+// Legacy text-mode breadcrumb, also mirrored to the serial debug log.
+VOID
+GxDxeCheckpoint (
+  IN UINTN        Sequence,
+  IN CONST CHAR8  *Message
+  );
+
 #include <Protocol/LoadedImage.h>
 #include <Protocol/GuidedSectionExtraction.h>
 #include <Protocol/DevicePath.h>

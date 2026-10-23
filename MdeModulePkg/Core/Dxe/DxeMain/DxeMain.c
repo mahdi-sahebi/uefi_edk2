@@ -13,7 +13,6 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #define GX_DXE_VGA_COLUMNS  80
 #define GX_DXE_VGA_ROWS     25
 
-STATIC
 VOID
 GxDxeCheckpoint (
   IN UINTN       Sequence,
@@ -300,34 +299,47 @@ DxeMain (
   //
   // Setup the default exception handlers
   //
+  GxDxeCheckpoint (9, "DXE vector HOB lookup begin");
+  DEBUG ((DEBUG_ERROR, "[GX-DXE] incoming HOB list=%p\n", HobStart));
   VectorInfoList = NULL;
   GuidHob        = GetNextGuidHob (&gEfiVectorHandoffInfoPpiGuid, HobStart);
   if (GuidHob != NULL) {
     VectorInfoList = (EFI_VECTOR_HANDOFF_INFO *)(GET_GUID_HOB_DATA (GuidHob));
   }
 
+  GxDxeCheckpoint (10, "DXE exception handlers begin");
   Status = InitializeCpuExceptionHandlers (VectorInfoList);
+  GxDxeTraceStatus ("exception handlers returned", Status);
   ASSERT_EFI_ERROR (Status);
 
   //
   // Setup Stack Guard
   //
   if (PcdGetBool (PcdCpuStackGuard)) {
+    GxDxeTrace ("exception stacks begin");
     Status = InitializeSeparateExceptionStacks (NULL, NULL);
+    GxDxeTraceStatus ("exception stacks returned", Status);
     ASSERT_EFI_ERROR (Status);
   }
 
   //
   // Initialize Debug Agent to support source level debug in DXE phase
   //
+  GxDxeCheckpoint (11, "DXE debug agent begin");
   InitializeDebugAgent (DEBUG_AGENT_INIT_DXE_CORE, HobStart, NULL);
+  GxDxeTrace ("debug agent returned");
 
   //
   // Initialize Memory Services
   //
+  GxDxeCheckpoint (12, "DXE memory services begin");
   CoreInitializeMemoryServices (&HobStart, &MemoryBaseAddress, &MemoryLength);
+  DEBUG ((DEBUG_ERROR, "[GX-DXE] memory services returned hob=%p base=0x%lx size=0x%lx\n",
+    HobStart, MemoryBaseAddress, MemoryLength));
 
+  GxDxeTrace ("memory profile begin");
   MemoryProfileInit (HobStart);
+  GxDxeTrace ("memory profile returned");
 
   //
   // Start the Handle Services.
@@ -471,7 +483,7 @@ DxeMain (
   for (Hob.Raw = HobStart; !END_OF_HOB_LIST (Hob); Hob.Raw = GET_NEXT_HOB (Hob)) {
     if (GET_HOB_TYPE (Hob) == EFI_HOB_TYPE_MEMORY_ALLOCATION) {
       DEBUG ((
-        DEBUG_INFO | DEBUG_LOAD,
+        DEBUG_ERROR,
         "Memory Allocation 0x%08x 0x%0lx - 0x%0lx\n", \
         Hob.MemoryAllocation->AllocDescriptor.MemoryType,                      \
         Hob.MemoryAllocation->AllocDescriptor.MemoryBaseAddress,               \
@@ -483,27 +495,27 @@ DxeMain (
   for (Hob.Raw = HobStart; !END_OF_HOB_LIST (Hob); Hob.Raw = GET_NEXT_HOB (Hob)) {
     if (GET_HOB_TYPE (Hob) == EFI_HOB_TYPE_FV) {
       DEBUG ((
-        DEBUG_INFO | DEBUG_LOAD,
+        DEBUG_ERROR,
         "FV Hob            0x%0lx - 0x%0lx\n",
         Hob.FirmwareVolume->BaseAddress,
         Hob.FirmwareVolume->BaseAddress + Hob.FirmwareVolume->Length - 1
         ));
     } else if (GET_HOB_TYPE (Hob) == EFI_HOB_TYPE_FV2) {
       DEBUG ((
-        DEBUG_INFO | DEBUG_LOAD,
+        DEBUG_ERROR,
         "FV2 Hob           0x%0lx - 0x%0lx\n",
         Hob.FirmwareVolume2->BaseAddress,
         Hob.FirmwareVolume2->BaseAddress + Hob.FirmwareVolume2->Length - 1
         ));
       DEBUG ((
-        DEBUG_INFO | DEBUG_LOAD,
+        DEBUG_ERROR,
         "                  %g - %g\n",
         &Hob.FirmwareVolume2->FvName,
         &Hob.FirmwareVolume2->FileName
         ));
     } else if (GET_HOB_TYPE (Hob) == EFI_HOB_TYPE_FV3) {
       DEBUG ((
-        DEBUG_INFO | DEBUG_LOAD,
+        DEBUG_ERROR,
         "FV3 Hob           0x%0lx - 0x%0lx - 0x%x - 0x%x\n",
         Hob.FirmwareVolume3->BaseAddress,
         Hob.FirmwareVolume3->BaseAddress + Hob.FirmwareVolume3->Length - 1,
@@ -512,7 +524,7 @@ DxeMain (
         ));
       if (Hob.FirmwareVolume3->ExtractedFv) {
         DEBUG ((
-          DEBUG_INFO | DEBUG_LOAD,
+          DEBUG_ERROR,
           "                  %g - %g\n",
           &Hob.FirmwareVolume3->FvName,
           &Hob.FirmwareVolume3->FileName
