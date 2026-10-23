@@ -1322,6 +1322,7 @@ UsbBusControllerDriverStart (
   EFI_STATUS                Status;
   EFI_DEVICE_PATH_PROTOCOL  *ParentDevicePath;
 
+  DEBUG ((DEBUG_ERROR, "[GX-USB] bus start controller=%p\n", Controller));
   Status = gBS->OpenProtocol (
                   Controller,
                   &gEfiDevicePathProtocolGuid,
@@ -1331,6 +1332,11 @@ UsbBusControllerDriverStart (
                   EFI_OPEN_PROTOCOL_GET_PROTOCOL
                   );
   ASSERT_EFI_ERROR (Status);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "[GX-USB] bus device path failed controller=%p status=%r\n",
+      Controller, Status));
+    return Status;
+  }
 
   //
   // Report Status Code here since we will initialize the host controller
@@ -1361,6 +1367,8 @@ UsbBusControllerDriverStart (
     REPORT_STATUS_CODE (EFI_PROGRESS_CODE, (EFI_IO_BUS_USB | EFI_P_PC_ENABLE));
     Status = UsbBusBuildProtocol (This, Controller, RemainingDevicePath);
     if (EFI_ERROR (Status)) {
+      DEBUG ((DEBUG_ERROR, "[GX-USB] bus build failed controller=%p status=%r\n",
+        Controller, Status));
       return Status;
     }
 
@@ -1376,6 +1384,11 @@ UsbBusControllerDriverStart (
                     EFI_OPEN_PROTOCOL_GET_PROTOCOL
                     );
     ASSERT (!EFI_ERROR (Status));
+    if (EFI_ERROR (Status)) {
+      DEBUG ((DEBUG_ERROR, "[GX-USB] bus protocol lookup failed controller=%p status=%r\n",
+        Controller, Status));
+      return Status;
+    }
   } else {
     //
     // USB Bus driver need to control the recursive connect policy of the bus, only those wanted
@@ -1392,19 +1405,32 @@ UsbBusControllerDriverStart (
         // If RemainingDevicePath is the End of Device Path Node,
         // skip enumerate any device and return EFI_SUCCESS
         //
+        DEBUG ((DEBUG_ERROR, "[GX-USB] bus start already active controller=%p\n", Controller));
         return EFI_SUCCESS;
       }
     }
 
     Status = UsbBusAddWantedUsbIoDP (UsbBusId, RemainingDevicePath);
     ASSERT (!EFI_ERROR (Status));
+    if (EFI_ERROR (Status)) {
+      DEBUG ((DEBUG_ERROR, "[GX-USB] add wanted path failed controller=%p status=%r\n",
+        Controller, Status));
+      return Status;
+    }
     //
     // Ensure all wanted child usb devices are fully recursively connected
     //
     Status = UsbBusRecursivelyConnectWantedUsbIo (UsbBusId);
     ASSERT (!EFI_ERROR (Status));
+    if (EFI_ERROR (Status)) {
+      DEBUG ((DEBUG_ERROR, "[GX-USB] recursive connect failed controller=%p status=%r\n",
+        Controller, Status));
+      return Status;
+    }
   }
 
+  DEBUG ((DEBUG_ERROR, "[GX-USB] bus start returned controller=%p status=%r\n",
+    Controller, EFI_SUCCESS));
   return EFI_SUCCESS;
 }
 

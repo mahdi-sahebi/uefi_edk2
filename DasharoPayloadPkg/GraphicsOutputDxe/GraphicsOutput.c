@@ -314,8 +314,14 @@ GraphicsOutputDriverBindingStart (
   FrameBufferBase = 0;
 
   HobStart = GetFirstGuidHob (&gEfiGraphicsInfoHobGuid);
-  ASSERT ((HobStart != NULL) && (GET_GUID_HOB_DATA_SIZE (HobStart) == sizeof (EFI_PEI_GRAPHICS_INFO_HOB)));
+  if ((HobStart == NULL) || (GET_GUID_HOB_DATA_SIZE (HobStart) != sizeof (EFI_PEI_GRAPHICS_INFO_HOB))) {
+    DEBUG ((DEBUG_ERROR, "[GX-GOP] missing or invalid graphics HOB\n"));
+    return EFI_NOT_FOUND;
+  }
   GraphicsInfo = (EFI_PEI_GRAPHICS_INFO_HOB *) (GET_GUID_HOB_DATA (HobStart));
+  DEBUG ((DEBUG_ERROR, "[GX-GOP] start framebuffer=0x%lx size=0x%lx mode=%ux%u\n",
+    GraphicsInfo->FrameBufferBase, GraphicsInfo->FrameBufferSize,
+    GraphicsInfo->GraphicsMode.HorizontalResolution, GraphicsInfo->GraphicsMode.VerticalResolution));
 
   HobStart = GetFirstGuidHob (&gEfiGraphicsDeviceInfoHobGuid);
   if ((HobStart == NULL) || (GET_GUID_HOB_DATA_SIZE (HobStart) < sizeof (*DeviceInfo))) {
@@ -420,6 +426,7 @@ GraphicsOutputDriverBindingStart (
       if (Index == MAX_PCI_BAR) {
         Status = EFI_UNSUPPORTED;
       } else {
+        DEBUG ((DEBUG_ERROR, "[GX-GOP] matched BAR %u framebuffer=0x%lx\n", Index, FrameBufferBase));
         DEBUG ((DEBUG_INFO, "[%a]: ... matched!\n", gEfiCallerBaseName));
       }
     }
@@ -577,6 +584,7 @@ CloseProtocols:
            Controller
            );
   }
+  DEBUG ((DEBUG_ERROR, "[GX-GOP] start returned status=%r\n", Status));
   return Status;
 }
 

@@ -414,6 +414,7 @@ CoreDispatcher (
     //
     // If the dispatcher is running don't let it be restarted.
     //
+    DEBUG ((DEBUG_ERROR, "[GX-DISPATCH] reentry blocked\n"));
     return EFI_ALREADY_STARTED;
   }
 
@@ -428,9 +429,12 @@ CoreDispatcher (
              &DxeDispatchEvent
              );
   if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "[GX-DISPATCH] create event failed status=%r\n", Status));
+    gDispatcherRunning = FALSE;
     return Status;
   }
 
+  DEBUG ((DEBUG_ERROR, "[GX-DISPATCH] begin\n"));
   ReturnStatus = EFI_NOT_FOUND;
   do {
     //
@@ -450,6 +454,7 @@ CoreDispatcher (
       // skip the LoadImage
       //
       if ((DriverEntry->ImageHandle == NULL) && !DriverEntry->IsFvImage) {
+        DEBUG ((DEBUG_ERROR, "[GX-DISPATCH] load begin %g\n", &DriverEntry->FileName));
         DEBUG ((DEBUG_INFO, "Loading driver %g\n", &DriverEntry->FileName));
         Status = CoreLoadImage (
                    FALSE,
@@ -459,6 +464,8 @@ CoreDispatcher (
                    0,
                    &DriverEntry->ImageHandle
                    );
+        DEBUG ((DEBUG_ERROR, "[GX-DISPATCH] load end %g status=%r handle=%p\n",
+          &DriverEntry->FileName, Status, DriverEntry->ImageHandle));
 
         //
         // Update the driver state to reflect that it's been loaded
@@ -506,7 +513,9 @@ CoreDispatcher (
         //
         // Produce a firmware volume block protocol for FvImage so it gets dispatched from.
         //
+        DEBUG ((DEBUG_ERROR, "[GX-DISPATCH] FV image begin %g\n", &DriverEntry->FileName));
         Status = CoreProcessFvImageFile (DriverEntry->Fv, DriverEntry->FvHandle, &DriverEntry->FileName);
+        DEBUG ((DEBUG_ERROR, "[GX-DISPATCH] FV image end %g status=%r\n", &DriverEntry->FileName, Status));
       } else {
         REPORT_STATUS_CODE_WITH_EXTENDED_DATA (
           EFI_PROGRESS_CODE,
@@ -542,7 +551,9 @@ CoreDispatcher (
     // on UEFI protocols
     //
     if (!EFI_ERROR (ReturnStatus)) {
+      DEBUG ((DEBUG_ERROR, "[GX-DISPATCH] signal round complete\n"));
       CoreSignalEvent (DxeDispatchEvent);
+      DEBUG ((DEBUG_ERROR, "[GX-DISPATCH] signal returned\n"));
     }
 
     //
@@ -580,6 +591,7 @@ CoreDispatcher (
   CoreCloseEvent (DxeDispatchEvent);
 
   gDispatcherRunning = FALSE;
+  DEBUG ((DEBUG_ERROR, "[GX-DISPATCH] end status=%r\n", ReturnStatus));
 
   PERF_FUNCTION_END ();
 

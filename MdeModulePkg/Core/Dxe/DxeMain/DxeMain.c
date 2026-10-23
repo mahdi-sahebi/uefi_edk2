@@ -7,7 +7,6 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 **/
 
 #include "DxeMain.h"
-#include <Library/TimerLib.h>
 #include <Library/SerialPortLib.h>
 
 #define GX_DXE_VGA_FB       0xB8000
@@ -34,7 +33,6 @@ GxDxeCheckpoint (
     Vga[Index] = (UINT16)(0x0F00 | (UINT8)Message[Index]);
   }
   DEBUG ((DEBUG_ERROR, "[GX-DXE] seq=%u %a\n", Sequence, Message));
-  MicroSecondDelay (500000);
 }
 
 STATIC
@@ -628,7 +626,9 @@ DxeMain (
   // Invoke the DXE Dispatcher
   //
   GxDxeTrace ("DXE dispatcher run begin");
-  CoreDispatcher ();
+  GxDxeCheckpoint (8, "DXE dispatcher running");
+  Status = CoreDispatcher ();
+  GxDxeTraceStatus ("DXE dispatcher returned", Status);
   GxDxeCheckpoint (5, "DXE dispatcher completed");
 
   //

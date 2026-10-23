@@ -1,13 +1,15 @@
 # Gooxi G4DEL: coreboot, EDK2, SOL and VGA bring-up
 
-This document describes the current `feature/g4del-dxe-sol-menu` port, why its
+This document describes the G4DEL port now developed on `feature/dxe-log`, why its
 diagnostics are arranged as they are, and what the available evidence actually
 shows. It covers two repositories: the coreboot checkout at
 `/home/uefi/workspace/test/uefi_coreboot` and this EDK2 checkout at
 `payloads/external/edk2/workspace/mahdi-sahebi` beneath it. Source links below
 point into those checkouts; line numbers refer to coreboot `79815f8497` and
 EDK2 `7074d98411`. The [dated SOL investigation](1405_07_29.md) preserves the
-original 231-line capture and its detailed timeline.
+original 231-line capture and its detailed timeline. The
+[DXE investigation](g4del_dxe_investigation.md) records the later screencast
+evidence and the 2026-10-23 diagnostic build.
 
 ## Goal, platform and evidence boundary
 
@@ -32,15 +34,17 @@ DIMMs are reported from FSP information; empty slot reporting is left unset
 The BMC's SOL path is the debug transport; it is not the same thing as EDK2
 console input being ready.
 
-**Observed on hardware:** the only available capture,
+**Observed on hardware:** the available text capture,
 `/home/uefi/workspace/log/1405-07-29/sol.log`, was recorded on 2026-10-21
 using the earlier ASRock-target image. Coreboot loaded and entered EDK2; EDK2
 entered SEC and PEI. The final line is `[GX-VGA] row=0 FTWa-3` inside
-`FaultTolerantWritePei`. It contains no FTW PEIM return, DXE, BDS, menu or
-Shell evidence. This capture predates removal of the FTW busy loops. The last
-marker alone cannot establish a flash fault, because it preceded an artificial
-delay. The two early ACPI timer assertions and several coreboot warnings did
-not stop the observed payload handoff
+`FaultTolerantWritePei`. The associated SOL recording
+`Screencast from 21-10-26 12_32_27.m4v` continues to `[GX-DXE] serial entry`
+and `[GX-DXE] seq=0 DxeCore entry` at approximately 110 seconds. Thus the old
+firmware reached DXE Core. The recording ends before a DXE outcome and shows
+no BDS, menu, or Shell. The image flashed for this recording is not identified.
+The two early ACPI timer assertions and several coreboot warnings did not
+stop the observed payload handoff
 ([timeline and analysis](1405_07_29.md#source-and-observed-sequence)).
 
 **Verified statically:** the corrected G4DEL EDK2 and integrated coreboot
@@ -49,8 +53,9 @@ Shell packaged. The factory non-BIOS regions were then compared byte for byte
 against `server.bin`. The corrected EDK2 payload SHA-256 was
 `75be5343d16e644f09ca7fde185735fcad61af569ccd4733f1d52fed64e8cd73`
 ([build report](1405_07_29.md#verification-and-next-capture)). No post-fix
-board boot is available. In particular, **DXE entry, menu input and Shell
-launch remain unverified on hardware**. `server.bin` and the built ROM are not
+board boot is available. **DXE entry for the current G4DEL image, DXE
+completion, menu input and Shell launch remain unverified on hardware**.
+`server.bin` and the built ROM are not
 present in this checkout now, so their previous byte comparison is a recorded
 result, not a check repeated while writing this guide.
 
@@ -117,7 +122,8 @@ that supplies the value used for
 2026-10-21 log proves the then-current firmware progressed beyond SEC into
 PEI, but it does not isolate that commit as the sole reason.
 
-The **last observed** obstacle is the old FTW delay after `FTWa-3`. Commit
+The text capture's last marker was the old FTW delay after `FTWa-3`, while the
+associated video later reached DXE Core. Commit
 `e71ebc7bf0` removes that loop and adds checked flash HOB/range operations
 ([current FTW](../MdeModulePkg/Universal/FaultTolerantWritePei/FaultTolerantWritePei.c#L231)).
 Its empty-queue guard also eliminates a premature timer call

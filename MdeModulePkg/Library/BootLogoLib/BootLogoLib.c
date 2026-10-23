@@ -65,6 +65,7 @@ BootLogoEnableLogo (
 
   Status = gBS->LocateProtocol (&gEdkiiPlatformLogoProtocolGuid, NULL, (VOID **)&PlatformLogo);
   if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "[GX-LOGO] platform logo protocol unavailable status=%r\n", Status));
     return EFI_UNSUPPORTED;
   }
 
@@ -85,6 +86,8 @@ BootLogoEnableLogo (
   }
 
   if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "[GX-LOGO] console GOP/UGA unavailable status=%r handle=%p\n",
+      Status, gST->ConsoleOutHandle));
     return EFI_UNSUPPORTED;
   }
 

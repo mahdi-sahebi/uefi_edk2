@@ -951,11 +951,16 @@ BlPeiEntryPoint (
   // Parse memory info
   //
   Status = ParseMemoryInfo (MemInfoCallback, &UsableLowMemTop);
-  
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] memory map parse failed status=%r\n", Status));
+    return Status;
+  }
 
-  // if (EFI_ERROR(Status)) {
-  //   return Status;
-  // }
+  if (UsableLowMemTop < BASE_1MB + PEI_MEM_SIZE) {
+    DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] insufficient low RAM top=0x%lx need=0x%lx\n",
+      UsableLowMemTop, BASE_1MB + PEI_MEM_SIZE));
+    return EFI_OUT_OF_RESOURCES;
+  }
 
   //
   // Install memory
@@ -975,6 +980,11 @@ BlPeiEntryPoint (
   );
 
   Status = PeiServicesInstallPeiMemory (PeiMemBase, PEI_MEM_SIZE);
+  DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] install PEI memory base=0x%lx size=0x%lx status=%r\n",
+    PeiMemBase, (UINT64)PEI_MEM_SIZE, Status));
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
   
   mde_3_edkii_vga_sprintf(1, "BLSf-%x,%x,%x-%x,%x",
     FileHandle,

@@ -78,7 +78,11 @@ GetImage (
 
   (*Instance)++;
 
+  BmpAddr = 0;
+  BmpSize = 0;
   Status = ParseBootLogo (&BmpAddr, &BmpSize);
+  DEBUG ((DEBUG_ERROR, "[GX-LOGO] CBMEM logo status=%r address=0x%lx size=0x%x\n",
+    Status, BmpAddr, BmpSize));
   if (!EFI_ERROR (Status)) {
     // Logo from CBMEM
     *Attribute = EdkiiPlatformLogoDisplayAttributeCenter;
@@ -96,6 +100,7 @@ GetImage (
             (UINTN*) &(Image->Width));
 
     if (!EFI_ERROR (Status)) {
+      DEBUG ((DEBUG_ERROR, "[GX-LOGO] using CBMEM bitmap %ux%u\n", Image->Width, Image->Height));
       Image->Bitmap = Blt;
       return Status;
     }
@@ -107,7 +112,9 @@ GetImage (
   *Attribute = mLogos[Current].Attribute;
   *OffsetX   = mLogos[Current].OffsetX;
   *OffsetY   = mLogos[Current].OffsetY;
-  return mHiiImageEx->GetImageEx (mHiiImageEx, mHiiHandle, mLogos[Current].ImageId, Image);
+  Status = mHiiImageEx->GetImageEx (mHiiImageEx, mHiiHandle, mLogos[Current].ImageId, Image);
+  DEBUG ((DEBUG_ERROR, "[GX-LOGO] builtin bitmap status=%r\n", Status));
+  return Status;
 }
 
 EDKII_PLATFORM_LOGO_PROTOCOL  mPlatformLogo = {
@@ -187,5 +194,6 @@ InitializeLogo (
                     );
   }
 
+  DEBUG ((DEBUG_ERROR, "[GX-LOGO] protocol install status=%r\n", Status));
   return Status;
 }
