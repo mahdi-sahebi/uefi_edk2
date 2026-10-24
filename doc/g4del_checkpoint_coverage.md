@@ -1,5 +1,11 @@
 # G4DEL: essential boot diagnostic coverage
 
+The latest 08-02 ROM reportedly prevents host power and produces no coreboot
+output. See the coreboot
+[pre-boot failure isolation report](../../../../../../doc/g4del_preboot_failure_isolation.md).
+These EDK2 checkpoints cannot diagnose an image that never reaches payload
+handoff; the verified build results below remain static evidence only.
+
 Updated 2026-10-23 on `feature/dxe-log`, following EDK2 `f7df15cb2a`
 and coreboot `1207655406`. This document describes additional instrumentation
 in the working trees. See [the investigation](g4del_dxe_investigation.md) for
