@@ -731,8 +731,11 @@ InitializeGraphicsOutput (
   HobStart = GetFirstGuidHob (&gEfiGraphicsInfoHobGuid);
 
   if ((HobStart == NULL) || (GET_GUID_HOB_DATA_SIZE (HobStart) < sizeof (EFI_PEI_GRAPHICS_INFO_HOB))) {
+    DEBUG ((DEBUG_ERROR, "[GX-GOP] driver entry has no valid graphics HOB; status=Not Found\n"));
     return EFI_NOT_FOUND;
   }
+
+  DEBUG ((DEBUG_ERROR, "[GX-GOP] driver entry found graphics HOB\n"));
 
   Status = EfiLibInstallDriverBindingComponentName2 (
              ImageHandle,
@@ -742,6 +745,7 @@ InitializeGraphicsOutput (
              &mGraphicsOutputComponentName,
              &mGraphicsOutputComponentName2
              );
+  DEBUG ((DEBUG_ERROR, "[GX-GOP] driver binding installation status=%r\n", Status));
   ASSERT_EFI_ERROR (Status);
 
   return Status;

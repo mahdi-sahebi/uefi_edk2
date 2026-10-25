@@ -781,13 +781,21 @@ InitializeMpSupport (
   UINTN       NumberOfProcessors;
   UINTN       NumberOfEnabledProcessors;
 
+  DEBUG ((DEBUG_ERROR, "[GX-CPU] MP processor limit=%u\n", PcdGet32 (PcdCpuMaxLogicalProcessorNumber)));
+
   //
   // Wakeup APs to do initialization
   //
+  DEBUG ((DEBUG_ERROR, "[GX-CPU] MpInitLibInitialize begin\n"));
   Status = MpInitLibInitialize ();
+  DEBUG ((DEBUG_ERROR, "[GX-CPU] MpInitLibInitialize return status=%r\n", Status));
   ASSERT_EFI_ERROR (Status);
 
+  DEBUG ((DEBUG_ERROR, "[GX-CPU] MpInitLibGetNumberOfProcessors begin\n"));
   Status = MpInitLibGetNumberOfProcessors (&NumberOfProcessors, &NumberOfEnabledProcessors);
+  DEBUG ((DEBUG_ERROR, "[GX-CPU] MpInitLibGetNumberOfProcessors return status=%r count=%u enabled=%u configured_max=%u\n",
+    Status, EFI_ERROR (Status) ? 0 : NumberOfProcessors, EFI_ERROR (Status) ? 0 : NumberOfEnabledProcessors,
+    PcdGet32 (PcdCpuMaxLogicalProcessorNumber)));
   ASSERT_EFI_ERROR (Status);
   if (!EFI_ERROR (Status)) {
     mNumberOfProcessors = NumberOfProcessors;
@@ -803,12 +811,14 @@ InitializeMpSupport (
     //
     CollectBistDataFromHob ();
 
+    DEBUG ((DEBUG_ERROR, "[GX-CPU] install MP Services begin\n"));
     Status = gBS->InstallMultipleProtocolInterfaces (
                     &mMpServiceHandle,
                     &gEfiMpServiceProtocolGuid,
                     &mMpServicesTemplate,
                     NULL
                     );
+    DEBUG ((DEBUG_ERROR, "[GX-CPU] install MP Services return status=%r\n", Status));
     ASSERT_EFI_ERROR (Status);
   }
 }

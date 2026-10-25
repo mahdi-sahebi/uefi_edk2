@@ -23,6 +23,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <DasharoOptions.h>
 #include <Protocol/UsbIo.h>
 #include <Protocol/Usb2HostController.h>
+#include "G4delUsbDiagnostics.h"
 
 EFI_GUID mBootMenuFile = {
   0xEEC25BDC, 0x67F2, 0x4D95, { 0xB1, 0xD5, 0xF8, 0x1B, 0x20, 0x39, 0xD1, 0x1D }
@@ -32,6 +33,7 @@ EFI_GUID mBootMenuFile = {
 extern BOOLEAN mQuietBoot;
 extern BOOLEAN mFastBoot;
 
+#if !defined (GOOXI_G4DEL_USB_DIAGNOSTICS) || !GOOXI_G4DEL_USB_DIAGNOSTICS
 STATIC
 VOID
 GxLogUsbState (
@@ -76,6 +78,7 @@ GxLogUsbState (
 
   FreePool (Handles);
 }
+#endif
 
 STATIC
 EFI_STATUS
@@ -1034,6 +1037,11 @@ PlatformBootManagerBeforeConsole (
 
   DEBUG((EFI_D_ERROR, "Boot Manager option: %r, Size: %x, Enabled: %d\n",
                       Status, VarSize, BootMenuEnable));
+
+#if defined (GOOXI_G4DEL_USB_DIAGNOSTICS) && GOOXI_G4DEL_USB_DIAGNOSTICS
+  BootMenuEnable = TRUE;
+  DEBUG ((DEBUG_ERROR, "[GX-BDS] G4DEL diagnostics force Boot Manager Menu option available\n"));
+#endif
 
   if (EFI_ERROR(Status) || VarSize != sizeof(BootMenuEnable) || BootMenuEnable) {
     DEBUG((EFI_D_INFO, "Registering Boot Manager key option\n"));
@@ -2100,7 +2108,11 @@ PlatformBootManagerAfterConsole (
   LogoStatus = BootLogoEnableLogo ();
   DEBUG ((DEBUG_ERROR, "[GX-LOGO] display returned status=%r\n", LogoStatus));
 
+#if defined (GOOXI_G4DEL_USB_DIAGNOSTICS) && GOOXI_G4DEL_USB_DIAGNOSTICS
+  if (TRUE) {
+#else
   if (!mFastBoot || FUMEnabled) {
+#endif
     // FIXME: USB devices are not being detected unless we wait a bit.
     // But don't wait with fastboot enabled. We typically don't boot a full blown OS from USB.
     gBS->Stall (100 * 1000);
@@ -2109,6 +2121,12 @@ PlatformBootManagerAfterConsole (
     DEBUG ((DEBUG_ERROR, "[GX-USB] connect all begin\n"));
     EfiBootManagerConnectAll ();
     DEBUG ((DEBUG_ERROR, "[GX-USB] connect all returned\n"));
+
+#if defined (GOOXI_G4DEL_USB_DIAGNOSTICS) && GOOXI_G4DEL_USB_DIAGNOSTICS
+    DEBUG ((DEBUG_ERROR, "[GX-USB] G4DEL bounded enumeration settle begin usec=1000000\n"));
+    gBS->Stall (1000 * 1000);
+    DEBUG ((DEBUG_ERROR, "[GX-USB] G4DEL bounded enumeration settle returned\n"));
+#endif
 
     // Detect and register FTDI USB-UART converters
     // The FTDI can only be detected after all protocols are bound thanks to
@@ -2121,12 +2139,16 @@ PlatformBootManagerAfterConsole (
   } else {
     DEBUG ((DEBUG_ERROR, "[GX-USB] full connection skipped by Fast Boot\n"));
   }
-  GxLogUsbState ();
   if (EFI_ERROR (LogoStatus)) {
     DEBUG ((DEBUG_ERROR, "[GX-LOGO] retry after device connection\n"));
     LogoStatus = BootLogoEnableLogo ();
     DEBUG ((DEBUG_ERROR, "[GX-LOGO] retry returned status=%r\n", LogoStatus));
   }
+#if defined (GOOXI_G4DEL_USB_DIAGNOSTICS) && GOOXI_G4DEL_USB_DIAGNOSTICS
+  GxDisplayUsbInventory ();
+#else
+  GxLogUsbState ();
+#endif
 
 #ifdef PLATFORM_TPM_ENABLED
   WarnIfSinglePCRBank ();

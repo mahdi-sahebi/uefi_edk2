@@ -1106,23 +1106,31 @@ BlPeiEntryPoint (
   //
   // Create guid hob for frame buffer information
   //
+  ZeroMem (&GfxInfo, sizeof (GfxInfo));
   Status = ParseGfxInfo (&GfxInfo);
-  
-  mde_3_edkii_vga_sprintf(2, "b-%x-%x-%x-%x",
-    Status,
-    GfxInfo.FrameBufferBase,
-    GfxInfo.FrameBufferSize,
-    GfxInfo.GraphicsMode
-  );
-
   if (!EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "[GX-GOP] parsed framebuffer base=0x%lx size=0x%lx mode=%ux%u pitch=%u format=%u\n",
+      GfxInfo.FrameBufferBase, GfxInfo.FrameBufferSize,
+      GfxInfo.GraphicsMode.HorizontalResolution,
+      GfxInfo.GraphicsMode.VerticalResolution,
+      GfxInfo.GraphicsMode.PixelsPerScanLine,
+      GfxInfo.GraphicsMode.PixelFormat));
+    mde_3_edkii_vga_sprintf (2, "GOP %ux%u base=%x size=%x",
+      GfxInfo.GraphicsMode.HorizontalResolution,
+      GfxInfo.GraphicsMode.VerticalResolution,
+      (UINT32)GfxInfo.FrameBufferBase,
+      (UINT32)GfxInfo.FrameBufferSize);
+
     NewGfxInfo = BuildGuidHob (&gEfiGraphicsInfoHobGuid, sizeof (GfxInfo));
     if (NewGfxInfo == NULL) {
       DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] BlSupportPei graphics HOB allocation failed\n"));
       return EFI_OUT_OF_RESOURCES;
     }
     CopyMem (NewGfxInfo, &GfxInfo, sizeof (GfxInfo));
-    DEBUG ((DEBUG_INFO, "Created graphics info hob\n"));
+    DEBUG ((DEBUG_ERROR, "[GX-GOP] graphics info HOB installed\n"));
+  } else {
+    DEBUG ((DEBUG_ERROR, "[GX-GOP] graphics info HOB not created; ParseGfxInfo status=%r\n", Status));
+    mde_3_edkii_vga_sprintf (2, "GOP unavailable status=%x", (UINT32)Status);
   }
 
 
@@ -1134,33 +1142,17 @@ BlPeiEntryPoint (
       return EFI_OUT_OF_RESOURCES;
     }
 
-    mde_3_edkii_vga_sprintf(3, "a-%x-%x-%x-%x,-%x-%x-%x-%x-%x",
-      gEfiGraphicsDeviceInfoHobGuid.Data1,
-      gEfiGraphicsDeviceInfoHobGuid.Data2,
-      gEfiGraphicsDeviceInfoHobGuid.Data3,
-      gEfiGraphicsDeviceInfoHobGuid.Data4,
-      NewGfxDeviceInfo->BarIndex,
-      NewGfxDeviceInfo->DeviceId,
-      NewGfxDeviceInfo->RevisionId,
-      NewGfxDeviceInfo->SubsystemId,
-      NewGfxDeviceInfo->VendorId
-    );
-    
-    // ASSERT (NewGfxDeviceInfo != NULL);
     CopyMem (NewGfxDeviceInfo, &GfxDeviceInfo, sizeof (GfxDeviceInfo));
-    
-    mde_3_edkii_vga_sprintf(3, "b-%x-%x-%x-%x,-%x-%x-%x-%x-%x",
-      gEfiGraphicsDeviceInfoHobGuid.Data1,
-      gEfiGraphicsDeviceInfoHobGuid.Data2,
-      gEfiGraphicsDeviceInfoHobGuid.Data3,
-      gEfiGraphicsDeviceInfoHobGuid.Data4,
-      NewGfxDeviceInfo->BarIndex,
-      NewGfxDeviceInfo->DeviceId,
-      NewGfxDeviceInfo->RevisionId,
-      NewGfxDeviceInfo->SubsystemId,
-      NewGfxDeviceInfo->VendorId
-    );
-    DEBUG ((DEBUG_INFO, "Created graphics device info hob\n"));
+    DEBUG ((DEBUG_ERROR, "[GX-GOP] graphics-device HOB vendor=%04x device=%04x bar=%u\n",
+      NewGfxDeviceInfo->VendorId, NewGfxDeviceInfo->DeviceId,
+      NewGfxDeviceInfo->BarIndex));
+    mde_3_edkii_vga_sprintf (3, "GOP device v=%x d=%x bar=%x",
+      NewGfxDeviceInfo->VendorId, NewGfxDeviceInfo->DeviceId,
+      NewGfxDeviceInfo->BarIndex);
+    DEBUG ((DEBUG_ERROR, "[GX-GOP] graphics-device info HOB installed\n"));
+  } else {
+    DEBUG ((DEBUG_ERROR, "[GX-GOP] graphics-device HOB unavailable status=%r; GOP will probe PCI display BARs\n",
+      Status));
   }
 
   //

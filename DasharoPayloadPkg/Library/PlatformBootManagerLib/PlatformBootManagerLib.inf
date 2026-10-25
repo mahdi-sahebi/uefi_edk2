@@ -23,6 +23,8 @@
 
 [Sources]
   PlatformData.c
+  G4delUsbDiagnostics.c
+  G4delUsbDiagnostics.h
   PlatformConsole.c
   PlatformConsole.h
   PlatformBootManager.c
@@ -37,6 +39,7 @@
 
 [LibraryClasses]
   BaseLib
+  BaseMemoryLib
   UefiBootServicesTableLib
   UefiRuntimeServicesTableLib
   UefiLib

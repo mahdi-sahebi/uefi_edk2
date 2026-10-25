@@ -12,6 +12,32 @@
 
 #define CPU_INTERRUPT_NUM  256
 
+STATIC UINTN  mGxCpuCheckpointSequence;
+
+STATIC
+UINTN
+GxCpuCheckpointBegin (
+  IN CONST CHAR8  *Stage
+  )
+{
+  UINTN  Sequence;
+
+  Sequence = ++mGxCpuCheckpointSequence;
+  DEBUG ((DEBUG_ERROR, "[GX-CPU] seq=%u %a begin\n", Sequence, Stage));
+  return Sequence;
+}
+
+STATIC
+VOID
+GxCpuCheckpointReturn (
+  IN UINTN        Sequence,
+  IN CONST CHAR8  *Stage,
+  IN EFI_STATUS   Status
+  )
+{
+  DEBUG ((DEBUG_ERROR, "[GX-CPU] seq=%u %a return status=%r\n", Sequence, Stage, Status));
+}
+
 //
 // Global Variables
 //
@@ -683,14 +709,20 @@ RefreshGcdMemoryAttributes (
   VOID
   )
 {
+  UINTN  Checkpoint;
+
   mIsFlushingGCD = TRUE;
 
   if (IsMtrrSupported ()) {
+    Checkpoint = GxCpuCheckpointBegin ("refresh-mtrr");
     RefreshMemoryAttributesFromMtrr ();
+    GxCpuCheckpointReturn (Checkpoint, "refresh-mtrr", EFI_SUCCESS);
   }
 
   if (IsPagingAndPageAddressExtensionsEnabled ()) {
+    Checkpoint = GxCpuCheckpointBegin ("refresh-paging");
     RefreshGcdMemoryAttributesFromPaging ();
+    GxCpuCheckpointReturn (Checkpoint, "refresh-paging", EFI_SUCCESS);
   }
 
   mIsFlushingGCD = FALSE;
@@ -706,6 +738,7 @@ InitInterruptDescriptorTable (
   )
 {
   EFI_STATUS                Status;
+  UINTN                     Checkpoint;
   EFI_VECTOR_HANDOFF_INFO   *VectorInfoList;
   EFI_VECTOR_HANDOFF_INFO   *VectorInfo;
   IA32_IDT_GATE_DESCRIPTOR  *IdtTable;
@@ -736,7 +769,9 @@ InitInterruptDescriptorTable (
     AsmWriteIdtr (&IdtDescriptor);
   }
 
-  Status = InitializeCpuExceptionHandlers (VectorInfo);
+  Checkpoint = GxCpuCheckpointBegin ("exception-handlers");
+  Status     = InitializeCpuExceptionHandlers (VectorInfo);
+  GxCpuCheckpointReturn (Checkpoint, "exception-handlers", Status);
   ASSERT_EFI_ERROR (Status);
 }
 
@@ -1002,50 +1037,70 @@ InitializeCpu (
 {
   EFI_STATUS  Status;
   EFI_EVENT   IdleLoopEvent;
+  UINTN       Checkpoint;
 
+  DEBUG ((DEBUG_ERROR, "[GX-CPU] CpuDxe entry max_logical_processors=%u\n", PcdGet32 (PcdCpuMaxLogicalProcessorNumber)));
+
+  Checkpoint = GxCpuCheckpointBegin ("page-table");
   InitializePageTableLib ();
+  GxCpuCheckpointReturn (Checkpoint, "page-table", EFI_SUCCESS);
 
+  Checkpoint = GxCpuCheckpointBegin ("fpu");
   InitializeFloatingPointUnits ();
+  GxCpuCheckpointReturn (Checkpoint, "fpu", EFI_SUCCESS);
 
   //
   // Make sure interrupts are disabled
   //
+  Checkpoint = GxCpuCheckpointBegin ("disable-interrupts");
   DisableInterrupts ();
+  GxCpuCheckpointReturn (Checkpoint, "disable-interrupts", EFI_SUCCESS);
 
   //
   // Init GDT for DXE
   //
+  Checkpoint = GxCpuCheckpointBegin ("gdt");
   InitGlobalDescriptorTable ();
+  GxCpuCheckpointReturn (Checkpoint, "gdt", EFI_SUCCESS);
 
   //
   // Setup IDT pointer, IDT and interrupt entry points
   //
+  Checkpoint = GxCpuCheckpointBegin ("idt");
   InitInterruptDescriptorTable ();
+  GxCpuCheckpointReturn (Checkpoint, "idt", EFI_SUCCESS);
 
   //
   // Install CPU Architectural Protocol
   //
+  Checkpoint = GxCpuCheckpointBegin ("install-cpu-arch");
   Status = gBS->InstallMultipleProtocolInterfaces (
                   &mCpuHandle,
                   &gEfiCpuArchProtocolGuid,
                   &gCpu,
                   NULL
                   );
+  GxCpuCheckpointReturn (Checkpoint, "install-cpu-arch", Status);
   ASSERT_EFI_ERROR (Status);
 
   //
   // Refresh GCD memory space map according to MTRR value.
   //
+  Checkpoint = GxCpuCheckpointBegin ("refresh-gcd");
   RefreshGcdMemoryAttributes ();
+  GxCpuCheckpointReturn (Checkpoint, "refresh-gcd", EFI_SUCCESS);
 
   //
   // Add and allocate local APIC memory mapped space
   //
+  Checkpoint = GxCpuCheckpointBegin ("local-apic");
   AddLocalApicMemorySpace (ImageHandle);
+  GxCpuCheckpointReturn (Checkpoint, "local-apic", EFI_SUCCESS);
 
   //
   // Setup a callback for idle events
   //
+  Checkpoint = GxCpuCheckpointBegin ("idle-event");
   Status = gBS->CreateEventEx (
                   EVT_NOTIFY_SIGNAL,
                   TPL_NOTIFY,
@@ -1054,9 +1109,12 @@ InitializeCpu (
                   &gIdleLoopEventGuid,
                   &IdleLoopEvent
                   );
+  GxCpuCheckpointReturn (Checkpoint, "idle-event", Status);
   ASSERT_EFI_ERROR (Status);
 
+  Checkpoint = GxCpuCheckpointBegin ("mp-support");
   InitializeMpSupport ();
+  GxCpuCheckpointReturn (Checkpoint, "mp-support", EFI_SUCCESS);
 
   return Status;
 }

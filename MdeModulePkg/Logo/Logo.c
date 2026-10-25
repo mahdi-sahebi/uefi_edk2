@@ -64,6 +64,8 @@ GetImage (
   EFI_STATUS                     Status;
   EFI_PHYSICAL_ADDRESS           BmpAddr;
   UINT32                         BmpSize;
+  UINTN                          BmpHeight;
+  UINTN                          BmpWidth;
 
   if ((Instance == NULL) || (Image == NULL) ||
       (Attribute == NULL) || (OffsetX == NULL) || (OffsetY == NULL))
@@ -80,6 +82,8 @@ GetImage (
 
   BmpAddr = 0;
   BmpSize = 0;
+  BmpHeight = 0;
+  BmpWidth = 0;
   Status = ParseBootLogo (&BmpAddr, &BmpSize);
   DEBUG ((DEBUG_ERROR, "[GX-LOGO] CBMEM logo status=%r address=0x%lx size=0x%x\n",
     Status, BmpAddr, BmpSize));
@@ -96,13 +100,25 @@ GetImage (
             BmpSize,
             &Blt,
             &GopBltSize,
-            (UINTN*) &(Image->Height),
-            (UINTN*) &(Image->Width));
+            &BmpHeight,
+            &BmpWidth);
 
     if (!EFI_ERROR (Status)) {
-      DEBUG ((DEBUG_ERROR, "[GX-LOGO] using CBMEM bitmap %ux%u\n", Image->Width, Image->Height));
-      Image->Bitmap = Blt;
-      return Status;
+      if ((BmpWidth > MAX_UINT16) || (BmpHeight > MAX_UINT16)) {
+        DEBUG ((DEBUG_ERROR, "[GX-LOGO] CBMEM bitmap dimensions exceed EFI_IMAGE_INPUT: %ux%u\n",
+          BmpWidth, BmpHeight));
+        if (Blt != NULL) {
+          gBS->FreePool (Blt);
+        }
+        Status = EFI_UNSUPPORTED;
+      } else {
+        Image->Flags  = 0;
+        Image->Width  = (UINT16)BmpWidth;
+        Image->Height = (UINT16)BmpHeight;
+        Image->Bitmap = Blt;
+        DEBUG ((DEBUG_ERROR, "[GX-LOGO] using CBMEM bitmap %ux%u\n", Image->Width, Image->Height));
+        return Status;
+      }
     }
 
     DEBUG ((DEBUG_ERROR, "Failed to translate logo image: %r\n", Status));

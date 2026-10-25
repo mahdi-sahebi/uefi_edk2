@@ -1076,10 +1076,14 @@ BdsEntry (
 
   BootFwUi         = (BOOLEAN)((OsIndication & EFI_OS_INDICATIONS_BOOT_TO_FW_UI) != 0);
   PlatformRecovery = (BOOLEAN)((OsIndication & EFI_OS_INDICATIONS_START_PLATFORM_RECOVERY) != 0);
+#if defined (GOOXI_G4DEL_USB_DIAGNOSTICS) && GOOXI_G4DEL_USB_DIAGNOSTICS
+  DEBUG ((DEBUG_ERROR, "[GX-BDS] G4DEL diagnostics request interactive Boot Manager Menu\n"));
+  BootFwUi = TRUE;
+#endif
   //
   // Clear EFI_OS_INDICATIONS_BOOT_TO_FW_UI to acknowledge OS
   //
-  if (BootFwUi || PlatformRecovery) {
+  if (((OsIndication & EFI_OS_INDICATIONS_BOOT_TO_FW_UI) != 0) || PlatformRecovery) {
     OsIndication &= ~((UINT64)(EFI_OS_INDICATIONS_BOOT_TO_FW_UI | EFI_OS_INDICATIONS_START_PLATFORM_RECOVERY));
     Status        = gRT->SetVariable (
                            EFI_OS_INDICATIONS_VARIABLE_NAME,
@@ -1108,8 +1112,17 @@ BdsEntry (
     //
     // Directly enter the setup page.
     //
+    DEBUG ((DEBUG_ERROR, "[GX-BDS] Boot Manager Menu launch begin option=%04x\n",
+      BootManagerMenu.OptionNumber));
     EfiBootManagerBoot (&BootManagerMenu);
+    DEBUG ((DEBUG_ERROR, "[GX-BDS] Boot Manager Menu returned status=%r\n", BootManagerMenu.Status));
   }
+#if defined (GOOXI_G4DEL_USB_DIAGNOSTICS) && GOOXI_G4DEL_USB_DIAGNOSTICS
+  else if (BootFwUi) {
+    DEBUG ((DEBUG_ERROR, "[GX-BDS] ERROR forced Boot Manager Menu unavailable status=%r\n",
+      BootManagerMenuStatus));
+  }
+#endif
 
   if (!PlatformRecovery) {
     //
