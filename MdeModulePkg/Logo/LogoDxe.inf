@@ -46,6 +46,7 @@
   BmpSupportLib
 
 [Protocols]
+  gGxDxeDiagnosticsProtocolGuid        ## SOMETIMES_CONSUMES
   gEfiHiiDatabaseProtocolGuid        ## CONSUMES
   gEfiHiiImageExProtocolGuid         ## CONSUMES
   gEfiHiiPackageListProtocolGuid     ## PRODUCES CONSUMES

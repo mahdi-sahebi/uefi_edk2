@@ -29,6 +29,7 @@
 [Packages]
   MdePkg/MdePkg.dec
   MdeModulePkg/MdeModulePkg.dec
+  DasharoPayloadPkg/DasharoPayloadPkg.dec
 
 [LibraryClasses]
   BaseLib
@@ -41,6 +42,7 @@
   PcdLib
 
 [Protocols]
+  gGxDxeDiagnosticsProtocolGuid                 ## SOMETIMES_CONSUMES
   gEfiGraphicsOutputProtocolGuid                ## SOMETIMES_CONSUMES
   gEfiUgaDrawProtocolGuid |PcdUgaConsumeSupport ## SOMETIMES_CONSUMES
   gEfiBootLogoProtocolGuid                      ## SOMETIMES_CONSUMES

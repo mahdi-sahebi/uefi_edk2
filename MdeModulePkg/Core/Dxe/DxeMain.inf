@@ -70,6 +70,7 @@
 
 [Packages]
   MdePkg/MdePkg.dec
+  DasharoPayloadPkg/DasharoPayloadPkg.dec
   MdeModulePkg/MdeModulePkg.dec
 
 [LibraryClasses]
@@ -133,6 +134,7 @@
   gEfiVectorHandoffInfoPpiGuid                  ## UNDEFINED # HOB
 
 [Protocols]
+  gGxDxeDiagnosticsProtocolGuid                 ## PRODUCES
   ## PRODUCES
   ## SOMETIMES_CONSUMES
   gEfiDecompressProtocolGuid

@@ -9,6 +9,7 @@
 **/
 
 #include "MpLib.h"
+#include <Library/GxDxeDiagnosticsLib.h>
 #include <Library/CcExitLib.h>
 #include <Register/Amd/SevSnpMsr.h>
 #include <Register/Amd/Ghcb.h>
@@ -583,9 +584,12 @@ CollectProcessorCount (
   //
   DEBUG ((DEBUG_ERROR, "[GX-MP] processor enumeration begin configured_max=%u\n",
     PcdGet32 (PcdCpuMaxLogicalProcessorNumber)));
+  GxDxeDiagnosticsLog ("MP PROCESSOR ENUMERATION BEGIN");
   CpuMpData->InitFlag = ApInitConfig;
   DEBUG ((DEBUG_ERROR, "[GX-MP] initial AP wakeup begin\n"));
+  GxDxeDiagnosticsLog ("MP INITIAL AP WAKEUP BEGIN");
   WakeUpAP (CpuMpData, TRUE, 0, NULL, NULL, TRUE);
+  GxDxeDiagnosticsLog ("MP INITIAL AP WAKEUP RETURN");
   DEBUG ((DEBUG_ERROR, "[GX-MP] initial AP wakeup return finished=%u executing=%u\n",
     CpuMpData->FinishedCount, CpuMpData->MpCpuExchangeInfo->NumApsExecuting));
   CpuMpData->InitFlag = ApInitDone;
@@ -596,6 +600,7 @@ CollectProcessorCount (
   CpuMpData->CpuCount = CpuMpData->FinishedCount + 1;
   DEBUG ((DEBUG_ERROR, "[GX-MP] processor enumeration result count=%u configured_max=%u\n",
     CpuMpData->CpuCount, PcdGet32 (PcdCpuMaxLogicalProcessorNumber)));
+  GxDxeDiagnosticsLog ("MP PROCESSOR ENUMERATION RETURN");
   ASSERT (CpuMpData->CpuCount <= PcdGet32 (PcdCpuMaxLogicalProcessorNumber));
 
   return CpuMpData->CpuCount;
@@ -2111,6 +2116,7 @@ MpInitLibInitialize (
   DEBUG ((DEBUG_ERROR, "[GX-MP] MpInitLibInitialize begin max_logical=%u ap_timeout_us=%u boot_logical=%u\n",
     PcdGet32 (PcdCpuMaxLogicalProcessorNumber), PcdGet32 (PcdCpuApInitTimeOutInMicroSeconds),
     PcdGet32 (PcdCpuBootLogicalProcessorNumber)));
+  GxDxeDiagnosticsLog ("MP INITIALIZE BEGIN");
   FirstMpHandOff = GetNextMpHandOffHob (NULL);
   DEBUG ((DEBUG_ERROR, "[GX-MP] CPU handoff HOB %a\n", FirstMpHandOff == NULL ? "absent; enumerate APs" : "present"));
   if (FirstMpHandOff != NULL) {
@@ -2132,6 +2138,7 @@ MpInitLibInitialize (
     MaxLogicalProcessorNumber = PcdGet32 (PcdCpuMaxLogicalProcessorNumber);
   }
 
+  GxDxeDiagnosticsLog (FirstMpHandOff == NULL ? "MP HANDOFF ABSENT ENUMERATE APs" : "MP HANDOFF HOB PRESENT");
   ASSERT (MaxLogicalProcessorNumber != 0);
   DEBUG ((DEBUG_ERROR, "[GX-MP] allocate AP state max_logical=%u source=%a\n",
     MaxLogicalProcessorNumber, FirstMpHandOff == NULL ? "PCD" : "CPU HOB"));
@@ -2165,7 +2172,9 @@ MpInitLibInitialize (
   BufferSize += (sizeof (CPU_AP_DATA) + sizeof (CPU_INFO_IN_HOB))* MaxLogicalProcessorNumber;
   DEBUG ((DEBUG_ERROR, "[GX-MP] AP state allocation begin bytes=0x%lx pages=%u\n",
     BufferSize, EFI_SIZE_TO_PAGES (BufferSize)));
+  GxDxeDiagnosticsLog ("MP AP STATE ALLOCATION BEGIN");
   MpBuffer    = AllocatePages (EFI_SIZE_TO_PAGES (BufferSize));
+  GxDxeDiagnosticsLog (MpBuffer == NULL ? "MP AP STATE ALLOCATION FAILED" : "MP AP STATE ALLOCATION RETURNED");
   DEBUG ((DEBUG_ERROR, "[GX-MP] AP state allocation return buffer=%p\n", MpBuffer));
   ASSERT (MpBuffer != NULL);
   if (MpBuffer == NULL) {
@@ -2319,7 +2328,9 @@ MpInitLibInitialize (
       // Wakeup all APs and calculate the processor count in system
       //
       DEBUG ((DEBUG_ERROR, "[GX-MP] CollectProcessorCount begin max_logical=%u\n", MaxLogicalProcessorNumber));
+      GxDxeDiagnosticsLog ("MP COLLECT PROCESSOR COUNT BEGIN");
       CollectProcessorCount (CpuMpData);
+      GxDxeDiagnosticsLog ("MP COLLECT PROCESSOR COUNT RETURNED");
       DEBUG ((DEBUG_ERROR, "[GX-MP] CollectProcessorCount return count=%u APs=%u\n",
         CpuMpData->CpuCount, CpuMpData->FinishedCount));
 

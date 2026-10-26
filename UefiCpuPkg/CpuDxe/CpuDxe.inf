@@ -22,6 +22,7 @@
   MdePkg/MdePkg.dec
   MdeModulePkg/MdeModulePkg.dec
   UefiCpuPkg/UefiCpuPkg.dec
+  DasharoPayloadPkg/DasharoPayloadPkg.dec
 
 [LibraryClasses.common]
   BaseLib
@@ -39,6 +40,7 @@
   UefiBootServicesTableLib
   UefiDriverEntryPoint
   UefiLib
+  PrintLib
 
 [LibraryClasses.IA32, LibraryClasses.X64]
   LocalApicLib
@@ -74,6 +76,7 @@
   LoongArch64/CpuDxe.h
 
 [Protocols]
+  gGxDxeDiagnosticsProtocolGuid                 ## SOMETIMES_CONSUMES
   gEfiCpuArchProtocolGuid                       ## PRODUCES
   gEfiMpServiceProtocolGuid                     ## PRODUCES
   gEfiSmmBase2ProtocolGuid                      ## SOMETIMES_CONSUMES

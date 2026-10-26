@@ -8,6 +8,8 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 #include "DxeMain.h"
 #include <Library/SerialPortLib.h>
+#include <Library/PrintLib.h>
+#include <Protocol/GxDxeDiagnostics.h>
 #include <Guid/GraphicsInfoHob.h>
 
 #define GX_DXE_FB_COLUMNS       72
@@ -16,6 +18,9 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #define GX_DXE_FB_CELL_HEIGHT   16
 
 STATIC UINTN  mGxDxeScreenRow;
+STATIC UINT32 mGxDxeSequence;
+STATIC EFI_HANDLE mGxDxeDiagnosticsHandle;
+STATIC GX_DXE_DIAGNOSTICS_PROTOCOL mGxDxeDiagnosticsProtocol;
 STATIC CONST EFI_GUID  mGxGraphicsInfoHobGuid = EFI_PEI_GRAPHICS_INFO_HOB_GUID;
 
 STATIC
@@ -175,8 +180,26 @@ GxDxeLog (
   IN CONST CHAR8  *Message
   )
 {
-  DEBUG ((DEBUG_ERROR, "[GX-DXE] %a\n", Message));
-  GxDxeScreenLog (Message);
+  CHAR8  NumberedMessage[GX_DXE_FB_COLUMNS + 1];
+
+  if (Message == NULL) {
+    return;
+  }
+
+  mGxDxeSequence++;
+  AsciiSPrint (NumberedMessage, sizeof (NumberedMessage), "%04u %a", mGxDxeSequence, Message);
+  DEBUG ((DEBUG_ERROR, "[GX-DXE] %a\n", NumberedMessage));
+  GxDxeScreenLog (NumberedMessage);
+}
+
+STATIC
+VOID
+EFIAPI
+GxDxeDiagnosticsProtocolLog (
+  IN CONST CHAR8  *Message
+  )
+{
+  GxDxeLog (Message);
 }
 
 VOID
@@ -186,8 +209,7 @@ GxDxeCheckpoint (
   )
 {
   (VOID)Sequence;
-  DEBUG ((DEBUG_ERROR, "[GX-DXE] seq=%u %a\n", Sequence, Message));
-  GxDxeScreenLog (Message);
+  GxDxeLog (Message);
 }
 
 STATIC
@@ -197,7 +219,10 @@ GxDxeTraceStatus (
   IN EFI_STATUS   Status
   )
 {
-  DEBUG ((DEBUG_ERROR, "[GX-DXE] %a status=%r\n", Stage, Status));
+  CHAR8  Message[GX_DXE_FB_COLUMNS + 1];
+
+  AsciiSPrint (Message, sizeof (Message), "DXE %a STATUS=0x%lx", Stage, Status);
+  GxDxeLog (Message);
 }
 
 STATIC
@@ -206,7 +231,10 @@ GxDxeTrace (
   IN CONST CHAR8  *Stage
   )
 {
-  DEBUG ((DEBUG_ERROR, "[GX-DXE] %a\n", Stage));
+  CHAR8  Message[GX_DXE_FB_COLUMNS + 1];
+
+  AsciiSPrint (Message, sizeof (Message), "DXE %a", Stage);
+  GxDxeLog (Message);
 }
 
 //
@@ -789,6 +817,17 @@ DxeMain (
   //
   // Initialize the DXE Dispatcher
   //
+  GxDxeTrace ("DXE diagnostics protocol install begin");
+  mGxDxeDiagnosticsProtocol.Log = GxDxeDiagnosticsProtocolLog;
+  Status = gBS->InstallProtocolInterface (
+                  &mGxDxeDiagnosticsHandle,
+                  &gGxDxeDiagnosticsProtocolGuid,
+                  EFI_NATIVE_INTERFACE,
+                  &mGxDxeDiagnosticsProtocol
+                  );
+  GxDxeTraceStatus ("DXE diagnostics protocol install", Status);
+  ASSERT_EFI_ERROR (Status);
+
   GxDxeTrace ("DXE dispatcher init begin");
   CoreInitializeDispatcher ();
   GxDxeCheckpoint (4, "DXE dispatcher initialized");

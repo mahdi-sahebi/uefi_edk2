@@ -15,6 +15,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Library/DebugLib.h>
 #include <Library/BlParseLib.h>
 #include <Library/BmpSupportLib.h>
+#include <Library/GxDxeDiagnosticsLib.h>
 
 typedef struct {
   EFI_IMAGE_ID                             ImageId;
@@ -85,6 +86,7 @@ GetImage (
   BmpHeight = 0;
   BmpWidth = 0;
   Status = ParseBootLogo (&BmpAddr, &BmpSize);
+  GxDxeDiagnosticsLog (EFI_ERROR (Status) ? "LOGO CBMEM PARSE FAILED" : "LOGO CBMEM PARSE RETURNED");
   DEBUG ((DEBUG_ERROR, "[GX-LOGO] CBMEM logo status=%r address=0x%lx size=0x%x\n",
     Status, BmpAddr, BmpSize));
   if (!EFI_ERROR (Status)) {
@@ -116,6 +118,7 @@ GetImage (
         Image->Width  = (UINT16)BmpWidth;
         Image->Height = (UINT16)BmpHeight;
         Image->Bitmap = Blt;
+        GxDxeDiagnosticsLog ("LOGO CBMEM BITMAP READY");
         DEBUG ((DEBUG_ERROR, "[GX-LOGO] using CBMEM bitmap %ux%u\n", Image->Width, Image->Height));
         return Status;
       }

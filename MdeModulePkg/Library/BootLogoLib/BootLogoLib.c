@@ -15,6 +15,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Protocol/UgaDraw.h>
 #include <Protocol/BootLogo.h>
 #include <Protocol/BootLogo2.h>
+#include <Library/GxDxeDiagnosticsLib.h>
 #include <Library/BaseLib.h>
 #include <Library/UefiLib.h>
 #include <Library/BaseMemoryLib.h>
@@ -250,6 +251,7 @@ BootLogoEnableLogo (
       if (GraphicsOutput != NULL) {
         DEBUG ((DEBUG_ERROR, "[GX-LOGO] blit image=%ux%u destination=%u,%u\n",
           Image.Width, Image.Height, DestX, DestY));
+        GxDxeDiagnosticsLog ("LOGO GOP BLIT BEGIN");
         Status = GraphicsOutput->Blt (
                                    GraphicsOutput,
                                    Blt,
@@ -279,6 +281,7 @@ BootLogoEnableLogo (
       }
 
       DEBUG ((DEBUG_ERROR, "[GX-LOGO] image blit status=%r\n", Status));
+      GxDxeDiagnosticsLog (EFI_ERROR (Status) ? "LOGO GOP BLIT FAILED" : "LOGO GOP BLIT RETURNED SUCCESS");
 
       //
       // Report displayed Logo information.

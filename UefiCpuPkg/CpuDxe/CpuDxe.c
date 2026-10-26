@@ -9,6 +9,8 @@
 #include "CpuDxe.h"
 #include "CpuMp.h"
 #include "CpuPageTable.h"
+#include <Library/GxDxeDiagnosticsLib.h>
+#include <Library/PrintLib.h>
 
 #define CPU_INTERRUPT_NUM  256
 
@@ -24,6 +26,12 @@ GxCpuCheckpointBegin (
 
   Sequence = ++mGxCpuCheckpointSequence;
   DEBUG ((DEBUG_ERROR, "[GX-CPU] seq=%u %a begin\n", Sequence, Stage));
+  {
+    CHAR8  Message[96];
+
+    AsciiSPrint (Message, sizeof (Message), "CPU %a BEGIN", Stage);
+    GxDxeDiagnosticsLog (Message);
+  }
   return Sequence;
 }
 
@@ -35,7 +43,11 @@ GxCpuCheckpointReturn (
   IN EFI_STATUS   Status
   )
 {
+  CHAR8  Message[112];
+
   DEBUG ((DEBUG_ERROR, "[GX-CPU] seq=%u %a return status=%r\n", Sequence, Stage, Status));
+  AsciiSPrint (Message, sizeof (Message), "CPU %a RETURN STATUS=0x%lx", Stage, Status);
+  GxDxeDiagnosticsLog (Message);
 }
 
 //

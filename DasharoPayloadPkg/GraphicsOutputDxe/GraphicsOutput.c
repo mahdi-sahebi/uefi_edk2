@@ -8,6 +8,8 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 **/
 
 #include "GraphicsOutput.h"
+#include <Library/GxDxeDiagnosticsLib.h>
+#include <Library/PrintLib.h>
 CONST ACPI_ADR_DEVICE_PATH mGraphicsOutputAdrNode = {
   {
     ACPI_DEVICE_PATH,
@@ -410,14 +412,19 @@ GraphicsOutputDriverBindingStart (
       //
       DEBUG ((DEBUG_ERROR, "[GX-GOP] probing BARs requested=%u framebuffer=0x%lx size=0x%x\n",
         DeviceInfo->BarIndex, GraphicsInfo->FrameBufferBase, GraphicsInfo->FrameBufferSize));
+      GxDxeDiagnosticsLog ("GOP PCI BAR PROBE BEGIN");
       for (Index = 0; Index < MAX_PCI_BAR; Index++) {
         if ((DeviceInfo->BarIndex != MAX_UINT8) && (DeviceInfo->BarIndex != Index)) {
           continue;
         }
         Status = PciIo->GetBarAttributes (PciIo, Index, NULL, (VOID**) &Resources);
         if (!EFI_ERROR (Status)) {
+          CHAR8  BarMessage[72];
+
           DEBUG ((DEBUG_ERROR, "[GX-GOP] BAR[%u] base=0x%lx length=0x%lx desc=%u res-type=%u\n",
             Index, Resources->AddrRangeMin, Resources->AddrLen, Resources->Desc, Resources->ResType));
+          AsciiSPrint (BarMessage, sizeof (BarMessage), "GOP BAR%u BASE=%lx LEN=%lx", Index, Resources->AddrRangeMin, Resources->AddrLen);
+          GxDxeDiagnosticsLog (BarMessage);
           if ((Resources->Desc == ACPI_ADDRESS_SPACE_DESCRIPTOR) &&
             (Resources->Len == (UINT16) (sizeof (EFI_ACPI_ADDRESS_SPACE_DESCRIPTOR) - 3)) &&
               (Resources->ResType == ACPI_ADDRESS_SPACE_TYPE_MEM) &&
@@ -439,7 +446,11 @@ GraphicsOutputDriverBindingStart (
             DEBUG ((DEBUG_ERROR, "[GX-GOP] BAR[%u] rejected: descriptor/type/length mismatch\n", Index));
           }
         } else {
+          CHAR8  BarMessage[72];
+
           DEBUG ((DEBUG_ERROR, "[GX-GOP] BAR[%u] GetBarAttributes status=%r\n", Index, Status));
+          AsciiSPrint (BarMessage, sizeof (BarMessage), "GOP BAR%u ATTR STATUS=%lx", Index, Status);
+          GxDxeDiagnosticsLog (BarMessage);
         }
       }
       if (Index == MAX_PCI_BAR) {
@@ -454,6 +465,7 @@ GraphicsOutputDriverBindingStart (
 
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "[GX-GOP] controller rejected status=%r\n", Status));
+    GxDxeDiagnosticsLog ("GOP CONTROLLER REJECTED");
     goto CloseProtocols;
   }
 
@@ -538,6 +550,7 @@ GraphicsOutputDriverBindingStart (
                   NULL
                   );
   DEBUG ((DEBUG_ERROR, "[GX-GOP] GOP protocol installation status=%r\n", Status));
+  GxDxeDiagnosticsLog (EFI_ERROR (Status) ? "GOP PROTOCOL INSTALL FAILED" : "GOP PROTOCOL INSTALL RETURNED");
 
   if (!EFI_ERROR (Status)) {
     Status = gBS->OpenProtocol (
@@ -609,6 +622,7 @@ CloseProtocols:
            );
   }
   DEBUG ((DEBUG_ERROR, "[GX-GOP] start returned status=%r\n", Status));
+  GxDxeDiagnosticsLog (EFI_ERROR (Status) ? "GOP DRIVER START FAILED" : "GOP DRIVER START RETURNED SUCCESS");
   return Status;
 }
 
@@ -760,6 +774,7 @@ InitializeGraphicsOutput (
   }
 
   DEBUG ((DEBUG_ERROR, "[GX-GOP] driver entry found graphics HOB\n"));
+  GxDxeDiagnosticsLog ("GOP DRIVER ENTRY GRAPHICS HOB FOUND");
 
   Status = EfiLibInstallDriverBindingComponentName2 (
              ImageHandle,

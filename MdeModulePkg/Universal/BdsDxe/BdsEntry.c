@@ -13,6 +13,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 **/
 
 #include "Bds.h"
+#include <Library/GxDxeDiagnosticsLib.h>
 #include "Language.h"
 #include "HwErrRecSupport.h"
 #include <Library/VariablePolicyHelperLib.h>
@@ -737,6 +738,7 @@ BdsEntry (
   PERF_CROSSMODULE_BEGIN ("BDS");
   DEBUG ((DEBUG_INFO, "[Bds] Entry...\n"));
   DEBUG ((DEBUG_ERROR, "[GX-BDS] entry\n"));
+  GxDxeDiagnosticsLog ("BDS ENTRY");
 
   //
   // Fill in FirmwareVendor and FirmwareRevision from PCDs
@@ -1071,7 +1073,9 @@ BdsEntry (
   //
   // BootManagerMenu doesn't contain the correct information when return status is EFI_NOT_FOUND.
   //
+  GxDxeDiagnosticsLog ("BDS MENU LOOKUP BEGIN");
   BootManagerMenuStatus = EfiBootManagerGetBootManagerMenu (&BootManagerMenu);
+  GxDxeDiagnosticsLog (EFI_ERROR (BootManagerMenuStatus) ? "BDS MENU LOOKUP FAILED" : "BDS MENU LOOKUP RETURNED");
   DEBUG ((DEBUG_ERROR, "[GX-BDS] boot manager menu status=%r\n", BootManagerMenuStatus));
 
   BootFwUi         = (BOOLEAN)((OsIndication & EFI_OS_INDICATIONS_BOOT_TO_FW_UI) != 0);
@@ -1114,8 +1118,10 @@ BdsEntry (
     //
     DEBUG ((DEBUG_ERROR, "[GX-BDS] Boot Manager Menu launch begin option=%04x\n",
       BootManagerMenu.OptionNumber));
+    GxDxeDiagnosticsLog ("BDS MENU LAUNCH BEGIN");
     EfiBootManagerBoot (&BootManagerMenu);
     DEBUG ((DEBUG_ERROR, "[GX-BDS] Boot Manager Menu returned status=%r\n", BootManagerMenu.Status));
+    GxDxeDiagnosticsLog (EFI_ERROR (BootManagerMenu.Status) ? "BDS MENU RETURNED ERROR" : "BDS MENU RETURNED SUCCESS");
   }
 #if defined (GOOXI_G4DEL_USB_DIAGNOSTICS) && GOOXI_G4DEL_USB_DIAGNOSTICS
   else if (BootFwUi) {
