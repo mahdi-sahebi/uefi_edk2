@@ -36,6 +36,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 // #include <Library/PeCoffExtraActionLib.h>
 #include <Library/DebugAgentLib.h>
 
+
 #define mde_2__VGA_FB 0xB8000
 #define mde_2__VGA_COLUMNS 80
 
@@ -43,6 +44,7 @@ char mde_2_g_buffer[80];
 
 void mde_2_edkii_vga_write_at_offset(unsigned int line, unsigned int offset, const char *string)
 {
+#if !defined (GOOXI_G4DEL_LINEAR_GRAPHICS)
 	if (!string)
 		return;
 
@@ -55,12 +57,19 @@ void mde_2_edkii_vga_write_at_offset(unsigned int line, unsigned int offset, con
 		else
 			p[i] = 0x0F00;
 	}
+
+#else
+  (void)line;
+  (void)offset;
+  (void)string;
+#endif
 }
 
 
 static void
 log_vga_row(unsigned int line)
 {
+#if !defined (GOOXI_G4DEL_LINEAR_GRAPHICS)
     volatile const unsigned short *cells;
     char text[81];
     unsigned int i;
@@ -77,6 +86,10 @@ log_vga_row(unsigned int line)
     text[i] = '\0';
     if (i != 0)
         DEBUG ((DEBUG_ERROR, "[GX-VGA] row=%u %a\n", line, text));
+
+#else
+  (void)line;
+#endif
 }
 
 void mde_2_edkii_vga_print(unsigned int line, const char *string)
@@ -88,7 +101,11 @@ void mde_2_edkii_vga_print(unsigned int line, const char *string)
         return;
     for (i = 0; string[i] != '\0'; i++) {
         if (string[i] != ' ') {
+            #if defined (GOOXI_G4DEL_LINEAR_GRAPHICS)
+            DEBUG ((DEBUG_ERROR, "[GX-VGA] row=%u %a\n", line, string));
+#else
             log_vga_row(line);
+#endif
             break;
         }
     }

@@ -233,6 +233,7 @@ GraphicsOutputDriverBindingSupported (
                   Controller,
                   EFI_OPEN_PROTOCOL_BY_DRIVER
                   );
+  DEBUG ((DEBUG_ERROR, "[GX-GOP] PCI I/O open status=%r\n", Status));
   if (Status == EFI_ALREADY_STARTED) {
     Status = EFI_SUCCESS;
   }
@@ -257,6 +258,7 @@ GraphicsOutputDriverBindingSupported (
                   Controller,
                   EFI_OPEN_PROTOCOL_BY_DRIVER
                   );
+  DEBUG ((DEBUG_ERROR, "[GX-GOP] device path open status=%r\n", Status));
   if (Status == EFI_ALREADY_STARTED) {
     Status = EFI_SUCCESS;
   }
@@ -319,7 +321,7 @@ GraphicsOutputDriverBindingStart (
     return EFI_NOT_FOUND;
   }
   GraphicsInfo = (EFI_PEI_GRAPHICS_INFO_HOB *) (GET_GUID_HOB_DATA (HobStart));
-  DEBUG ((DEBUG_ERROR, "[GX-GOP] start framebuffer=0x%lx size=0x%lx mode=%ux%u\n",
+  DEBUG ((DEBUG_ERROR, "[GX-GOP] start framebuffer=0x%lx size=0x%x mode=%ux%u\n",
     GraphicsInfo->FrameBufferBase, GraphicsInfo->FrameBufferSize,
     GraphicsInfo->GraphicsMode.HorizontalResolution, GraphicsInfo->GraphicsMode.VerticalResolution));
 
@@ -345,6 +347,7 @@ GraphicsOutputDriverBindingStart (
   //
   // Open the PCI I/O Protocol
   //
+  DEBUG ((DEBUG_ERROR, "[GX-GOP] opening PCI I/O and device path protocols\n"));
   Status = gBS->OpenProtocol (
                   Controller,
                   &gEfiPciIoProtocolGuid,
@@ -375,7 +378,17 @@ GraphicsOutputDriverBindingStart (
   // Read the PCI Class Code from the PCI Device
   //
   Status = PciIo->Pci.Read (PciIo, EfiPciIoWidthUint8, 0, sizeof (Pci), &Pci);
+  DEBUG ((DEBUG_ERROR, "[GX-GOP] PCI config read status=%r\n", Status));
   if (!EFI_ERROR (Status)) {
+    UINTN Segment;
+    UINTN Bus;
+    UINTN Device;
+    UINTN Function;
+
+    Status = PciIo->GetLocation (PciIo, &Segment, &Bus, &Device, &Function);
+    DEBUG ((DEBUG_ERROR, "[GX-GOP] candidate location status=%r %04x:%02x:%02x.%x vendor=%04x device=%04x class=%02x%02x%02x\n",
+      Status, Segment, Bus, Device, Function, Pci.Hdr.VendorId,
+      Pci.Hdr.DeviceId, Pci.Hdr.ClassCode[2], Pci.Hdr.ClassCode[1], Pci.Hdr.ClassCode[0]));
     if (!IS_PCI_DISPLAY (&Pci) || (
         ((DeviceInfo->VendorId != MAX_UINT16) && (DeviceInfo->VendorId != Pci.Hdr.VendorId)) ||
         ((DeviceInfo->DeviceId != MAX_UINT16) && (DeviceInfo->DeviceId != Pci.Hdr.DeviceId)) ||
@@ -395,14 +408,16 @@ GraphicsOutputDriverBindingStart (
       // whose size >= the frame buffer size from GraphicsInfo HOB.
       // Store the new frame buffer base.
       //
+      DEBUG ((DEBUG_ERROR, "[GX-GOP] probing BARs requested=%u framebuffer=0x%lx size=0x%x\n",
+        DeviceInfo->BarIndex, GraphicsInfo->FrameBufferBase, GraphicsInfo->FrameBufferSize));
       for (Index = 0; Index < MAX_PCI_BAR; Index++) {
         if ((DeviceInfo->BarIndex != MAX_UINT8) && (DeviceInfo->BarIndex != Index)) {
           continue;
         }
         Status = PciIo->GetBarAttributes (PciIo, Index, NULL, (VOID**) &Resources);
         if (!EFI_ERROR (Status)) {
-          DEBUG ((DEBUG_INFO, "[%a]: BAR[%d]: Base = %lx, Length = %lx\n",
-                  gEfiCallerBaseName, Index, Resources->AddrRangeMin, Resources->AddrLen));
+          DEBUG ((DEBUG_ERROR, "[GX-GOP] BAR[%u] base=0x%lx length=0x%lx desc=%u res-type=%u\n",
+            Index, Resources->AddrRangeMin, Resources->AddrLen, Resources->Desc, Resources->ResType));
           if ((Resources->Desc == ACPI_ADDRESS_SPACE_DESCRIPTOR) &&
             (Resources->Len == (UINT16) (sizeof (EFI_ACPI_ADDRESS_SPACE_DESCRIPTOR) - 3)) &&
               (Resources->ResType == ACPI_ADDRESS_SPACE_TYPE_MEM) &&
@@ -420,11 +435,16 @@ GraphicsOutputDriverBindingStart (
             } else {
               break;
             }
+          } else {
+            DEBUG ((DEBUG_ERROR, "[GX-GOP] BAR[%u] rejected: descriptor/type/length mismatch\n", Index));
           }
+        } else {
+          DEBUG ((DEBUG_ERROR, "[GX-GOP] BAR[%u] GetBarAttributes status=%r\n", Index, Status));
         }
       }
       if (Index == MAX_PCI_BAR) {
         Status = EFI_UNSUPPORTED;
+        DEBUG ((DEBUG_ERROR, "[GX-GOP] no BAR covers framebuffer status=%r\n", Status));
       } else {
         DEBUG ((DEBUG_ERROR, "[GX-GOP] matched BAR %u framebuffer=0x%lx\n", Index, FrameBufferBase));
         DEBUG ((DEBUG_INFO, "[%a]: ... matched!\n", gEfiCallerBaseName));
@@ -433,6 +453,7 @@ GraphicsOutputDriverBindingStart (
   }
 
   if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "[GX-GOP] controller rejected status=%r\n", Status));
     goto CloseProtocols;
   }
 
@@ -474,6 +495,7 @@ GraphicsOutputDriverBindingStart (
   }
 
   if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "[GX-GOP] PCI attributes setup failed status=%r\n", Status));
     goto FreeMemory;
   }
 
@@ -499,6 +521,7 @@ GraphicsOutputDriverBindingStart (
   }
   if (RETURN_ERROR (ReturnStatus)) {
     Status = EFI_OUT_OF_RESOURCES;
+    DEBUG ((DEBUG_ERROR, "[GX-GOP] framebuffer blit setup failed status=%r\n", Status));
     goto RestorePciAttributes;
   }
 
@@ -514,6 +537,7 @@ GraphicsOutputDriverBindingStart (
                   &gEfiDevicePathProtocolGuid, Private->DevicePath,
                   NULL
                   );
+  DEBUG ((DEBUG_ERROR, "[GX-GOP] GOP protocol installation status=%r\n", Status));
 
   if (!EFI_ERROR (Status)) {
     Status = gBS->OpenProtocol (

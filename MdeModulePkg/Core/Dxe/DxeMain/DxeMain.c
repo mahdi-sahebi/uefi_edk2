@@ -8,10 +8,176 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 #include "DxeMain.h"
 #include <Library/SerialPortLib.h>
+#include <Guid/GraphicsInfoHob.h>
 
-#define GX_DXE_VGA_FB       0xB8000
-#define GX_DXE_VGA_COLUMNS  80
-#define GX_DXE_VGA_ROWS     25
+#define GX_DXE_FB_COLUMNS       72
+#define GX_DXE_FB_LOG_ROWS      16
+#define GX_DXE_FB_CELL_WIDTH    12
+#define GX_DXE_FB_CELL_HEIGHT   16
+
+STATIC UINTN  mGxDxeScreenRow;
+STATIC CONST EFI_GUID  mGxGraphicsInfoHobGuid = EFI_PEI_GRAPHICS_INFO_HOB_GUID;
+
+STATIC
+UINT8
+GxDxeGlyphColumn (
+  IN CHAR8  Character,
+  IN UINTN  Column
+  )
+{
+  // 5x7 ASCII font, stored as one 7-bit column per entry.
+  STATIC CONST UINT8  Font[][5] = {
+    { 0x3E, 0x51, 0x49, 0x45, 0x3E }, // 0
+    { 0x00, 0x42, 0x7F, 0x40, 0x00 }, // 1
+    { 0x42, 0x61, 0x51, 0x49, 0x46 }, // 2
+    { 0x21, 0x41, 0x45, 0x4B, 0x31 }, // 3
+    { 0x18, 0x14, 0x12, 0x7F, 0x10 }, // 4
+    { 0x27, 0x45, 0x45, 0x45, 0x39 }, // 5
+    { 0x3C, 0x4A, 0x49, 0x49, 0x30 }, // 6
+    { 0x01, 0x71, 0x09, 0x05, 0x03 }, // 7
+    { 0x36, 0x49, 0x49, 0x49, 0x36 }, // 8
+    { 0x06, 0x49, 0x49, 0x29, 0x1E }, // 9
+    { 0x7E, 0x11, 0x11, 0x11, 0x7E }, // A
+    { 0x7F, 0x49, 0x49, 0x49, 0x36 }, // B
+    { 0x3E, 0x41, 0x41, 0x41, 0x22 }, // C
+    { 0x7F, 0x41, 0x41, 0x22, 0x1C }, // D
+    { 0x7F, 0x49, 0x49, 0x49, 0x41 }, // E
+    { 0x7F, 0x09, 0x09, 0x09, 0x01 }, // F
+    { 0x3E, 0x41, 0x49, 0x49, 0x7A }, // G
+    { 0x7F, 0x08, 0x08, 0x08, 0x7F }, // H
+    { 0x00, 0x41, 0x7F, 0x41, 0x00 }, // I
+    { 0x20, 0x40, 0x41, 0x3F, 0x01 }, // J
+    { 0x7F, 0x08, 0x14, 0x22, 0x41 }, // K
+    { 0x7F, 0x40, 0x40, 0x40, 0x40 }, // L
+    { 0x7F, 0x02, 0x0C, 0x02, 0x7F }, // M
+    { 0x7F, 0x04, 0x08, 0x10, 0x7F }, // N
+    { 0x3E, 0x41, 0x41, 0x41, 0x3E }, // O
+    { 0x7F, 0x09, 0x09, 0x09, 0x06 }, // P
+    { 0x3E, 0x41, 0x51, 0x21, 0x5E }, // Q
+    { 0x7F, 0x09, 0x19, 0x29, 0x46 }, // R
+    { 0x46, 0x49, 0x49, 0x49, 0x31 }, // S
+    { 0x01, 0x01, 0x7F, 0x01, 0x01 }, // T
+    { 0x3F, 0x40, 0x40, 0x40, 0x3F }, // U
+    { 0x1F, 0x20, 0x40, 0x20, 0x1F }, // V
+    { 0x3F, 0x40, 0x38, 0x40, 0x3F }, // W
+    { 0x63, 0x14, 0x08, 0x14, 0x63 }, // X
+    { 0x07, 0x08, 0x70, 0x08, 0x07 }, // Y
+    { 0x61, 0x51, 0x49, 0x45, 0x43 }, // Z
+    { 0x08, 0x08, 0x08, 0x08, 0x08 }, // -
+    { 0x00, 0x36, 0x36, 0x00, 0x00 }, // :
+    { 0x00, 0x60, 0x60, 0x00, 0x00 }, // .
+    { 0x00, 0x41, 0x22, 0x14, 0x08 }, // /
+    { 0x00, 0x00, 0x00, 0x00, 0x00 }, // space
+    { 0x02, 0x01, 0x51, 0x09, 0x06 }  // ?
+  };
+  UINTN  Index;
+
+  if (Column >= 5) {
+    return 0;
+  }
+
+  if ((Character >= '0') && (Character <= '9')) {
+    Index = Character - '0';
+  } else if ((Character >= 'A') && (Character <= 'Z')) {
+    Index = 10 + Character - 'A';
+  } else {
+    switch (Character) {
+      case '-': Index = 36; break;
+      case ':': Index = 37; break;
+      case '.': Index = 38; break;
+      case '/': Index = 39; break;
+      case ' ': Index = 40; break;
+      default:  Index = 41; break;
+    }
+  }
+
+  return Font[Index][Column];
+}
+
+STATIC
+VOID
+GxDxeScreenLog (
+  IN CONST CHAR8  *Message
+  )
+{
+  VOID                              *Hob;
+  EFI_PEI_GRAPHICS_INFO_HOB         *GraphicsInfo;
+  EFI_GRAPHICS_OUTPUT_MODE_INFORMATION  *Mode;
+  volatile UINT32                   *FrameBuffer;
+  UINTN                             Row;
+  UINTN                             CharacterIndex;
+  UINTN                             X;
+  UINTN                             Y;
+  UINTN                             GlyphX;
+  UINTN                             GlyphY;
+  UINTN                             Scale;
+  UINT32                            Pixel;
+  UINT32                            Black;
+  UINT32                            White;
+
+  if (Message == NULL) {
+    return;
+  }
+
+  Hob = GetFirstGuidHob (&mGxGraphicsInfoHobGuid);
+  if ((Hob == NULL) || (GET_GUID_HOB_DATA_SIZE (Hob) < sizeof (*GraphicsInfo))) {
+    return;
+  }
+
+  GraphicsInfo = (EFI_PEI_GRAPHICS_INFO_HOB *)GET_GUID_HOB_DATA (Hob);
+  Mode = &GraphicsInfo->GraphicsMode;
+  if ((GraphicsInfo->FrameBufferBase == 0) || (Mode->HorizontalResolution < 640) ||
+      (Mode->VerticalResolution < GX_DXE_FB_CELL_HEIGHT) || (Mode->PixelsPerScanLine < Mode->HorizontalResolution))
+  {
+    return;
+  }
+
+  Scale = 2;
+  Row = mGxDxeScreenRow++ % GX_DXE_FB_LOG_ROWS;
+  FrameBuffer = (volatile UINT32 *)(UINTN)GraphicsInfo->FrameBufferBase;
+  Black = 0;
+  White = 0x00FFFFFF;
+  if (Mode->PixelFormat == PixelRedGreenBlueReserved8BitPerColor) {
+    White = 0x00FFFFFF;
+  } else if (Mode->PixelFormat != PixelBlueGreenRedReserved8BitPerColor) {
+    return;
+  }
+
+  for (CharacterIndex = 0; (Message[CharacterIndex] != '\0') && (CharacterIndex < GX_DXE_FB_COLUMNS); CharacterIndex++) {
+    UINT8  Character;
+
+    Character = Message[CharacterIndex];
+    if ((Character >= 'a') && (Character <= 'z')) {
+      Character = (CHAR8)(Character - 'a' + 'A');
+    }
+    X = CharacterIndex * GX_DXE_FB_CELL_WIDTH;
+    Y = Row * GX_DXE_FB_CELL_HEIGHT;
+    for (GlyphY = 0; GlyphY < 14; GlyphY++) {
+      for (GlyphX = 0; GlyphX < GX_DXE_FB_CELL_WIDTH; GlyphX++) {
+        Pixel = Black;
+        if ((GlyphX < 10) && (GlyphY < 14) &&
+            ((GxDxeGlyphColumn (Character, GlyphX / Scale) & (1U << (GlyphY / Scale))) != 0))
+        {
+          Pixel = White;
+        }
+        if ((X + GlyphX < Mode->HorizontalResolution) && (Y + GlyphY < Mode->VerticalResolution) &&
+            (((Y + GlyphY) * Mode->PixelsPerScanLine + X + GlyphX) * sizeof (UINT32) < GraphicsInfo->FrameBufferSize))
+        {
+          FrameBuffer[(Y + GlyphY) * Mode->PixelsPerScanLine + X + GlyphX] = Pixel;
+        }
+      }
+    }
+  }
+}
+
+VOID
+GxDxeLog (
+  IN CONST CHAR8  *Message
+  )
+{
+  DEBUG ((DEBUG_ERROR, "[GX-DXE] %a\n", Message));
+  GxDxeScreenLog (Message);
+}
 
 VOID
 GxDxeCheckpoint (
@@ -19,19 +185,9 @@ GxDxeCheckpoint (
   IN CONST CHAR8 *Message
   )
 {
-  volatile UINT16 *Vga;
-  UINTN           Index;
-  UINTN           Row;
-
-  Row = Sequence % GX_DXE_VGA_ROWS;
-  Vga = (volatile UINT16 *)(UINTN)GX_DXE_VGA_FB + Row * GX_DXE_VGA_COLUMNS;
-  for (Index = 0; Index < GX_DXE_VGA_COLUMNS; Index++) {
-    Vga[Index] = 0x0F00;
-  }
-  for (Index = 0; Message[Index] != '\0' && Index < GX_DXE_VGA_COLUMNS; Index++) {
-    Vga[Index] = (UINT16)(0x0F00 | (UINT8)Message[Index]);
-  }
+  (VOID)Sequence;
   DEBUG ((DEBUG_ERROR, "[GX-DXE] seq=%u %a\n", Sequence, Message));
+  GxDxeScreenLog (Message);
 }
 
 STATIC
@@ -291,9 +447,12 @@ DxeMain (
   EFI_VECTOR_HANDOFF_INFO       *VectorInfo;
   VOID                          *EntryPoint;
 
-  // DXE Core has its own SerialPortLib instance. Use the build-selected SOL
-  // port instead of rescanning low memory for a potentially stale CB table.
+  // Emit this marker before raw UART access.  The checkpoint below is SOL-only
+  // because the platform is using a linear framebuffer.
+  DEBUG ((DEBUG_ERROR, "[GX-DXE] DXE entry before raw UART\n"));
+  DEBUG ((DEBUG_ERROR, "[GX-DXE] raw UART write begin\n"));
   SerialPortWrite ((UINT8 *)"[GX-DXE] serial entry\r\n", sizeof ("[GX-DXE] serial entry\r\n") - 1);
+  DEBUG ((DEBUG_ERROR, "[GX-DXE] raw UART write returned\n"));
   GxDxeCheckpoint (0, "DxeCore entry");
 
   //

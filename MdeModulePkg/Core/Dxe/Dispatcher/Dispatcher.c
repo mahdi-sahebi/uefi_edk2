@@ -408,7 +408,14 @@ CoreDispatcher (
   EFI_CORE_DRIVER_ENTRY  *DriverEntry;
   BOOLEAN                ReadyToRun;
   EFI_EVENT              DxeDispatchEvent;
-  CHAR8                  DriverMessage[80];
+  CHAR8                  DriverMessage[128];
+  UINTN                  DriverCount;
+  UINTN                  LoadedCount;
+  UINTN                  LoadFailedCount;
+  UINTN                  ExecutedCount;
+  UINTN                  ExecutionFailedCount;
+  UINTN                  PendingCount;
+  UINTN                  FvImageCount;
 
   PERF_FUNCTION_BEGIN ();
 
@@ -457,7 +464,10 @@ CoreDispatcher (
       //
       if ((DriverEntry->ImageHandle == NULL) && !DriverEntry->IsFvImage) {
         DEBUG ((DEBUG_ERROR, "[GX-DISPATCH] load begin %g\n", &DriverEntry->FileName));
+        AsciiSPrint (DriverMessage, sizeof (DriverMessage), "LOAD START %g", &DriverEntry->FileName);
+        GxDxeLog (DriverMessage);
         DEBUG ((DEBUG_INFO, "Loading driver %g\n", &DriverEntry->FileName));
+        DriverEntry->GxLoadAttempted = TRUE;
         Status = CoreLoadImage (
                    FALSE,
                    gDxeCoreImageHandle,
@@ -466,8 +476,12 @@ CoreDispatcher (
                    0,
                    &DriverEntry->ImageHandle
                    );
+        DriverEntry->GxLoadStatus = Status;
         DEBUG ((DEBUG_ERROR, "[GX-DISPATCH] load end %g status=%r handle=%p\n",
           &DriverEntry->FileName, Status, DriverEntry->ImageHandle));
+        AsciiSPrint (DriverMessage, sizeof (DriverMessage), "LOAD %a %g %r",
+          EFI_ERROR (Status) ? "FAIL" : "OK", &DriverEntry->FileName, Status);
+        GxDxeLog (DriverMessage);
 
         //
         // Update the driver state to reflect that it's been loaded
@@ -516,8 +530,13 @@ CoreDispatcher (
         // Produce a firmware volume block protocol for FvImage so it gets dispatched from.
         //
         DEBUG ((DEBUG_ERROR, "[GX-DISPATCH] FV image begin %g\n", &DriverEntry->FileName));
+        AsciiSPrint (DriverMessage, sizeof (DriverMessage), "FV IMAGE START %g", &DriverEntry->FileName);
+        GxDxeLog (DriverMessage);
         Status = CoreProcessFvImageFile (DriverEntry->Fv, DriverEntry->FvHandle, &DriverEntry->FileName);
         DEBUG ((DEBUG_ERROR, "[GX-DISPATCH] FV image end %g status=%r\n", &DriverEntry->FileName, Status));
+        AsciiSPrint (DriverMessage, sizeof (DriverMessage), "FV IMAGE %a %g %r",
+          EFI_ERROR (Status) ? "FAIL" : "OK", &DriverEntry->FileName, Status);
+        GxDxeLog (DriverMessage);
       } else {
         REPORT_STATUS_CODE_WITH_EXTENDED_DATA (
           EFI_PROGRESS_CODE,
@@ -528,10 +547,13 @@ CoreDispatcher (
         ASSERT (DriverEntry->ImageHandle != NULL);
 
         DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] CHECKPOINT DXE driver enter %g\n", &DriverEntry->FileName));
-        AsciiSPrint (DriverMessage, sizeof (DriverMessage), "DXE start %g", &DriverEntry->FileName);
+        AsciiSPrint (DriverMessage, sizeof (DriverMessage), "DXE START %g", &DriverEntry->FileName);
         GxDxeCheckpoint (13, DriverMessage);
+        DriverEntry->GxStartAttempted = TRUE;
         Status = CoreStartImage (DriverEntry->ImageHandle, NULL, NULL);
-        AsciiSPrint (DriverMessage, sizeof (DriverMessage), "DXE return %g %r", &DriverEntry->FileName, Status);
+        DriverEntry->GxStartStatus = Status;
+        AsciiSPrint (DriverMessage, sizeof (DriverMessage), "DXE %a %g %r",
+          EFI_ERROR (Status) ? "FAIL" : "OK", &DriverEntry->FileName, Status);
         GxDxeCheckpoint (13, DriverMessage);
         DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] CHECKPOINT DXE driver returned %g status=%r\n",
           &DriverEntry->FileName, Status));
@@ -596,15 +618,66 @@ CoreDispatcher (
   //
   CoreCloseEvent (DxeDispatchEvent);
 
-  // Report undispatched images once per completed dispatcher invocation.
+  // Report a complete inventory, including load, execution and pending state.
+  DriverCount          = 0;
+  LoadedCount          = 0;
+  LoadFailedCount      = 0;
+  ExecutedCount        = 0;
+  ExecutionFailedCount = 0;
+  PendingCount         = 0;
+  FvImageCount         = 0;
   for (Link = mDiscoveredList.ForwardLink; Link != &mDiscoveredList; Link = Link->ForwardLink) {
     DriverEntry = CR (Link, EFI_CORE_DRIVER_ENTRY, Link, EFI_CORE_DRIVER_ENTRY_SIGNATURE);
+    DriverCount++;
+    if (DriverEntry->IsFvImage) {
+      FvImageCount++;
+      AsciiSPrint (DriverMessage, sizeof (DriverMessage), "INVENTORY FV IMAGE %g",
+        &DriverEntry->FileName);
+    } else if (DriverEntry->GxLoadAttempted && EFI_ERROR (DriverEntry->GxLoadStatus)) {
+      LoadFailedCount++;
+      AsciiSPrint (DriverMessage, sizeof (DriverMessage), "INVENTORY LOAD FAIL %g %r",
+        &DriverEntry->FileName, DriverEntry->GxLoadStatus);
+    } else if (DriverEntry->ImageHandle != NULL) {
+      LoadedCount++;
+      if (DriverEntry->GxStartAttempted) {
+        if (EFI_ERROR (DriverEntry->GxStartStatus)) {
+          ExecutionFailedCount++;
+          AsciiSPrint (DriverMessage, sizeof (DriverMessage), "INVENTORY LOAD OK RUN FAIL %g %r",
+            &DriverEntry->FileName, DriverEntry->GxStartStatus);
+        } else {
+          ExecutedCount++;
+          AsciiSPrint (DriverMessage, sizeof (DriverMessage), "INVENTORY LOAD OK RUN OK %g",
+            &DriverEntry->FileName);
+        }
+      } else {
+        PendingCount++;
+        AsciiSPrint (DriverMessage, sizeof (DriverMessage), "INVENTORY LOAD OK NOT RUN %g",
+          &DriverEntry->FileName);
+      }
+    } else if (!DriverEntry->Initialized) {
+      PendingCount++;
+      AsciiSPrint (DriverMessage, sizeof (DriverMessage), "INVENTORY PENDING %g",
+        &DriverEntry->FileName);
+    } else {
+      AsciiSPrint (DriverMessage, sizeof (DriverMessage), "INVENTORY NOT LOADED %g",
+        &DriverEntry->FileName);
+    }
+    GxDxeLog (DriverMessage);
+
     if (!DriverEntry->Initialized) {
       DEBUG ((DEBUG_ERROR, "[GX-DISPATCH] pending %g dependent=%u depex_error=%u unrequested=%u untrusted=%u before=%u after=%u\n",
         &DriverEntry->FileName, DriverEntry->Dependent, DriverEntry->DepexProtocolError,
         DriverEntry->Unrequested, DriverEntry->Untrusted, DriverEntry->Before, DriverEntry->After));
     }
   }
+
+  DEBUG ((DEBUG_ERROR, "[GX-DISPATCH] summary dxe_drivers=%u fv_images=%u loaded=%u load_failed=%u executed=%u execution_failed=%u pending=%u\n",
+    DriverCount - FvImageCount, FvImageCount, LoadedCount, LoadFailedCount,
+    ExecutedCount, ExecutionFailedCount, PendingCount));
+  AsciiSPrint (DriverMessage, sizeof (DriverMessage), "SUMMARY DXE %u FV %u LOAD %u FAIL %u RUN %u FAIL %u PEND %u",
+    DriverCount - FvImageCount, FvImageCount, LoadedCount, LoadFailedCount,
+    ExecutedCount, ExecutionFailedCount, PendingCount);
+  GxDxeLog (DriverMessage);
 
   gDispatcherRunning = FALSE;
   DEBUG ((DEBUG_ERROR, "[GX-DISPATCH] end status=%r\n", ReturnStatus));

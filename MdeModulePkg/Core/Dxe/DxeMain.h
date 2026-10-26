@@ -19,6 +19,11 @@ GxDxeCheckpoint (
   IN CONST CHAR8  *Message
   );
 
+VOID
+GxDxeLog (
+  IN CONST CHAR8  *Message
+  );
+
 #include <Protocol/LoadedImage.h>
 #include <Protocol/GuidedSectionExtraction.h>
 #include <Protocol/DevicePath.h>
@@ -165,6 +170,11 @@ typedef struct {
   BOOLEAN                          Untrusted;
   BOOLEAN                          Initialized;
   BOOLEAN                          DepexProtocolError;
+
+  BOOLEAN                          GxLoadAttempted;
+  BOOLEAN                          GxStartAttempted;
+  EFI_STATUS                       GxLoadStatus;
+  EFI_STATUS                       GxStartStatus;
 
   EFI_HANDLE                       ImageHandle;
   BOOLEAN                          IsFvImage;

@@ -51,6 +51,9 @@ BootLogoEnableLogo (
   UINT32                                 ColorDepth;
   UINT32                                 RefreshRate;
   EFI_GRAPHICS_OUTPUT_PROTOCOL           *GraphicsOutput;
+  EFI_HANDLE                             *GraphicsHandles;
+  UINTN                                  GraphicsHandleCount;
+  UINTN                                  GraphicsHandleIndex;
   EFI_BOOT_LOGO_PROTOCOL                 *BootLogo;
   EDKII_BOOT_LOGO2_PROTOCOL              *BootLogo2;
   UINTN                                  NumberOfLogos;
@@ -70,10 +73,43 @@ BootLogoEnableLogo (
   }
 
   UgaDraw = NULL;
+  GraphicsHandles = NULL;
+  GraphicsHandleCount = 0;
   //
   // Try to open GOP first
   //
   Status = gBS->HandleProtocol (gST->ConsoleOutHandle, &gEfiGraphicsOutputProtocolGuid, (VOID **)&GraphicsOutput);
+  if (!EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "[GX-LOGO] GOP found on console handle=%p\n", gST->ConsoleOutHandle));
+  } else {
+    // The text console handle can be a console splitter without GOP. Use the
+    // active graphics controller directly so the platform logo still reaches VGA.
+    Status = gBS->LocateHandleBuffer (
+                    ByProtocol,
+                    &gEfiGraphicsOutputProtocolGuid,
+                    NULL,
+                    &GraphicsHandleCount,
+                    &GraphicsHandles
+                    );
+    if (!EFI_ERROR (Status)) {
+      Status = EFI_NOT_FOUND;
+      for (GraphicsHandleIndex = 0; GraphicsHandleIndex < GraphicsHandleCount; GraphicsHandleIndex++) {
+        Status = gBS->HandleProtocol (
+                        GraphicsHandles[GraphicsHandleIndex],
+                        &gEfiGraphicsOutputProtocolGuid,
+                        (VOID **)&GraphicsOutput
+                        );
+        if (!EFI_ERROR (Status)) {
+          DEBUG ((DEBUG_ERROR, "[GX-LOGO] GOP selected handle=%p index=%u of %u\n",
+            GraphicsHandles[GraphicsHandleIndex], GraphicsHandleIndex, GraphicsHandleCount));
+          break;
+        }
+      }
+    }
+  }
+  if (GraphicsHandles != NULL) {
+    gBS->FreePool (GraphicsHandles);
+  }
   if (EFI_ERROR (Status) && FeaturePcdGet (PcdUgaConsumeSupport)) {
     GraphicsOutput = NULL;
     //
@@ -122,6 +158,8 @@ BootLogoEnableLogo (
       return EFI_UNSUPPORTED;
     }
   }
+
+  DEBUG ((DEBUG_ERROR, "[GX-LOGO] target mode=%ux%u graphics=%p\n", SizeOfX, SizeOfY, GraphicsOutput));
 
   Blt           = NULL;
   NumberOfLogos = 0;
@@ -210,6 +248,8 @@ BootLogoEnableLogo (
 
     if ((DestX >= 0) && (DestY >= 0)) {
       if (GraphicsOutput != NULL) {
+        DEBUG ((DEBUG_ERROR, "[GX-LOGO] blit image=%ux%u destination=%u,%u\n",
+          Image.Width, Image.Height, DestX, DestY));
         Status = GraphicsOutput->Blt (
                                    GraphicsOutput,
                                    Blt,
@@ -237,6 +277,8 @@ BootLogoEnableLogo (
                             Image.Width * sizeof (EFI_UGA_PIXEL)
                             );
       }
+
+      DEBUG ((DEBUG_ERROR, "[GX-LOGO] image blit status=%r\n", Status));
 
       //
       // Report displayed Logo information.
