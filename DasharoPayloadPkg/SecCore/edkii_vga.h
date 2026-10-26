@@ -20,6 +20,7 @@
 
 // Init?
 void edkii_vga_clear();
+void edkii_vga_configure_from_coreboot(unsigned int bootloader_parameter);
 void edkii_vga_print(unsigned int line, const char *string);
 void edkii_vga_hex_dump(const unsigned char *addr, unsigned int len, int start_row);
 void edkii_vga_sprintf(unsigned int row, const char* format, ...);

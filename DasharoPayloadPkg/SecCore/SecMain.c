@@ -13,6 +13,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include "edkii_vga.h"
 VOID EFIAPI SecSerialPortConfigure (IN UINT32 BootloaderParameter);
 #include <Library/TimerLib.h>
+#include <Library/SerialPortLib.h>
 /////////////////////////////////
 
 
@@ -75,8 +76,11 @@ SecStartup (
 {
   //////////////////////////// mahdi
   SecSerialPortConfigure (BootloaderParameter);
+  edkii_vga_configure_from_coreboot (BootloaderParameter);
   edkii_vga_clear();
-  edkii_vga_print(0, "EDK II Started ");
+  edkii_vga_print (0, "EDK II SEC ENTRY 1405-08-04");
+  SerialPortWrite ((UINT8 *)"EDK II SEC ENTRY 1405-08-04\r\n", sizeof ("EDK II SEC ENTRY 1405-08-04\r\n") - 1);
+  MicroSecondDelay (2000000);
   DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] CHECKPOINT SEC entry arg=0x%x fv=%p stack=0x%x+0x%x\n",
     BootloaderParameter, BootFirmwareVolume, TempRamBase, SizeOfRam));
   ///////////////////////////

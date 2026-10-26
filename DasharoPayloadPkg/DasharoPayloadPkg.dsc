@@ -426,6 +426,8 @@ OrderedCollectionLib|MdePkg/Library/BaseOrderedCollectionRedBlackTreeLib/BaseOrd
   SerialPortLib|DasharoPayloadPkg/Library/SecSerialPortLib/SecSerialPortLib.inf
 !if $(QEMU_PLATFORM) == TRUE
   TimerLib|OvmfPkg/Library/AcpiTimerLib/BaseRomAcpiTimerLib.inf
+!else
+  TimerLib|UefiCpuPkg/Library/CpuTimerLib/BaseCpuTimerLib.inf
 !endif
 
 [LibraryClasses.IA32.PEI_CORE, LibraryClasses.IA32.PEIM]

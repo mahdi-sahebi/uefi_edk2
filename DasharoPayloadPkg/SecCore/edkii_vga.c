@@ -1,5 +1,6 @@
 
 #include "edkii_vga.h"
+#include <Coreboot.h>
 
 
 /////////////////////////////////////////////////////
@@ -22,6 +23,197 @@
 #define mde_2__VGA_COLUMNS 80
 
 char mde_2_g_buffer[80];
+
+typedef struct {
+    volatile UINT32 *Base;
+    UINT32 Width;
+    UINT32 Height;
+    UINT32 PixelsPerScanLine;
+    UINT64 Size;
+} SEC_FRAMEBUFFER;
+
+STATIC SEC_FRAMEBUFFER mSecFramebuffer;
+
+STATIC
+BOOLEAN
+SecValidCorebootHeader (
+  IN CONST struct cb_header *Header
+  )
+{
+  return (BOOLEAN)(Header != NULL && Header->signature == CB_HEADER_SIGNATURE &&
+    Header->header_bytes >= sizeof (*Header) && Header->header_bytes <= 4096 &&
+    Header->table_bytes <= 1024 * 1024 &&
+    Header->table_entries <= Header->table_bytes / sizeof (struct cb_record));
+}
+
+void
+edkii_vga_configure_from_coreboot (
+  unsigned int BootloaderParameter
+  )
+{
+  CONST struct cb_header       *Header;
+  CONST struct cb_forward      *Forward;
+  CONST struct cb_record       *Record;
+  CONST struct cb_framebuffer  *Framebuffer;
+  CONST UINT8                  *Current;
+  CONST UINT8                  *End;
+  UINT32                       Index;
+
+  Header = (CONST struct cb_header *)(UINTN)BootloaderParameter;
+  if (!SecValidCorebootHeader (Header)) {
+    Header = NULL;
+    for (Index = 0x10; Index < 0x1000; Index += 0x10) {
+      if (SecValidCorebootHeader ((CONST struct cb_header *)(UINTN)Index)) {
+        Header = (CONST struct cb_header *)(UINTN)Index;
+        break;
+      }
+    }
+  }
+
+  if (Header == NULL) {
+    DEBUG ((DEBUG_ERROR, "[GX-SEC] framebuffer coreboot table not found\n"));
+    return;
+  }
+
+  Forward = NULL;
+  Current = (CONST UINT8 *)Header + Header->header_bytes;
+  End = Current + Header->table_bytes;
+  for (Index = 0; Index < Header->table_entries && Current + sizeof (*Record) <= End; Index++) {
+    Record = (CONST struct cb_record *)Current;
+    if (Record->size < sizeof (*Record) || Record->size > (UINTN)(End - Current)) {
+      break;
+    }
+    if (Record->tag == CB_TAG_FORWARD && Record->size >= sizeof (*Forward)) {
+      Forward = (CONST struct cb_forward *)Record;
+    }
+    Current += Record->size;
+  }
+
+  if ((Forward != NULL) && (Forward->forward <= MAX_UINT32) &&
+      SecValidCorebootHeader ((CONST struct cb_header *)(UINTN)Forward->forward))
+  {
+    Header = (CONST struct cb_header *)(UINTN)Forward->forward;
+  }
+
+  Current = (CONST UINT8 *)Header + Header->header_bytes;
+  End = Current + Header->table_bytes;
+  for (Index = 0; Index < Header->table_entries && Current + sizeof (*Record) <= End; Index++) {
+    Record = (CONST struct cb_record *)Current;
+    if (Record->size < sizeof (*Record) || Record->size > (UINTN)(End - Current)) {
+      break;
+    }
+    if ((Record->tag == CB_TAG_FRAMEBUFFER) && (Record->size >= sizeof (*Framebuffer))) {
+      Framebuffer = (CONST struct cb_framebuffer *)Record;
+      if ((Framebuffer->physical_address != 0) && (Framebuffer->x_resolution >= 640) &&
+          (Framebuffer->y_resolution >= 16) && (Framebuffer->bits_per_pixel == 32) &&
+          (Framebuffer->bytes_per_line >= Framebuffer->x_resolution * sizeof (UINT32)) &&
+          (Framebuffer->bytes_per_line % sizeof (UINT32) == 0))
+      {
+        mSecFramebuffer.Base = (volatile UINT32 *)(UINTN)Framebuffer->physical_address;
+        mSecFramebuffer.Width = Framebuffer->x_resolution;
+        mSecFramebuffer.Height = Framebuffer->y_resolution;
+        mSecFramebuffer.PixelsPerScanLine = Framebuffer->bytes_per_line / sizeof (UINT32);
+        mSecFramebuffer.Size = (UINT64)Framebuffer->bytes_per_line * Framebuffer->y_resolution;
+        DEBUG ((DEBUG_ERROR, "[GX-SEC] linear framebuffer base=0x%lx size=0x%lx mode=%ux%u pitch=%u\n",
+          Framebuffer->physical_address, mSecFramebuffer.Size, mSecFramebuffer.Width,
+          mSecFramebuffer.Height, mSecFramebuffer.PixelsPerScanLine));
+      }
+      return;
+    }
+    Current += Record->size;
+  }
+
+  DEBUG ((DEBUG_ERROR, "[GX-SEC] framebuffer record not found in coreboot table\n"));
+}
+
+STATIC
+UINT8
+SecGlyphColumn (
+  IN CHAR8 Character,
+  IN UINTN Column
+  )
+{
+  STATIC CONST UINT8 Font[][5] = {
+    { 0x3E, 0x51, 0x49, 0x45, 0x3E }, { 0x00, 0x42, 0x7F, 0x40, 0x00 },
+    { 0x42, 0x61, 0x51, 0x49, 0x46 }, { 0x21, 0x41, 0x45, 0x4B, 0x31 },
+    { 0x18, 0x14, 0x12, 0x7F, 0x10 }, { 0x27, 0x45, 0x45, 0x45, 0x39 },
+    { 0x3C, 0x4A, 0x49, 0x49, 0x30 }, { 0x01, 0x71, 0x09, 0x05, 0x03 },
+    { 0x36, 0x49, 0x49, 0x49, 0x36 }, { 0x06, 0x49, 0x49, 0x29, 0x1E },
+    { 0x7E, 0x11, 0x11, 0x11, 0x7E }, { 0x7F, 0x49, 0x49, 0x49, 0x36 },
+    { 0x3E, 0x41, 0x41, 0x41, 0x22 }, { 0x7F, 0x41, 0x41, 0x22, 0x1C },
+    { 0x7F, 0x49, 0x49, 0x49, 0x41 }, { 0x7F, 0x09, 0x09, 0x09, 0x01 },
+    { 0x3E, 0x41, 0x49, 0x49, 0x7A }, { 0x7F, 0x08, 0x08, 0x08, 0x7F },
+    { 0x00, 0x41, 0x7F, 0x41, 0x00 }, { 0x20, 0x40, 0x41, 0x3F, 0x01 },
+    { 0x7F, 0x08, 0x14, 0x22, 0x41 }, { 0x7F, 0x40, 0x40, 0x40, 0x40 },
+    { 0x7F, 0x02, 0x0C, 0x02, 0x7F }, { 0x7F, 0x04, 0x08, 0x10, 0x7F },
+    { 0x3E, 0x41, 0x41, 0x41, 0x3E }, { 0x7F, 0x09, 0x09, 0x09, 0x06 },
+    { 0x3E, 0x41, 0x51, 0x21, 0x5E }, { 0x7F, 0x09, 0x19, 0x29, 0x46 },
+    { 0x46, 0x49, 0x49, 0x49, 0x31 }, { 0x01, 0x01, 0x7F, 0x01, 0x01 },
+    { 0x3F, 0x40, 0x40, 0x40, 0x3F }, { 0x1F, 0x20, 0x40, 0x20, 0x1F },
+    { 0x3F, 0x40, 0x38, 0x40, 0x3F }, { 0x63, 0x14, 0x08, 0x14, 0x63 },
+    { 0x07, 0x08, 0x70, 0x08, 0x07 }, { 0x61, 0x51, 0x49, 0x45, 0x43 },
+    { 0x08, 0x08, 0x08, 0x08, 0x08 }, { 0x00, 0x36, 0x36, 0x00, 0x00 },
+    { 0x00, 0x60, 0x60, 0x00, 0x00 }, { 0x00, 0x41, 0x22, 0x14, 0x08 },
+    { 0x00, 0x00, 0x00, 0x00, 0x00 }, { 0x02, 0x01, 0x51, 0x09, 0x06 }
+  };
+  UINTN Index;
+
+  if (Column >= 5) {
+    return 0;
+  }
+  if ((Character >= '0') && (Character <= '9')) {
+    Index = Character - '0';
+  } else if ((Character >= 'A') && (Character <= 'Z')) {
+    Index = 10 + Character - 'A';
+  } else {
+    switch (Character) {
+      case '-': Index = 36; break;
+      case ':': Index = 37; break;
+      case '.': Index = 38; break;
+      case '/': Index = 39; break;
+      case ' ': Index = 40; break;
+      default: Index = 41; break;
+    }
+  }
+  return Font[Index][Column];
+}
+
+STATIC
+VOID
+SecFramebufferPrint (
+  IN UINTN Row,
+  IN CONST CHAR8 *String
+  )
+{
+  UINTN CharacterIndex;
+  UINTN GlyphX;
+  UINTN GlyphY;
+  UINTN X;
+  UINTN Y;
+  UINTN Scale;
+  UINT32 Pixel;
+
+  if ((mSecFramebuffer.Base == NULL) || (String == NULL)) {
+    return;
+  }
+  Scale = 2;
+  for (CharacterIndex = 0; String[CharacterIndex] != '\0'; CharacterIndex++) {
+    X = CharacterIndex * 12;
+    Y = Row * 16;
+    if (X + 12 > mSecFramebuffer.Width || Y + 14 > mSecFramebuffer.Height) {
+      break;
+    }
+    for (GlyphY = 0; GlyphY < 14; GlyphY++) {
+      for (GlyphX = 0; GlyphX < 12; GlyphX++) {
+        Pixel = ((GlyphX < 10) && ((SecGlyphColumn (String[CharacterIndex], GlyphX / Scale) &
+          (1U << (GlyphY / Scale))) != 0)) ? 0x00FFFFFF : 0;
+        if (((Y + GlyphY) * mSecFramebuffer.PixelsPerScanLine + X + GlyphX) * sizeof (UINT32) < mSecFramebuffer.Size) {
+          mSecFramebuffer.Base[(Y + GlyphY) * mSecFramebuffer.PixelsPerScanLine + X + GlyphX] = Pixel;
+        }
+      }
+    }
+  }
+}
 
 void edkii_vga_write_at_offset(unsigned int line, unsigned int offset, const char *string)
 {
@@ -77,6 +269,14 @@ void edkii_vga_print(unsigned int line, const char *string)
 {
     unsigned int i;
 
+    if (mSecFramebuffer.Base != NULL) {
+        SecFramebufferPrint (line, string);
+        if (string != NULL) {
+            DEBUG ((DEBUG_ERROR, "[GX-VGA] row=%u %a\n", line, string));
+        }
+        return;
+    }
+
     edkii_vga_write_at_offset(line, 0, string);
     if (string == NULL)
         return;
@@ -108,6 +308,9 @@ void edkii_vga_sprintf(
 
 void edkii_vga_clear()
 {
+  if (mSecFramebuffer.Base != NULL) {
+    return;
+  }
   edkii_vga_print(0, "                                                                                                    ");
   edkii_vga_print(1, "                                                                                                    ");
   edkii_vga_print(2, "                                                                                                    ");
