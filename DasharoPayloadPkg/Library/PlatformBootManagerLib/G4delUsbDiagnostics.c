@@ -77,7 +77,8 @@ GxCopyUsbString (
 STATIC
 VOID
 GxLogUsbHostControllers (
-  OUT UINTN  *ControllerCount
+  OUT UINTN  *ControllerCount,
+  OUT UINTN  *ReadyControllerCount
   )
 {
   EFI_STATUS              Status;
@@ -91,6 +92,7 @@ GxLogUsbHostControllers (
   UINT8                   Is64BitCapable;
 
   *ControllerCount = 0;
+  *ReadyControllerCount = 0;
   Handles          = NULL;
   Count            = 0;
   Status           = gBS->LocateHandleBuffer (
@@ -134,7 +136,12 @@ GxLogUsbHostControllers (
 
     if (HostController->GetState != NULL) {
       Status = HostController->GetState (HostController, &State);
-      DEBUG ((DEBUG_ERROR, "[GX-USB] host-controller[%u] state status=%r state=%u\n", Index, Status, State));
+      if (!EFI_ERROR (Status) && (State == EfiUsbHcStateOperational)) {
+        (*ReadyControllerCount)++;
+      }
+      DEBUG ((DEBUG_ERROR, "[GX-USB] host-controller[%u] initialized=%a state_status=%r state=%u\n",
+        Index, (!EFI_ERROR (Status) && (State == EfiUsbHcStateOperational)) ? "READY" : "NOT_READY",
+        Status, State));
     } else {
       DEBUG ((DEBUG_ERROR, "[GX-USB] host-controller[%u] state query unsupported\n", Index));
     }
@@ -255,13 +262,14 @@ GxCollectUsbInventory (
     }
 
     DEBUG ((DEBUG_ERROR,
-      "[GX-USB] interface[%u] handle=%p device_status=%r config_status=%r interface_status=%r "
+      "[GX-USB] interface[%u] usb_io=%a handle=%p device_status=%r config_status=%r interface_status=%r "
       "vid=%04x pid=%04x usb=%04x release=%04x max_packet=%u configs=%u "
       "dev_class=%02x/%02x/%02x config_value=%u interfaces=%u attributes=%02x max_power=%u "
       "if=%u if_class=%02x/%02x/%02x "
       "mfg_status=%r mfg='%s' product_status=%r product='%s' serial_status=%r serial='%s' "
       "speed=not-exposed-by-EFI_USB_IO path='%s'\n",
-      Index, Handles[Index], DeviceStatus, ConfigStatus, InterfaceStatus,
+      Index, EFI_ERROR (DeviceStatus) ? "NOT_READY" : "READY", Handles[Index],
+      DeviceStatus, ConfigStatus, InterfaceStatus,
       DeviceDescriptor.IdVendor, DeviceDescriptor.IdProduct,
       DeviceDescriptor.BcdUSB, DeviceDescriptor.BcdDevice,
       DeviceDescriptor.MaxPacketSize0, DeviceDescriptor.NumConfigurations,
@@ -274,8 +282,9 @@ GxCollectUsbInventory (
       (DevicePathText != NULL) ? DevicePathText : L"<unavailable>"));
 
     UnicodeSPrint ((*Rows)[Stored].Text, sizeof ((*Rows)[Stored].Text),
-      L"%03u %04x:%04x if%02u %02x/%02x/%02x %s %s",
+      L"%03u %s %04x:%04x if%02u %02x/%02x/%02x %s %s",
       Index,
+      EFI_ERROR (DeviceStatus) ? L"ERROR" : L"READY",
       DeviceDescriptor.IdVendor,
       DeviceDescriptor.IdProduct,
       InterfaceDescriptor.InterfaceNumber,
@@ -303,6 +312,7 @@ GxRenderUsbPage (
   IN UINTN                 FirstRow,
   IN UINTN                 RowsPerPage,
   IN UINTN                 ControllerCount,
+  IN UINTN                 ReadyControllerCount,
   IN EFI_STATUS            EnumerationStatus
   )
 {
@@ -310,8 +320,9 @@ GxRenderUsbPage (
   UINTN  LastRow;
 
   gST->ConOut->ClearScreen (gST->ConOut);
-  Print (L"Gooxi G4DEL USB inventory: %u interface handles, %u host controllers\r\n",
-         RowCount, ControllerCount);
+  Print (L"Gooxi G4DEL USB inventory: %u device interfaces; host controllers READY %u/%u\r\n",
+         RowCount, ReadyControllerCount, ControllerCount);
+  Print (L"EFI_USB_IO READY means the USB bus driver enumerated the device.\r\n");
   Print (L"Per-device negotiated speed is not exposed by EFI_USB_IO_PROTOCOL.\r\n\r\n");
 
   LastRow = FirstRow + RowsPerPage;
@@ -329,9 +340,9 @@ GxRenderUsbPage (
     }
   }
 
-  Print (L"\r\nRows %u-%u of %u. Up/Down or PgUp/PgDn scroll; Enter/Esc continues.\r\n",
+  Print (L"\r\nRows %u-%u of %u. Up/Down or PgUp/PgDn scroll; Enter/Esc continues to UEFI Shell.\r\n",
          (RowCount == 0) ? 0 : FirstRow + 1, LastRow, RowCount);
-  Print (L"Continuing to the EDK2 menu in %u seconds.\r\n", GX_USB_PAGE_SECONDS);
+  Print (L"Continuing to UEFI Shell in %u seconds.\r\n", GX_USB_PAGE_SECONDS);
 }
 
 VOID
@@ -345,6 +356,7 @@ GxDisplayUsbInventory (
   EFI_EVENT              Events[2];
   UINTN                  WaitIndex;
   UINTN                  ControllerCount;
+  UINTN                  ReadyControllerCount;
   UINTN                  EventCount;
   UINTN                  RowCount;
   UINTN                  FirstRow;
@@ -360,8 +372,10 @@ GxDisplayUsbInventory (
     return;
   }
 
-  GxLogUsbHostControllers (&ControllerCount);
+  GxLogUsbHostControllers (&ControllerCount, &ReadyControllerCount);
   RowCount = GxCollectUsbInventory (&Inventory, &EnumerationStatus);
+  DEBUG ((DEBUG_ERROR, "[GX-USB] readiness summary host_controllers=%u/%u usb_io_devices=%u enumeration_status=%r\n",
+    ReadyControllerCount, ControllerCount, RowCount, EnumerationStatus));
 
   RowsOnScreen = 25;
   Columns      = 80;
@@ -396,7 +410,8 @@ GxDisplayUsbInventory (
 
   DEBUG ((DEBUG_ERROR, "[GX-USB] VGA inventory page begin rows=%u controllers=%u timeout=%u seconds\n",
     RowCount, ControllerCount, GX_USB_PAGE_SECONDS));
-  GxRenderUsbPage (Inventory, RowCount, FirstRow, RowsPerPage, ControllerCount, EnumerationStatus);
+  GxRenderUsbPage (Inventory, RowCount, FirstRow, RowsPerPage, ControllerCount,
+                   ReadyControllerCount, EnumerationStatus);
 
   Events[1] = TimerEvent;
   if ((gST->ConIn == NULL) || (gST->ConIn->WaitForKey == NULL)) {
@@ -439,7 +454,8 @@ GxDisplayUsbInventory (
       continue;
     }
 
-    GxRenderUsbPage (Inventory, RowCount, FirstRow, RowsPerPage, ControllerCount, EnumerationStatus);
+    GxRenderUsbPage (Inventory, RowCount, FirstRow, RowsPerPage, ControllerCount,
+                     ReadyControllerCount, EnumerationStatus);
   }
 
   DEBUG ((DEBUG_ERROR, "[GX-USB] VGA inventory page return status=%r wait_index=%u\n", Status, WaitIndex));
