@@ -416,6 +416,9 @@ CoreDispatcher (
   UINTN                  ExecutionFailedCount;
   UINTN                  PendingCount;
   UINTN                  FvImageCount;
+  UINTN                  ScanCount;
+  UINTN                  ScanIndex;
+  UINTN                  ScheduledCount;
 
   PERF_FUNCTION_BEGIN ();
 
@@ -588,8 +591,24 @@ CoreDispatcher (
     // Search DriverList for items to place on Scheduled Queue
     //
     ReadyToRun = FALSE;
+    ScanCount = 0;
+    for (Link = mDiscoveredList.ForwardLink; Link != &mDiscoveredList; Link = Link->ForwardLink) {
+      ScanCount++;
+    }
+
+    ScanIndex      = 0;
+    ScheduledCount = 0;
+    DEBUG ((DEBUG_ERROR, "[GX-DISPATCH] depex scan begin drivers=%u\n", ScanCount));
     for (Link = mDiscoveredList.ForwardLink; Link != &mDiscoveredList; Link = Link->ForwardLink) {
       DriverEntry = CR (Link, EFI_CORE_DRIVER_ENTRY, Link, EFI_CORE_DRIVER_ENTRY_SIGNATURE);
+      ScanIndex++;
+
+      // Periodic progress keeps the SOL trace useful without logging each
+      // individual protocol operand in every driver's DEPEX expression.
+      if ((ScanIndex == 1) || ((ScanIndex % 16) == 0) || (ScanIndex == ScanCount)) {
+        DEBUG ((DEBUG_ERROR, "[GX-DISPATCH] depex scan progress %u/%u driver=%g\n",
+          ScanIndex, ScanCount, &DriverEntry->FileName));
+      }
 
       if (DriverEntry->DepexProtocolError) {
         //
@@ -602,6 +621,7 @@ CoreDispatcher (
         if (CoreIsSchedulable (DriverEntry)) {
           CoreInsertOnScheduledQueueWhileProcessingBeforeAndAfter (DriverEntry);
           ReadyToRun = TRUE;
+          ScheduledCount++;
         }
       } else {
         if (DriverEntry->Unrequested) {
@@ -611,6 +631,8 @@ CoreDispatcher (
         }
       }
     }
+    DEBUG ((DEBUG_ERROR, "[GX-DISPATCH] depex scan end scanned=%u scheduled=%u ready=%u\n",
+      ScanIndex, ScheduledCount, ReadyToRun));
   } while (ReadyToRun);
 
   //
