@@ -11,6 +11,7 @@
 #include <Library/BaseMemoryLib.h>
 #include <Library/DebugLib.h>
 #include <Library/DevicePathLib.h>
+#include <Library/GxDxeDiagnosticsLib.h>
 #include <Library/MemoryAllocationLib.h>
 #include <Library/PrintLib.h>
 #include <Library/UefiBootServicesTableLib.h>
@@ -558,12 +559,15 @@ GxDisplayUsbInventory (
   GX_USB_STORAGE_SUMMARY StorageSummary;
   EFI_INPUT_KEY          Key;
 
+  GxDxeDiagnosticsLog ("USB INVENTORY ENUMERATION BEGIN");
+  DEBUG ((DEBUG_ERROR, "[GX-USB] inventory enumeration begin\n"));
   GxLogUsbHostControllers (&ControllerCount, &ReadyControllerCount);
   RowCount = GxCollectUsbInventory (&Inventory, &EnumerationStatus, &MassStorageInterfaceCount);
   GxLogUsbStorage (&StorageSummary);
   DEBUG ((DEBUG_ERROR,
     "[GX-USB] readiness summary host_controllers=%u/%u usb_io_devices=%u mass_storage_interfaces=%u enumeration_status=%r\n",
     ReadyControllerCount, ControllerCount, RowCount, MassStorageInterfaceCount, EnumerationStatus));
+  GxDxeDiagnosticsLog ("USB INVENTORY ENUMERATION RETURNED");
 
   if ((gST == NULL) || (gST->ConOut == NULL)) {
     DEBUG ((DEBUG_ERROR, "[GX-USB] VGA inventory page skipped ConOut=%p ConIn=%p; serial inventory completed\n",

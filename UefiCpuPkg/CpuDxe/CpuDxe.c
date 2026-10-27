@@ -1050,8 +1050,15 @@ InitializeCpu (
   EFI_STATUS  Status;
   EFI_EVENT   IdleLoopEvent;
   UINTN       Checkpoint;
+  CHAR8       Message[96];
 
   DEBUG ((DEBUG_ERROR, "[GX-CPU] CpuDxe entry max_logical_processors=%u\n", PcdGet32 (PcdCpuMaxLogicalProcessorNumber)));
+  AsciiSPrint (Message, sizeof (Message), "CPU DXE ENTRY max_logical_processors=%u",
+    PcdGet32 (PcdCpuMaxLogicalProcessorNumber));
+  GxDxeDiagnosticsLog (Message);
+  if (PcdGet32 (PcdCpuMaxLogicalProcessorNumber) == 1) {
+    GxDxeDiagnosticsLog ("CPU SINGLE-CORE DIAGNOSTIC MODE; AP enumeration bypassed");
+  }
 
   Checkpoint = GxCpuCheckpointBegin ("page-table");
   InitializePageTableLib ();
@@ -1127,6 +1134,7 @@ InitializeCpu (
   Checkpoint = GxCpuCheckpointBegin ("mp-support");
   InitializeMpSupport ();
   GxCpuCheckpointReturn (Checkpoint, "mp-support", EFI_SUCCESS);
+  GxDxeDiagnosticsLog ("CPU DXE ENTRY RETURN SUCCESS");
 
   return Status;
 }

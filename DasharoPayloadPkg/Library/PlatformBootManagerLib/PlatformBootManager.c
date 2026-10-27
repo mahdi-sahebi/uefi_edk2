@@ -24,6 +24,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Protocol/UsbIo.h>
 #include <Protocol/Usb2HostController.h>
 #include <Protocol/SimpleTextIn.h>
+#include <Library/GxDxeDiagnosticsLib.h>
 #include "G4delUsbDiagnostics.h"
 
 EFI_GUID mBootMenuFile = {
@@ -2186,6 +2187,9 @@ PlatformBootManagerAfterConsole (
   Black.Blue = Black.Green = Black.Red = Black.Reserved = 0;
   White.Blue = White.Green = White.Red = White.Reserved = 0xFF;
 
+  GxDxeDiagnosticsLog ("BDS PLATFORM AFTER-CONSOLE BEGIN");
+  DEBUG ((DEBUG_ERROR, "[GX-BDS] platform after-console begin\n"));
+
   FUMEnabled = IsFumEnabled ();
 
   gST->ConOut->EnableCursor (gST->ConOut, FALSE);
@@ -2232,7 +2236,11 @@ PlatformBootManagerAfterConsole (
     DEBUG ((DEBUG_ERROR, "[GX-LOGO] retry returned status=%r\n", LogoStatus));
   }
 #if defined (GOOXI_G4DEL_USB_DIAGNOSTICS) && GOOXI_G4DEL_USB_DIAGNOSTICS
+  GxDxeDiagnosticsLog ("BDS USB INVENTORY BEGIN");
+  DEBUG ((DEBUG_ERROR, "[GX-BDS] USB inventory begin\n"));
   GxDisplayUsbInventory ();
+  GxDxeDiagnosticsLog ("BDS USB INVENTORY RETURNED");
+  DEBUG ((DEBUG_ERROR, "[GX-BDS] USB inventory returned\n"));
 #else
   GxLogUsbState ();
 #endif
@@ -2354,11 +2362,13 @@ PlatformBootManagerAfterConsole (
 #if defined (GOOXI_G4DEL_USB_DIAGNOSTICS) && GOOXI_G4DEL_USB_DIAGNOSTICS
   GxLogConsoleState ("PRE-SHELL");
   Print (L"[G4DEL] USB inventory complete; starting UEFI Shell on available consoles.\r\n");
+  GxDxeDiagnosticsLog ("BDS UEFI SHELL LAUNCH BEGIN");
   DEBUG ((DEBUG_ERROR, "[GX-BDS] launching registered UEFI Shell directly; framebuffer/GOP is optional\n"));
   SyncFvBootOption (PcdGetPtr (PcdShellFile),
                     L"UEFI Shell",
                     TRUE,
                     TRUE);
+  GxDxeDiagnosticsLog ("BDS UEFI SHELL RETURNED");
   DEBUG ((DEBUG_ERROR, "[GX-BDS] UEFI Shell returned to platform boot manager\n"));
   GxLogConsoleState ("POST-SHELL");
 #else
