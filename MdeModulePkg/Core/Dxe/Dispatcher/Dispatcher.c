@@ -1069,15 +1069,13 @@ CoreAddToDriverList (
   CoreReleaseDispatcherLock ();
 
   GxGetDriverDisplayName (DriverEntry, DriverNameText, sizeof (DriverNameText));
+  // Keep the FV file GUID visible in the VGA ring so a runtime row can be
+  // matched directly to the generated DXE volume inventory. The full DEPEX
+  // state remains in the serial record below.
   AsciiSPrint (DriverMessage, sizeof (DriverMessage),
-    "DISCOVERED %a %a DEPEX_ERR=%u DEP=%u SOR=%u BEFORE=%u AFTER=%u",
-    DriverEntry->IsFvImage ? "FV_IMAGE" : "DRIVER",
+    "DISC %a %g",
     DriverNameText,
-    DriverEntry->DepexProtocolError,
-    DriverEntry->Dependent,
-    DriverEntry->Unrequested,
-    DriverEntry->Before,
-    DriverEntry->After);
+    &DriverEntry->FileName);
   GxDxeLog (DriverMessage);
   DEBUG ((DEBUG_ERROR,
     "[GX-DISCOVERY] %a name='%a' guid=%g depex_read_error=%u dependent=%u sor_unrequested=%u before=%u after=%u\n",

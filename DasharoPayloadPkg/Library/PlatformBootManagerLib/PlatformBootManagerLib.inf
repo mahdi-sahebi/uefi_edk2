@@ -87,6 +87,8 @@
   gEfiSmmAccess2ProtocolGuid
   gEfiUsbIoProtocolGuid
   gEfiUsb2HcProtocolGuid
+  gEfiBlockIoProtocolGuid       ## CONSUMES
+  gEfiSimpleFileSystemProtocolGuid ## CONSUMES
   gEfiSimpleTextInProtocolGuid
   gEfiPciRootBridgeIoProtocolGuid ## CONSUMES
   gEfiDevicePathProtocolGuid      ## CONSUMES

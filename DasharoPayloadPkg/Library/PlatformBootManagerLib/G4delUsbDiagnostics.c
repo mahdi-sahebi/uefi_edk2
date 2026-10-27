@@ -16,6 +16,8 @@
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/UefiLib.h>
 #include <Protocol/DevicePath.h>
+#include <Protocol/BlockIo.h>
+#include <Protocol/SimpleFileSystem.h>
 #include <Protocol/SimpleTextIn.h>
 #include <Protocol/Usb2HostController.h>
 #include <Protocol/UsbIo.h>
@@ -26,6 +28,39 @@
 typedef struct {
   CHAR16  Text[GX_USB_TEXT_CHARS];
 } GX_USB_INVENTORY_ROW;
+
+typedef struct {
+  UINTN  BlockIoCount;
+  UINTN  UsbBlockIoCount;
+  UINTN  UsbRemovableCount;
+  UINTN  UsbMediaPresentCount;
+  UINTN  SimpleFileSystemCount;
+  UINTN  UsbSimpleFileSystemCount;
+  UINTN  UsbVolumeOpenCount;
+} GX_USB_STORAGE_SUMMARY;
+
+STATIC
+BOOLEAN
+GxDevicePathHasUsbNode (
+  IN EFI_DEVICE_PATH_PROTOCOL  *DevicePath
+  )
+{
+  EFI_DEVICE_PATH_PROTOCOL  *Node;
+
+  if (DevicePath == NULL) {
+    return FALSE;
+  }
+
+  for (Node = DevicePath; !IsDevicePathEnd (Node); Node = NextDevicePathNode (Node)) {
+    if ((DevicePathType (Node) == MESSAGING_DEVICE_PATH) &&
+        (DevicePathSubType (Node) == MSG_USB_DP))
+    {
+      return TRUE;
+    }
+  }
+
+  return FALSE;
+}
 
 STATIC
 VOID
@@ -154,7 +189,8 @@ STATIC
 UINTN
 GxCollectUsbInventory (
   OUT GX_USB_INVENTORY_ROW  **Rows,
-  OUT EFI_STATUS            *EnumerationStatus
+  OUT EFI_STATUS            *EnumerationStatus,
+  OUT UINTN                 *MassStorageInterfaceCount
   )
 {
   EFI_STATUS                  Status;
@@ -182,6 +218,7 @@ GxCollectUsbInventory (
   Count   = 0;
   Stored  = 0;
   *Rows   = NULL;
+  *MassStorageInterfaceCount = 0;
   *EnumerationStatus = EFI_NOT_FOUND;
   Status  = gBS->LocateHandleBuffer (ByProtocol, &gEfiUsbIoProtocolGuid, NULL, &Count, &Handles);
   *EnumerationStatus = Status;
@@ -244,6 +281,10 @@ GxCollectUsbInventory (
                         UsbIo->UsbGetInterfaceDescriptor (UsbIo, &InterfaceDescriptor) : EFI_UNSUPPORTED;
     }
 
+    if (!EFI_ERROR (InterfaceStatus) && (InterfaceDescriptor.InterfaceClass == 0x08)) {
+      (*MassStorageInterfaceCount)++;
+    }
+
     ManufacturerStatus = EFI_NOT_FOUND;
     ProductStatus      = EFI_NOT_FOUND;
     SerialStatus       = EFI_NOT_FOUND;
@@ -267,7 +308,7 @@ GxCollectUsbInventory (
       "dev_class=%02x/%02x/%02x config_value=%u interfaces=%u attributes=%02x max_power=%u "
       "if=%u if_class=%02x/%02x/%02x "
       "mfg_status=%r mfg='%s' product_status=%r product='%s' serial_status=%r serial='%s' "
-      "speed=not-exposed-by-EFI_USB_IO path='%s'\n",
+      "usb_path=%u speed=not-exposed-by-EFI_USB_IO path='%s'\n",
       Index, EFI_ERROR (DeviceStatus) ? "NOT_READY" : "READY", Handles[Index],
       DeviceStatus, ConfigStatus, InterfaceStatus,
       DeviceDescriptor.IdVendor, DeviceDescriptor.IdProduct,
@@ -279,6 +320,7 @@ GxCollectUsbInventory (
       InterfaceDescriptor.InterfaceNumber, InterfaceDescriptor.InterfaceClass,
       InterfaceDescriptor.InterfaceSubClass, InterfaceDescriptor.InterfaceProtocol,
       ManufacturerStatus, Manufacturer, ProductStatus, Product, SerialStatus, Serial,
+      GxDevicePathHasUsbNode (DevicePath),
       (DevicePathText != NULL) ? DevicePathText : L"<unavailable>"));
 
     UnicodeSPrint ((*Rows)[Stored].Text, sizeof ((*Rows)[Stored].Text),
@@ -306,6 +348,147 @@ GxCollectUsbInventory (
 
 STATIC
 VOID
+GxLogUsbStorage (
+  OUT GX_USB_STORAGE_SUMMARY  *Summary
+  )
+{
+  EFI_STATUS                       Status;
+  EFI_HANDLE                       *Handles;
+  UINTN                            Count;
+  UINTN                            Index;
+  EFI_BLOCK_IO_PROTOCOL            *BlockIo;
+  EFI_SIMPLE_FILE_SYSTEM_PROTOCOL  *SimpleFileSystem;
+  EFI_FILE_PROTOCOL                *Root;
+  EFI_DEVICE_PATH_PROTOCOL         *DevicePath;
+  CHAR16                           *DevicePathText;
+  BOOLEAN                          UsbPath;
+
+  ZeroMem (Summary, sizeof (*Summary));
+  Handles = NULL;
+  Count   = 0;
+  Status  = gBS->LocateHandleBuffer (ByProtocol, &gEfiBlockIoProtocolGuid, NULL, &Count, &Handles);
+  DEBUG ((DEBUG_ERROR, "[GX-USB-STORAGE] BlockIo enumeration status=%r handles=%u\n", Status, Count));
+  if (!EFI_ERROR (Status)) {
+    Summary->BlockIoCount = Count;
+    for (Index = 0; Index < Count; Index++) {
+      BlockIo         = NULL;
+      DevicePath      = NULL;
+      DevicePathText  = NULL;
+      UsbPath         = FALSE;
+      Status          = gBS->HandleProtocol (Handles[Index], &gEfiBlockIoProtocolGuid, (VOID **)&BlockIo);
+      if (!EFI_ERROR (Status)) {
+        Status = gBS->HandleProtocol (Handles[Index], &gEfiDevicePathProtocolGuid, (VOID **)&DevicePath);
+      }
+      if (!EFI_ERROR (Status)) {
+        UsbPath = GxDevicePathHasUsbNode (DevicePath);
+        if (DevicePath != NULL) {
+          DevicePathText = ConvertDevicePathToText (DevicePath, FALSE, FALSE);
+        }
+      }
+
+      if (UsbPath) {
+        Summary->UsbBlockIoCount++;
+        if ((BlockIo != NULL) && (BlockIo->Media != NULL)) {
+          if (BlockIo->Media->RemovableMedia) {
+            Summary->UsbRemovableCount++;
+          }
+          if (BlockIo->Media->MediaPresent) {
+            Summary->UsbMediaPresentCount++;
+          }
+        }
+      }
+
+      DEBUG ((DEBUG_ERROR,
+        "[GX-USB-STORAGE] block[%u] status=%r usb_path=%u handle=%p media_id=%u present=%u removable=%u "
+        "logical_partition=%u read_only=%u block_size=%u last_lba=0x%lx path='%s'\n",
+        Index, Status, UsbPath, Handles[Index],
+        ((BlockIo != NULL) && (BlockIo->Media != NULL)) ? BlockIo->Media->MediaId : 0,
+        ((BlockIo != NULL) && (BlockIo->Media != NULL)) ? BlockIo->Media->MediaPresent : 0,
+        ((BlockIo != NULL) && (BlockIo->Media != NULL)) ? BlockIo->Media->RemovableMedia : 0,
+        ((BlockIo != NULL) && (BlockIo->Media != NULL)) ? BlockIo->Media->LogicalPartition : 0,
+        ((BlockIo != NULL) && (BlockIo->Media != NULL)) ? BlockIo->Media->ReadOnly : 0,
+        ((BlockIo != NULL) && (BlockIo->Media != NULL)) ? BlockIo->Media->BlockSize : 0,
+        ((BlockIo != NULL) && (BlockIo->Media != NULL)) ? BlockIo->Media->LastBlock : 0,
+        (DevicePathText != NULL) ? DevicePathText : L"<unavailable>"));
+
+      if (DevicePathText != NULL) {
+        FreePool (DevicePathText);
+      }
+    }
+
+    FreePool (Handles);
+  }
+
+  Handles = NULL;
+  Count   = 0;
+  Status  = gBS->LocateHandleBuffer (
+                   ByProtocol,
+                   &gEfiSimpleFileSystemProtocolGuid,
+                   NULL,
+                   &Count,
+                   &Handles
+                   );
+  DEBUG ((DEBUG_ERROR, "[GX-USB-STORAGE] SimpleFileSystem enumeration status=%r handles=%u\n", Status, Count));
+  if (!EFI_ERROR (Status)) {
+    Summary->SimpleFileSystemCount = Count;
+    for (Index = 0; Index < Count; Index++) {
+      SimpleFileSystem = NULL;
+      Root             = NULL;
+      DevicePath       = NULL;
+      DevicePathText   = NULL;
+      UsbPath          = FALSE;
+      Status           = gBS->HandleProtocol (
+                           Handles[Index],
+                           &gEfiSimpleFileSystemProtocolGuid,
+                           (VOID **)&SimpleFileSystem
+                           );
+      if (!EFI_ERROR (Status)) {
+        Status = gBS->HandleProtocol (Handles[Index], &gEfiDevicePathProtocolGuid, (VOID **)&DevicePath);
+      }
+      if (!EFI_ERROR (Status)) {
+        UsbPath = GxDevicePathHasUsbNode (DevicePath);
+        if (DevicePath != NULL) {
+          DevicePathText = ConvertDevicePathToText (DevicePath, FALSE, FALSE);
+        }
+      }
+      if (UsbPath) {
+        Summary->UsbSimpleFileSystemCount++;
+      }
+
+      if (!EFI_ERROR (Status) && (SimpleFileSystem != NULL) && (SimpleFileSystem->OpenVolume != NULL)) {
+        Status = SimpleFileSystem->OpenVolume (SimpleFileSystem, &Root);
+      } else if (!EFI_ERROR (Status)) {
+        Status = EFI_UNSUPPORTED;
+      }
+      if (!EFI_ERROR (Status) && (Root != NULL)) {
+        if (UsbPath) {
+          Summary->UsbVolumeOpenCount++;
+        }
+        Root->Close (Root);
+      }
+
+      DEBUG ((DEBUG_ERROR,
+        "[GX-USB-STORAGE] filesystem[%u] usb_path=%u open_volume_status=%r handle=%p path='%s'\n",
+        Index, UsbPath, Status, Handles[Index],
+        (DevicePathText != NULL) ? DevicePathText : L"<unavailable>"));
+      if (DevicePathText != NULL) {
+        FreePool (DevicePathText);
+      }
+    }
+
+    FreePool (Handles);
+  }
+
+  DEBUG ((DEBUG_ERROR,
+    "[GX-USB-STORAGE] summary block_io=%u usb_block_io=%u usb_removable=%u usb_media_present=%u "
+    "simple_fs=%u usb_simple_fs=%u usb_volume_open=%u\n",
+    Summary->BlockIoCount, Summary->UsbBlockIoCount, Summary->UsbRemovableCount,
+    Summary->UsbMediaPresentCount, Summary->SimpleFileSystemCount,
+    Summary->UsbSimpleFileSystemCount, Summary->UsbVolumeOpenCount));
+}
+
+STATIC
+VOID
 GxRenderUsbPage (
   IN GX_USB_INVENTORY_ROW  *Rows,
   IN UINTN                 RowCount,
@@ -313,6 +496,8 @@ GxRenderUsbPage (
   IN UINTN                 RowsPerPage,
   IN UINTN                 ControllerCount,
   IN UINTN                 ReadyControllerCount,
+  IN UINTN                 MassStorageInterfaceCount,
+  IN GX_USB_STORAGE_SUMMARY *StorageSummary,
   IN EFI_STATUS            EnumerationStatus
   )
 {
@@ -322,6 +507,11 @@ GxRenderUsbPage (
   gST->ConOut->ClearScreen (gST->ConOut);
   Print (L"Gooxi G4DEL USB inventory: %u device interfaces; host controllers READY %u/%u\r\n",
          RowCount, ReadyControllerCount, ControllerCount);
+  Print (L"Mass-storage interfaces: %u; USB BlockIo: %u (%u removable, %u media present)\r\n",
+         MassStorageInterfaceCount, StorageSummary->UsbBlockIoCount,
+         StorageSummary->UsbRemovableCount, StorageSummary->UsbMediaPresentCount);
+  Print (L"USB filesystems: %u; root opened: %u\r\n",
+         StorageSummary->UsbSimpleFileSystemCount, StorageSummary->UsbVolumeOpenCount);
   Print (L"EFI_USB_IO READY means the USB bus driver enumerated the device.\r\n");
   Print (L"Per-device negotiated speed is not exposed by EFI_USB_IO_PROTOCOL.\r\n\r\n");
 
@@ -359,23 +549,30 @@ GxDisplayUsbInventory (
   UINTN                  ReadyControllerCount;
   UINTN                  EventCount;
   UINTN                  RowCount;
+  UINTN                  MassStorageInterfaceCount;
   UINTN                  FirstRow;
   UINTN                  RowsPerPage;
   UINTN                  Columns;
   UINTN                  RowsOnScreen;
   GX_USB_INVENTORY_ROW   *Inventory;
+  GX_USB_STORAGE_SUMMARY StorageSummary;
   EFI_INPUT_KEY          Key;
 
+  GxLogUsbHostControllers (&ControllerCount, &ReadyControllerCount);
+  RowCount = GxCollectUsbInventory (&Inventory, &EnumerationStatus, &MassStorageInterfaceCount);
+  GxLogUsbStorage (&StorageSummary);
+  DEBUG ((DEBUG_ERROR,
+    "[GX-USB] readiness summary host_controllers=%u/%u usb_io_devices=%u mass_storage_interfaces=%u enumeration_status=%r\n",
+    ReadyControllerCount, ControllerCount, RowCount, MassStorageInterfaceCount, EnumerationStatus));
+
   if ((gST == NULL) || (gST->ConOut == NULL)) {
-    DEBUG ((DEBUG_ERROR, "[GX-USB] inventory page skipped ConOut=%p ConIn=%p\n",
+    DEBUG ((DEBUG_ERROR, "[GX-USB] VGA inventory page skipped ConOut=%p ConIn=%p; serial inventory completed\n",
       (gST != NULL) ? gST->ConOut : NULL, (gST != NULL) ? gST->ConIn : NULL));
+    if (Inventory != NULL) {
+      FreePool (Inventory);
+    }
     return;
   }
-
-  GxLogUsbHostControllers (&ControllerCount, &ReadyControllerCount);
-  RowCount = GxCollectUsbInventory (&Inventory, &EnumerationStatus);
-  DEBUG ((DEBUG_ERROR, "[GX-USB] readiness summary host_controllers=%u/%u usb_io_devices=%u enumeration_status=%r\n",
-    ReadyControllerCount, ControllerCount, RowCount, EnumerationStatus));
 
   RowsOnScreen = 25;
   Columns      = 80;
@@ -408,10 +605,11 @@ GxDisplayUsbInventory (
     return;
   }
 
-  DEBUG ((DEBUG_ERROR, "[GX-USB] VGA inventory page begin rows=%u controllers=%u timeout=%u seconds\n",
-    RowCount, ControllerCount, GX_USB_PAGE_SECONDS));
+  DEBUG ((DEBUG_ERROR,
+    "[GX-USB] VGA inventory page begin rows=%u controllers=%u mass_storage=%u timeout=%u seconds\n",
+    RowCount, ControllerCount, MassStorageInterfaceCount, GX_USB_PAGE_SECONDS));
   GxRenderUsbPage (Inventory, RowCount, FirstRow, RowsPerPage, ControllerCount,
-                   ReadyControllerCount, EnumerationStatus);
+                   ReadyControllerCount, MassStorageInterfaceCount, &StorageSummary, EnumerationStatus);
 
   Events[1] = TimerEvent;
   if ((gST->ConIn == NULL) || (gST->ConIn->WaitForKey == NULL)) {
@@ -455,7 +653,7 @@ GxDisplayUsbInventory (
     }
 
     GxRenderUsbPage (Inventory, RowCount, FirstRow, RowsPerPage, ControllerCount,
-                     ReadyControllerCount, EnumerationStatus);
+                     ReadyControllerCount, MassStorageInterfaceCount, &StorageSummary, EnumerationStatus);
   }
 
   DEBUG ((DEBUG_ERROR, "[GX-USB] VGA inventory page return status=%r wait_index=%u\n", Status, WaitIndex));
