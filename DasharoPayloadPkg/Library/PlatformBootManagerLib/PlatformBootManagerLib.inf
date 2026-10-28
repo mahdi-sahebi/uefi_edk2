@@ -93,6 +93,7 @@
   gEfiPciRootBridgeIoProtocolGuid ## CONSUMES
   gEfiDevicePathProtocolGuid      ## CONSUMES
   gEfiSmbiosProtocolGuid          ## CONSUMES
+  gGxDxeDiagnosticsProtocolGuid   ## CONSUMES
 
 [Pcd]
   gEfiMdePkgTokenSpaceGuid.PcdPlatformBootTimeOut

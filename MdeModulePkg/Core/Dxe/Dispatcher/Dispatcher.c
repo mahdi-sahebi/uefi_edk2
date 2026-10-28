@@ -758,6 +758,50 @@ CoreDispatcher (
   return ReturnStatus;
 }
 
+EFI_STATUS
+EFIAPI
+CoreGetDriverStatus (
+  IN  CONST EFI_GUID          *FileName,
+  OUT GX_DXE_DRIVER_STATUS    *DriverStatus
+  )
+{
+  LIST_ENTRY             *Link;
+  EFI_CORE_DRIVER_ENTRY  *DriverEntry;
+
+  if ((FileName == NULL) || (DriverStatus == NULL)) {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  ZeroMem (DriverStatus, sizeof (*DriverStatus));
+  DriverStatus->LoadStatus  = EFI_NOT_READY;
+  DriverStatus->StartStatus = EFI_NOT_READY;
+  CopyGuid (&DriverStatus->FileName, FileName);
+
+  CoreAcquireDispatcherLock ();
+  for (Link = mDiscoveredList.ForwardLink; Link != &mDiscoveredList; Link = Link->ForwardLink) {
+    DriverEntry = CR (Link, EFI_CORE_DRIVER_ENTRY, Link, EFI_CORE_DRIVER_ENTRY_SIGNATURE);
+    if (CompareGuid (&DriverEntry->FileName, FileName)) {
+      DriverStatus->Discovered         = TRUE;
+      DriverStatus->Initialized        = DriverEntry->Initialized;
+      DriverStatus->Scheduled          = DriverEntry->Scheduled;
+      DriverStatus->Dependent          = DriverEntry->Dependent;
+      DriverStatus->Unrequested        = DriverEntry->Unrequested;
+      DriverStatus->Untrusted          = DriverEntry->Untrusted;
+      DriverStatus->DepexProtocolError = DriverEntry->DepexProtocolError;
+      DriverStatus->LoadAttempted      = DriverEntry->GxLoadAttempted;
+      DriverStatus->ImageLoaded        = (DriverEntry->ImageHandle != NULL);
+      DriverStatus->LoadStatus         = DriverEntry->GxLoadAttempted ? DriverEntry->GxLoadStatus : EFI_NOT_READY;
+      DriverStatus->StartAttempted     = DriverEntry->GxStartAttempted;
+      DriverStatus->StartStatus        = DriverEntry->GxStartAttempted ? DriverEntry->GxStartStatus : EFI_NOT_READY;
+      CoreReleaseDispatcherLock ();
+      return EFI_SUCCESS;
+    }
+  }
+
+  CoreReleaseDispatcherLock ();
+  return EFI_NOT_FOUND;
+}
+
 /**
   Insert InsertedDriverEntry onto the mScheduledQueue. To do this you
   must add any driver with a before dependency on InsertedDriverEntry first.

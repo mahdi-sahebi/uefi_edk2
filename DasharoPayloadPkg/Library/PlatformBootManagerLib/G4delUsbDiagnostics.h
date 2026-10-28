@@ -11,6 +11,11 @@
 #include <Uefi.h>
 
 VOID
+GxDisplayUsbDriverStatus (
+  VOID
+  );
+
+VOID
 GxDisplayUsbInventory (
   VOID
   );

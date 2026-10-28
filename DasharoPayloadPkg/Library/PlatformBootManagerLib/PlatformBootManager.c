@@ -14,6 +14,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Guid/GlobalVariable.h>
 #include <Guid/Tcg2PhysicalPresenceData.h>
 #include <Library/CustomizedDisplayLib.h>
+#include <Library/PrintLib.h>
 #include <Library/BlParseLib.h>
 #include <Library/CapsuleLib.h>
 #include <Library/HobLib.h>
@@ -265,6 +266,7 @@ GxLogConsoleState (
   )
 {
   EFI_STATUS             Status;
+  CHAR8                  Message[96];
   EFI_HANDLE             *InputHandles;
   UINTN                  InputHandleCount;
   UINTN                  Index;
@@ -272,6 +274,10 @@ GxLogConsoleState (
   EFI_DEVICE_PATH_PROTOCOL    *DevicePath;
   CHAR16                      *DevicePathText;
 
+  AsciiSPrint (Message, sizeof (Message), "BDS %a CON IN%u OUT%u KEY%u ERR%u",
+    Stage, (gST->ConIn != NULL), (gST->ConOut != NULL),
+    ((gST->ConIn != NULL) && (gST->ConIn->WaitForKey != NULL)), (gST->StdErr != NULL));
+  GxDxeDiagnosticsLog (Message);
   DEBUG ((DEBUG_ERROR,
     "[GX-CONSOLE] %a ConIn=%p WaitForKey=%p ConOut=%p ErrOut=%p\n",
     Stage,
@@ -375,6 +381,8 @@ SyncFvBootOption (
   EFI_DEVICE_PATH_PROTOCOL          *DevicePath;
   EFI_DEVICE_PATH_PROTOCOL          *FileDevicePath;
   BOOLEAN                           FileExists;
+  BOOLEAN                           IsShell;
+  CHAR8                             DiagnosticMessage[128];
 
   Status = gBS->HandleProtocol (
                   gImageHandle,
@@ -393,6 +401,12 @@ SyncFvBootOption (
   ASSERT (DevicePath != NULL);
 
   // Search if given file exists anywhere
+  IsShell = (BOOLEAN)(StrCmp (Description, L"UEFI Shell") == 0);
+  FileDevicePath = NULL;
+  if (IsShell) {
+    GxDxeDiagnosticsLog ("SHELL FV LOOKUP BEGIN");
+    DEBUG ((DEBUG_ERROR, "[GX-BDS] Shell FV lookup begin file_guid=%g\n", FileGuid));
+  }
   Status = GetFileDevicePathFromAnyFv (
              FileGuid,
              EFI_SECTION_ALL,
@@ -403,6 +417,16 @@ SyncFvBootOption (
   FileExists = !EFI_ERROR (Status);
   DEBUG ((DEBUG_ERROR, "[GX-BDS] FV option %s present=%d lookup=%r\n",
     Description, FileExists, Status));
+  if (IsShell) {
+    AsciiSPrint (DiagnosticMessage, sizeof (DiagnosticMessage), "SHELL FV LOOKUP %a STATUS=%r",
+      FileExists ? "PRESENT" : "MISSING", Status);
+    GxDxeDiagnosticsLog (DiagnosticMessage);
+    DEBUG ((DEBUG_ERROR, "[GX-BDS] Shell FV lookup returned present=%u status=%r path=%p\n",
+      FileExists, Status, FileDevicePath));
+  }
+  if (FileExists && (FileDevicePath != NULL)) {
+    FreePool (FileDevicePath);
+  }
 
   Status = EfiBootManagerInitializeLoadOption (
              &NewOption,
@@ -420,10 +444,19 @@ SyncFvBootOption (
   // No need to check if the file exists here, because EfiBootManager will
   // print a message on the screen if file was not found.
   if (BootNow) {
+    if (IsShell) {
+      GxLogConsoleState ("PRE-SHELL");
+      GxDxeDiagnosticsLog ("SHELL LAUNCH BEGIN");
+    }
     DEBUG ((DEBUG_ERROR, "[GX-BDS] boot option launch begin name='%s'\n", Description));
     EfiBootManagerBoot (&NewOption);
     DEBUG ((DEBUG_ERROR, "[GX-BDS] boot option launch returned name='%s' status=%r\n",
       Description, NewOption.Status));
+    if (IsShell) {
+      AsciiSPrint (DiagnosticMessage, sizeof (DiagnosticMessage), "SHELL LAUNCH RETURN STATUS=%r",
+        NewOption.Status);
+      GxDxeDiagnosticsLog (DiagnosticMessage);
+    }
   }
 
   BootOptions = EfiBootManagerGetLoadOptions (
@@ -2236,6 +2269,11 @@ PlatformBootManagerAfterConsole (
     DEBUG ((DEBUG_ERROR, "[GX-LOGO] retry returned status=%r\n", LogoStatus));
   }
 #if defined (GOOXI_G4DEL_USB_DIAGNOSTICS) && GOOXI_G4DEL_USB_DIAGNOSTICS
+  GxDxeDiagnosticsLog ("BDS USB DRIVER STATUS BEGIN");
+  DEBUG ((DEBUG_ERROR, "[GX-BDS] USB driver status page begin\n"));
+  GxDisplayUsbDriverStatus ();
+  GxDxeDiagnosticsLog ("BDS USB DRIVER STATUS RETURNED");
+  DEBUG ((DEBUG_ERROR, "[GX-BDS] USB driver status page returned\n"));
   GxDxeDiagnosticsLog ("BDS USB INVENTORY BEGIN");
   DEBUG ((DEBUG_ERROR, "[GX-BDS] USB inventory begin\n"));
   GxDisplayUsbInventory ();
@@ -2360,10 +2398,7 @@ PlatformBootManagerAfterConsole (
   DEBUG ((DEBUG_ERROR, "[GX-BDS] Shell registration begin\n"));
   DEBUG((DEBUG_INFO, "Registering UEFI Shell boot option\n"));
 #if defined (GOOXI_G4DEL_USB_DIAGNOSTICS) && GOOXI_G4DEL_USB_DIAGNOSTICS
-  GxLogConsoleState ("PRE-SHELL");
-  Print (L"[G4DEL] USB inventory complete; starting UEFI Shell on available consoles.\r\n");
-  GxDxeDiagnosticsLog ("BDS UEFI SHELL LAUNCH BEGIN");
-  DEBUG ((DEBUG_ERROR, "[GX-BDS] launching registered UEFI Shell directly; framebuffer/GOP is optional\n"));
+  DEBUG ((DEBUG_ERROR, "[GX-BDS] direct UEFI Shell launch requested; framebuffer/GOP is optional\n"));
   SyncFvBootOption (PcdGetPtr (PcdShellFile),
                     L"UEFI Shell",
                     TRUE,

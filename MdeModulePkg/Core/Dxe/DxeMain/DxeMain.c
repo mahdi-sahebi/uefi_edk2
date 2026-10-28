@@ -202,6 +202,17 @@ GxDxeDiagnosticsProtocolLog (
   GxDxeLog (Message);
 }
 
+STATIC
+EFI_STATUS
+EFIAPI
+GxDxeDiagnosticsProtocolGetDriverStatus (
+  IN  CONST EFI_GUID          *FileName,
+  OUT GX_DXE_DRIVER_STATUS    *DriverStatus
+  )
+{
+  return CoreGetDriverStatus (FileName, DriverStatus);
+}
+
 VOID
 GxDxeCheckpoint (
   IN UINTN       Sequence,
@@ -819,6 +830,7 @@ DxeMain (
   //
   GxDxeTrace ("DXE diagnostics protocol install begin");
   mGxDxeDiagnosticsProtocol.Log = GxDxeDiagnosticsProtocolLog;
+  mGxDxeDiagnosticsProtocol.GetDriverStatus = GxDxeDiagnosticsProtocolGetDriverStatus;
   Status = gBS->InstallProtocolInterface (
                   &mGxDxeDiagnosticsHandle,
                   &gGxDxeDiagnosticsProtocolGuid,
