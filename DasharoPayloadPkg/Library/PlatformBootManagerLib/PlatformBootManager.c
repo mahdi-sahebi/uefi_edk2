@@ -2398,7 +2398,6 @@ PlatformBootManagerAfterConsole (
   DEBUG ((DEBUG_ERROR, "[GX-BDS] Shell registration begin\n"));
   DEBUG((DEBUG_INFO, "Registering UEFI Shell boot option\n"));
 #if defined (GOOXI_G4DEL_USB_DIAGNOSTICS) && GOOXI_G4DEL_USB_DIAGNOSTICS
-  DEBUG ((DEBUG_ERROR, "[GX-BDS] direct UEFI Shell launch requested; framebuffer/GOP is optional\n"));
   SyncFvBootOption (PcdGetPtr (PcdShellFile),
                     L"UEFI Shell",
                     TRUE,
