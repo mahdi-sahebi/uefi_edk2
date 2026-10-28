@@ -2347,6 +2347,15 @@ MpInitLibInitialize (
       SortApicId (CpuMpData);
 
       DEBUG ((DEBUG_INFO, "MpInitLib: Find %d processors in system.\n", CpuMpData->CpuCount));
+    } else {
+      //
+      // The single-core diagnostic override deliberately avoids AP
+      // enumeration. Emit an explicit checkpoint so the trace distinguishes
+      // this expected path from a stall before CollectProcessorCount().
+      //
+      DEBUG ((DEBUG_ERROR, "[GX-MP] AP enumeration skipped max_logical=%u; BSP only\n",
+        MaxLogicalProcessorNumber));
+      GxDxeDiagnosticsLog ("MP PROCESSOR ENUMERATION SKIPPED BSP ONLY");
     }
   } else {
     //
