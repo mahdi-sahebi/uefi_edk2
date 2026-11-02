@@ -50,6 +50,7 @@
   MdePkg/MdePkg.dec
   MdeModulePkg/MdeModulePkg.dec
   UefiCpuPkg/UefiCpuPkg.dec
+  DasharoPayloadPkg/DasharoPayloadPkg.dec
 
 [LibraryClasses]
   BaseLib
@@ -73,6 +74,7 @@
   CpuPageTableLib
 
 [Protocols]
+  gGxDxeDiagnosticsProtocolGuid                 ## SOMETIMES_CONSUMES
   gEfiTimerArchProtocolGuid                     ## SOMETIMES_CONSUMES
 
 [Guids]

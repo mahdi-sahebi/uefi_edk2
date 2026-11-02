@@ -9,6 +9,7 @@
 **/
 
 #include "MpLib.h"
+#include <Library/GxDxeDiagnosticsLib.h>
 #include <Library/CcExitLib.h>
 #include <Register/Amd/SevSnpMsr.h>
 #include <Register/Amd/Ghcb.h>
@@ -581,14 +582,25 @@ CollectProcessorCount (
   //
   // Send 1st broadcast IPI to APs to wakeup APs
   //
+  DEBUG ((DEBUG_ERROR, "[GX-MP] processor enumeration begin configured_max=%u\n",
+    PcdGet32 (PcdCpuMaxLogicalProcessorNumber)));
+  GxDxeDiagnosticsLog ("MP PROCESSOR ENUMERATION BEGIN");
   CpuMpData->InitFlag = ApInitConfig;
+  DEBUG ((DEBUG_ERROR, "[GX-MP] initial AP wakeup begin\n"));
+  GxDxeDiagnosticsLog ("MP INITIAL AP WAKEUP BEGIN");
   WakeUpAP (CpuMpData, TRUE, 0, NULL, NULL, TRUE);
+  GxDxeDiagnosticsLog ("MP INITIAL AP WAKEUP RETURN");
+  DEBUG ((DEBUG_ERROR, "[GX-MP] initial AP wakeup return finished=%u executing=%u\n",
+    CpuMpData->FinishedCount, CpuMpData->MpCpuExchangeInfo->NumApsExecuting));
   CpuMpData->InitFlag = ApInitDone;
   //
   // When InitFlag == ApInitConfig, WakeUpAP () guarantees all APs are checked in.
   // FinishedCount is the number of check-in APs.
   //
   CpuMpData->CpuCount = CpuMpData->FinishedCount + 1;
+  DEBUG ((DEBUG_ERROR, "[GX-MP] processor enumeration result count=%u configured_max=%u\n",
+    CpuMpData->CpuCount, PcdGet32 (PcdCpuMaxLogicalProcessorNumber)));
+  GxDxeDiagnosticsLog ("MP PROCESSOR ENUMERATION RETURN");
   ASSERT (CpuMpData->CpuCount <= PcdGet32 (PcdCpuMaxLogicalProcessorNumber));
 
   return CpuMpData->CpuCount;
@@ -1230,14 +1242,23 @@ WakeUpAP (
 
   CpuMpData->FinishedCount = 0;
   ResetVectorRequired      = FALSE;
+  DEBUG ((DEBUG_ERROR, "[GX-MP] WakeUpAP begin broadcast=%u processor=%u init_flag=%u cpu_count=%u bsp=%u wake_disabled=%u\n",
+    Broadcast, (UINT32)ProcessorNumber, CpuMpData->InitFlag, CpuMpData->CpuCount,
+    CpuMpData->BspNumber, WakeUpDisabledAps));
 
   if (CpuMpData->WakeUpByInitSipiSipi ||
       (CpuMpData->InitFlag == ApInitConfig))
   {
     ResetVectorRequired = TRUE;
+    DEBUG ((DEBUG_ERROR, "[GX-MP] AP reset-vector preparation begin backup=0x%lx size=0x%lx\n",
+      CpuMpData->BackupBuffer, CpuMpData->BackupBufferSize));
     AllocateResetVectorBelow1Mb (CpuMpData);
+    DEBUG ((DEBUG_ERROR, "[GX-MP] AP reset-vector allocation return wakeup=0x%lx exchange=%p\n",
+      CpuMpData->WakeupBuffer, CpuMpData->MpCpuExchangeInfo));
     AllocateSevEsAPMemory (CpuMpData);
     FillExchangeInfoData (CpuMpData);
+    DEBUG ((DEBUG_ERROR, "[GX-MP] AP exchange-info preparation returned start=0x%lx\n",
+      CpuMpData->MpCpuExchangeInfo->BufferStart));
   }
 
   if (CpuMpData->ApLoopMode == ApInMwaitLoop) {
@@ -1289,15 +1310,23 @@ WakeUpAP (
       //   list of APIC IDs is not available.
       //
       if (CanUseSevSnpCreateAP (CpuMpData)) {
+        DEBUG ((DEBUG_ERROR, "[GX-MP] AP startup mechanism=SEV-SNP create begin\n"));
         SevSnpCreateAP (CpuMpData, -1);
+        DEBUG ((DEBUG_ERROR, "[GX-MP] AP startup mechanism=SEV-SNP create returned\n"));
       } else {
         if ((CpuMpData->InitFlag == ApInitConfig) && FixedPcdGetBool (PcdFirstTimeWakeUpAPsBySipi)) {
           //
           // SIPI can be used for the first time wake up after reset to reduce boot time.
           //
+          DEBUG ((DEBUG_ERROR, "[GX-MP] AP startup mechanism=first-SIPI begin vector=0x%x\n",
+            (UINT32)ExchangeInfo->BufferStart));
           SendStartupIpiAllExcludingSelf ((UINT32)ExchangeInfo->BufferStart);
+          DEBUG ((DEBUG_ERROR, "[GX-MP] AP startup mechanism=first-SIPI returned\n"));
         } else {
+          DEBUG ((DEBUG_ERROR, "[GX-MP] AP startup mechanism=INIT-SIPI-SIPI begin vector=0x%x\n",
+            (UINT32)ExchangeInfo->BufferStart));
           SendInitSipiSipiAllExcludingSelf ((UINT32)ExchangeInfo->BufferStart);
+          DEBUG ((DEBUG_ERROR, "[GX-MP] AP startup mechanism=INIT-SIPI-SIPI returned\n"));
         }
       }
     }
@@ -1317,11 +1346,15 @@ WakeUpAP (
         // misconfiguration), then some APs may complete initialization after
         // the wait finishes, and cause undefined behavior.
         //
+        DEBUG ((DEBUG_ERROR, "[GX-MP] exact AP count wait begin target=%u\n",
+          PcdGet32 (PcdCpuBootLogicalProcessorNumber) - 1));
         TimedWaitForApFinish (
           CpuMpData,
           PcdGet32 (PcdCpuBootLogicalProcessorNumber) - 1,
           MAX_UINT32 // approx. 71 minutes
           );
+        DEBUG ((DEBUG_ERROR, "[GX-MP] exact AP count wait return finished=%u executing=%u\n",
+          CpuMpData->FinishedCount, CpuMpData->MpCpuExchangeInfo->NumApsExecuting));
       } else {
         //
         // The AP enumeration algorithm below is suitable for two use cases.
@@ -1355,15 +1388,24 @@ WakeUpAP (
         //     at timeout. APs that miss the time-out may cause undefined
         //     behavior.
         //
+        DEBUG ((DEBUG_ERROR, "[GX-MP] AP check-in wait begin target=%u timeout_us=%u\n",
+          PcdGet32 (PcdCpuMaxLogicalProcessorNumber) - 1,
+          PcdGet32 (PcdCpuApInitTimeOutInMicroSeconds)));
         TimedWaitForApFinish (
           CpuMpData,
           PcdGet32 (PcdCpuMaxLogicalProcessorNumber) - 1,
           PcdGet32 (PcdCpuApInitTimeOutInMicroSeconds)
           );
+        DEBUG ((DEBUG_ERROR, "[GX-MP] AP check-in timeout reached finished=%u executing=%u\n",
+          CpuMpData->FinishedCount, CpuMpData->MpCpuExchangeInfo->NumApsExecuting));
 
+        DEBUG ((DEBUG_ERROR, "[GX-MP] wait for AP initialization drain begin executing=%u\n",
+          CpuMpData->MpCpuExchangeInfo->NumApsExecuting));
         while (CpuMpData->MpCpuExchangeInfo->NumApsExecuting != 0) {
           CpuPause ();
         }
+        DEBUG ((DEBUG_ERROR, "[GX-MP] wait for AP initialization drain return finished=%u\n",
+          CpuMpData->FinishedCount));
       }
     } else {
       //
@@ -1424,6 +1466,9 @@ WakeUpAP (
   // S3SmmInitDone Ppi.
   //
   CpuMpData->WakeUpByInitSipiSipi = (CpuMpData->ApLoopMode == ApInHltLoop);
+  DEBUG ((DEBUG_ERROR, "[GX-MP] WakeUpAP return broadcast=%u finished=%u executing=%u reset_vector=%u\n",
+    Broadcast, CpuMpData->FinishedCount,
+    CpuMpData->MpCpuExchangeInfo->NumApsExecuting, ResetVectorRequired));
 }
 
 /**
@@ -2068,7 +2113,12 @@ MpInitLibInitialize (
   UINTN                    BackupBufferAddr;
   UINTN                    ApIdtBase;
 
+  DEBUG ((DEBUG_ERROR, "[GX-MP] MpInitLibInitialize begin max_logical=%u ap_timeout_us=%u boot_logical=%u\n",
+    PcdGet32 (PcdCpuMaxLogicalProcessorNumber), PcdGet32 (PcdCpuApInitTimeOutInMicroSeconds),
+    PcdGet32 (PcdCpuBootLogicalProcessorNumber)));
+  GxDxeDiagnosticsLog ("MP INITIALIZE BEGIN");
   FirstMpHandOff = GetNextMpHandOffHob (NULL);
+  DEBUG ((DEBUG_ERROR, "[GX-MP] CPU handoff HOB %a\n", FirstMpHandOff == NULL ? "absent; enumerate APs" : "present"));
   if (FirstMpHandOff != NULL) {
     MaxLogicalProcessorNumber = 0;
     for (MpHandOff = FirstMpHandOff;
@@ -2076,9 +2126,8 @@ MpInitLibInitialize (
          MpHandOff = GetNextMpHandOffHob (MpHandOff))
     {
       DEBUG ((
-        DEBUG_INFO,
-        "%a: ProcessorIndex=%u CpuCount=%u\n",
-        __func__,
+        DEBUG_ERROR,
+        "[GX-MP] CPU handoff processor_index=%u cpu_count=%u\n",
         MpHandOff->ProcessorIndex,
         MpHandOff->CpuCount
         ));
@@ -2089,11 +2138,16 @@ MpInitLibInitialize (
     MaxLogicalProcessorNumber = PcdGet32 (PcdCpuMaxLogicalProcessorNumber);
   }
 
+  GxDxeDiagnosticsLog (FirstMpHandOff == NULL ? "MP HANDOFF ABSENT ENUMERATE APs" : "MP HANDOFF HOB PRESENT");
   ASSERT (MaxLogicalProcessorNumber != 0);
+  DEBUG ((DEBUG_ERROR, "[GX-MP] allocate AP state max_logical=%u source=%a\n",
+    MaxLogicalProcessorNumber, FirstMpHandOff == NULL ? "PCD" : "CPU HOB"));
 
   AsmGetAddressMap (&AddressMap);
   GetApResetVectorSize (&AddressMap, &ApResetVectorSizeBelow1Mb, &ApResetVectorSizeAbove1Mb);
   ApStackSize = PcdGet32 (PcdCpuApStackSize);
+  DEBUG ((DEBUG_ERROR, "[GX-MP] AP reset-vector sizes below_1M=0x%lx above_1M=0x%lx stack=0x%x\n",
+    ApResetVectorSizeBelow1Mb, ApResetVectorSizeAbove1Mb, ApStackSize));
   //
   // ApStackSize must be power of 2
   //
@@ -2116,7 +2170,12 @@ MpInitLibInitialize (
   BufferSize += VolatileRegisters.Idtr.Limit + 1;
   BufferSize += sizeof (CPU_MP_DATA);
   BufferSize += (sizeof (CPU_AP_DATA) + sizeof (CPU_INFO_IN_HOB))* MaxLogicalProcessorNumber;
+  DEBUG ((DEBUG_ERROR, "[GX-MP] AP state allocation begin bytes=0x%lx pages=%u\n",
+    BufferSize, EFI_SIZE_TO_PAGES (BufferSize)));
+  GxDxeDiagnosticsLog ("MP AP STATE ALLOCATION BEGIN");
   MpBuffer    = AllocatePages (EFI_SIZE_TO_PAGES (BufferSize));
+  GxDxeDiagnosticsLog (MpBuffer == NULL ? "MP AP STATE ALLOCATION FAILED" : "MP AP STATE ALLOCATION RETURNED");
+  DEBUG ((DEBUG_ERROR, "[GX-MP] AP state allocation return buffer=%p\n", MpBuffer));
   ASSERT (MpBuffer != NULL);
   if (MpBuffer == NULL) {
     return EFI_OUT_OF_RESOURCES;
@@ -2268,7 +2327,12 @@ MpInitLibInitialize (
       //
       // Wakeup all APs and calculate the processor count in system
       //
+      DEBUG ((DEBUG_ERROR, "[GX-MP] CollectProcessorCount begin max_logical=%u\n", MaxLogicalProcessorNumber));
+      GxDxeDiagnosticsLog ("MP COLLECT PROCESSOR COUNT BEGIN");
       CollectProcessorCount (CpuMpData);
+      GxDxeDiagnosticsLog ("MP COLLECT PROCESSOR COUNT RETURNED");
+      DEBUG ((DEBUG_ERROR, "[GX-MP] CollectProcessorCount return count=%u APs=%u\n",
+        CpuMpData->CpuCount, CpuMpData->FinishedCount));
 
       //
       // Enable X2APIC if needed.
@@ -2283,6 +2347,15 @@ MpInitLibInitialize (
       SortApicId (CpuMpData);
 
       DEBUG ((DEBUG_INFO, "MpInitLib: Find %d processors in system.\n", CpuMpData->CpuCount));
+    } else {
+      //
+      // The single-core diagnostic override deliberately avoids AP
+      // enumeration. Emit an explicit checkpoint so the trace distinguishes
+      // this expected path from a stall before CollectProcessorCount().
+      //
+      DEBUG ((DEBUG_ERROR, "[GX-MP] AP enumeration skipped max_logical=%u; BSP only\n",
+        MaxLogicalProcessorNumber));
+      GxDxeDiagnosticsLog ("MP PROCESSOR ENUMERATION SKIPPED BSP ONLY");
     }
   } else {
     //
