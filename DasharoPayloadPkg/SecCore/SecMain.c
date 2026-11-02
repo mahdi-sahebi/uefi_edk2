@@ -8,12 +8,18 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 
 #include "SecMain.h"
+#include "version.h"
 
 //////////////////////////// mahdi
 #include "edkii_vga.h"
 VOID EFIAPI SecSerialPortConfigure (IN UINT32 BootloaderParameter);
 #include <Library/TimerLib.h>
+#include <Library/SerialPortLib.h>
 /////////////////////////////////
+
+STATIC CONST CHAR8 mUefiCorebootVersionBanner[] =
+  "[EDK2] UEFI_COREBOOT_VERSION=" UEFI_COREBOOT_VERSION_STRING
+  " BUILD_DATE=" UEFI_COREBOOT_BUILD_DATE "\r\n";
 
 
 
@@ -75,8 +81,12 @@ SecStartup (
 {
   //////////////////////////// mahdi
   SecSerialPortConfigure (BootloaderParameter);
+  SerialPortWrite ((UINT8 *)mUefiCorebootVersionBanner, sizeof (mUefiCorebootVersionBanner) - 1);
+  edkii_vga_configure_from_coreboot (BootloaderParameter);
   edkii_vga_clear();
-  edkii_vga_print(0, "EDK II Started ");
+  edkii_vga_print (0, "EDK II SEC ENTRY 1405-08-06");
+  SerialPortWrite ((UINT8 *)"EDK II SEC ENTRY 1405-08-06\r\n", sizeof ("EDK II SEC ENTRY 1405-08-06\r\n") - 1);
+  MicroSecondDelay (2000000);
   DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] CHECKPOINT SEC entry arg=0x%x fv=%p stack=0x%x+0x%x\n",
     BootloaderParameter, BootFirmwareVolume, TempRamBase, SizeOfRam));
   ///////////////////////////
@@ -206,7 +216,10 @@ SecStartupPhase2(
   IN VOID                     *Context
   )
 {
+  DEBUG ((DEBUG_ERROR, "[GX-SEC] phase2 VGA clear delay begin usec=1000000\n"));
+  MicroSecondDelay (1000000);
   edkii_vga_clear();
+  DEBUG ((DEBUG_ERROR, "[GX-SEC] phase2 VGA full-page clear returned\n"));
   
   // edkii_vga_print(0, "EDK II- Testing the delay - 1");
   // MicroSecondDelay(5000000);
