@@ -36,6 +36,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 // #include <Library/PeCoffExtraActionLib.h>
 #include <Library/DebugAgentLib.h>
 
+
 #define mde_2__VGA_FB 0xB8000
 #define mde_2__VGA_COLUMNS 80
 
@@ -43,6 +44,7 @@ char mde_2_g_buffer[80];
 
 void mde_2_edkii_vga_write_at_offset(unsigned int line, unsigned int offset, const char *string)
 {
+#if !defined (GOOXI_G4DEL_LINEAR_GRAPHICS)
 	if (!string)
 		return;
 
@@ -55,12 +57,19 @@ void mde_2_edkii_vga_write_at_offset(unsigned int line, unsigned int offset, con
 		else
 			p[i] = 0x0F00;
 	}
+
+#else
+  (void)line;
+  (void)offset;
+  (void)string;
+#endif
 }
 
 
 static void
 log_vga_row(unsigned int line)
 {
+#if !defined (GOOXI_G4DEL_LINEAR_GRAPHICS)
     volatile const unsigned short *cells;
     char text[81];
     unsigned int i;
@@ -77,6 +86,10 @@ log_vga_row(unsigned int line)
     text[i] = '\0';
     if (i != 0)
         DEBUG ((DEBUG_ERROR, "[GX-VGA] row=%u %a\n", line, text));
+
+#else
+  (void)line;
+#endif
 }
 
 void mde_2_edkii_vga_print(unsigned int line, const char *string)
@@ -88,7 +101,11 @@ void mde_2_edkii_vga_print(unsigned int line, const char *string)
         return;
     for (i = 0; string[i] != '\0'; i++) {
         if (string[i] != ' ') {
+            #if defined (GOOXI_G4DEL_LINEAR_GRAPHICS)
+            DEBUG ((DEBUG_ERROR, "[GX-VGA] row=%u %a\n", line, string));
+#else
             log_vga_row(line);
+#endif
             break;
         }
     }
@@ -408,6 +425,12 @@ DelayedDispatchDispatcher (
   BOOLEAN                 DelayedGroupIdPresent;
   DELAYED_DISPATCH_ENTRY  *Entry;
   EFI_STATUS              Status;
+
+  // No timer is needed until a delayed entry exists. Early PEI has not yet
+  // published the ACPI board information HOB used by TimerLib.
+  if (DelayedDispatchTable->Count == 0) {
+    return FALSE;
+  }
 
   mde_2_edkii_vga_sprintf(12, "DelayedDis-%X,%X",
     DelayedDispatchTable,
@@ -2064,6 +2087,31 @@ EvacuateTempRam (
   return Status;
 }
 
+// Trace entry/return without changing PEIM scheduling or return handling.
+STATIC
+VOID
+GxInvokePeim (
+  IN EFI_PEIM_ENTRY_POINT2    EntryPoint,
+  IN EFI_PEI_FILE_HANDLE     FileHandle,
+  IN CONST EFI_PEI_SERVICES  **Services
+  )
+{
+  EFI_FV_FILE_INFO  Info;
+  EFI_STATUS       Status;
+
+  Status = PeiServicesFfsGetFileInfo (FileHandle, &Info);
+  if (!EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "[GX-PEIM] file=%p guid=%g entry=%p\n", FileHandle, &Info.FileName, EntryPoint));
+  } else {
+    DEBUG ((DEBUG_ERROR, "[GX-PEIM] file=%p file-info failed=%r entry=%p\n", FileHandle, Status, EntryPoint));
+  }
+
+  mde_2_edkii_vga_sprintf (23, "PEIM enter %p", EntryPoint);
+  Status = EntryPoint (FileHandle, Services);
+  DEBUG ((DEBUG_ERROR, "[GX-PEIM] returned file=%p entry=%p status=%r\n", FileHandle, EntryPoint, Status));
+  mde_2_edkii_vga_sprintf (23, "PEIM returned %p %r", EntryPoint, Status);
+}
+
 /**
   Conduct PEIM dispatch.
 
@@ -2257,7 +2305,7 @@ PeiDispatcher (
             PERF_START_IMAGE_BEGIN (PeimFileHandle);
             DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] CHECKPOINT PEIM enter file=%p entry=%p\n",
               PeimFileHandle, PeimEntryPoint));
-            PeimEntryPoint (PeimFileHandle, (const EFI_PEI_SERVICES **)&Private->Ps);
+            GxInvokePeim (PeimEntryPoint, PeimFileHandle, (const EFI_PEI_SERVICES **)&Private->Ps);
             DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] CHECKPOINT PEIM returned file=%p\n", PeimFileHandle));
             PERF_START_IMAGE_END (PeimFileHandle);
           }
@@ -2532,7 +2580,7 @@ if (!EFI_ERROR (Status)) {
 
                   DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] CHECKPOINT PEIM enter file=%p entry=%p\n",
                     PeimFileHandle, PeimEntryPoint));
-                  PeimEntryPoint (PeimFileHandle, (const EFI_PEI_SERVICES **)PeiServices);
+                  GxInvokePeim (PeimEntryPoint, PeimFileHandle, (const EFI_PEI_SERVICES **)PeiServices);
                   DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] CHECKPOINT PEIM returned file=%p\n", PeimFileHandle));
                   
                   mde_2_edkii_vga_sprintf(15, "End of peim entry-%X",
@@ -2664,7 +2712,7 @@ if (!EFI_ERROR (Status)) {
               ASSERT (PeimEntryPoint != NULL);
               DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] CHECKPOINT PEIM enter file=%p entry=%p\n",
                 PeimFileHandle, PeimEntryPoint));
-              PeimEntryPoint (PeimFileHandle, (const EFI_PEI_SERVICES **)PeiServices);
+              GxInvokePeim (PeimEntryPoint, PeimFileHandle, (const EFI_PEI_SERVICES **)PeiServices);
               DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] CHECKPOINT PEIM returned file=%p\n", PeimFileHandle));
               // PERF_END (PeiServices, L"PEIM", PeimFileHandle, 0);
 
@@ -2785,6 +2833,19 @@ if (!EFI_ERROR (Status)) {
            (Private->DelayedDispatchTable->Count > 0));
 
   
+  for (FvCount = 0; FvCount < Private->FvCount; FvCount++) {
+    for (PeimCount = 0; PeimCount < Private->Fv[FvCount].PeimCount; PeimCount++) {
+      if (Private->Fv[FvCount].PeimState[PeimCount] == PEIM_STATE_NOT_DISPATCHED) {
+        PeimFileHandle = Private->Fv[FvCount].FvFileHandles[PeimCount];
+        Status = PeiServicesFfsGetFileInfo (PeimFileHandle, &FvFileInfo);
+        if (!EFI_ERROR (Status)) {
+          DEBUG ((DEBUG_ERROR, "[GX-PEI] pending fv=%u file=%g\n", FvCount, &FvFileInfo.FileName));
+        } else {
+          DEBUG ((DEBUG_ERROR, "[GX-PEI] pending fv=%u file=%p file-info=%r\n", FvCount, PeimFileHandle, Status));
+        }
+      }
+    }
+  }
   mde_2_edkii_vga_sprintf(3, "*****************End of Dispatching");
 }
 
@@ -2841,12 +2902,13 @@ DepexSatisfied (
   EFI_STATUS        Status;
   VOID              *DepexData;
   EFI_FV_FILE_INFO  FileInfo;
+  BOOLEAN           Ready;
 
   Status = PeiServicesFfsGetFileInfo (FileHandle, &FileInfo);
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_DISPATCH, "Evaluate PEI DEPEX for FFS(Unknown)\n"));
   } else {
-    DEBUG ((DEBUG_DISPATCH, "Evaluate PEI DEPEX for FFS(%g)\n", &FileInfo.FileName));
+    DEBUG ((DEBUG_ERROR, "[GX-PEI-DEPEX] evaluate file=%g handle=%p\n", &FileInfo.FileName, FileHandle));
   }
 
   if (PeimCount < Private->AprioriCount) {
@@ -2877,7 +2939,9 @@ DepexSatisfied (
   //
   // Evaluate a given DEPEX
   //
-  return PeimDispatchReadiness (&Private->Ps, DepexData);
+  Ready = PeimDispatchReadiness (&Private->Ps, DepexData);
+  DEBUG ((DEBUG_ERROR, "[GX-PEI-DEPEX] result file=%p ready=%u\n", FileHandle, Ready));
+  return Ready;
 }
 
 /**

@@ -25,6 +25,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 // #include <Library/PeCoffExtraActionLib.h>
 #include <Library/DebugAgentLib.h>
 
+
 #define mde_1__VGA_FB 0xB8000
 #define mde_1__VGA_COLUMNS 80
 
@@ -32,6 +33,7 @@ char mde_1_g_buffer[80];
 
 void mde_1_edkii_vga_write_at_offset(unsigned int line, unsigned int offset, const char *string)
 {
+#if !defined (GOOXI_G4DEL_LINEAR_GRAPHICS)
 	if (!string)
 		return;
 
@@ -44,12 +46,19 @@ void mde_1_edkii_vga_write_at_offset(unsigned int line, unsigned int offset, con
 		else
 			p[i] = 0x0F00;
 	}
+
+#else
+  (void)line;
+  (void)offset;
+  (void)string;
+#endif
 }
 
 
 static void
 log_vga_row(unsigned int line)
 {
+#if !defined (GOOXI_G4DEL_LINEAR_GRAPHICS)
     volatile const unsigned short *cells;
     char text[81];
     unsigned int i;
@@ -66,6 +75,10 @@ log_vga_row(unsigned int line)
     text[i] = '\0';
     if (i != 0)
         DEBUG ((DEBUG_ERROR, "[GX-VGA] row=%u %a\n", line, text));
+
+#else
+  (void)line;
+#endif
 }
 
 void mde_1_edkii_vga_print(unsigned int line, const char *string)
@@ -77,7 +90,11 @@ void mde_1_edkii_vga_print(unsigned int line, const char *string)
         return;
     for (i = 0; string[i] != '\0'; i++) {
         if (string[i] != ' ') {
+            #if defined (GOOXI_G4DEL_LINEAR_GRAPHICS)
+            DEBUG ((DEBUG_ERROR, "[GX-VGA] row=%u %a\n", line, string));
+#else
             log_vga_row(line);
+#endif
             break;
         }
     }
@@ -191,18 +208,9 @@ void mde_1_edkii_vga_hex_dump(const unsigned char *addr, unsigned int len, int s
 
 static void delay_s(int n)
 {
-  volatile unsigned long t = 25;
-  volatile unsigned long x = (unsigned long)n * 10000UL;
-
-  while (x--) {
-    for (unsigned long i1 = 0; i1 < 1000UL; ++i1) {
-        for (int i = 0; i < 20; ++i) {
-            t = t * 14823424UL + x + 1UL;
-        }
-    }
-  }
-
-  mde_1_edkii_vga_sprintf(24, "%x", t);
+  // Legacy VGA checkpoints call this helper. Keep them visible without
+  // stalling PEI for millions of arithmetic iterations at each checkpoint.
+  (VOID)n;
 }
 /////////////////////////////////////////////////////
 
@@ -965,7 +973,11 @@ PeiCore (
   //
   // Call PEIM dispatcher
   //
+  DEBUG ((DEBUG_ERROR, "[GX-PEI] dispatcher begin permanent_memory=%u hob=%p\n",
+    PrivateData.PeiMemoryInstalled, PrivateData.HobList.Raw));
   PeiDispatcher (SecCoreData, &PrivateData);
+  DEBUG ((DEBUG_ERROR, "[GX-PEI] dispatcher returned permanent_memory=%u pending=%u\n",
+    PrivateData.PeiMemoryInstalled, PrivateData.PeimNeedingDispatch));
 
   mde_1_edkii_vga_sprintf(21, "[%d]v-Sec:%X, PD:%X,BM:%X,PMI:%X", 
     g_counter,//3
