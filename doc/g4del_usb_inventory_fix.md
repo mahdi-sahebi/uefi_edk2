@@ -16,3 +16,9 @@ For the next hardware test, capture SOL from power-on through OS launch.
 Confirm the pool assertions are absent, then retry both Kali boot paths.
 The Kali stall may have another cause; this fix addresses the observed
 firmware memory error without claiming to resolve OS booting.
+
+The inventory row formatter also passed a descriptor-status string to
+an integer conversion. That shifted every later argument to the wrong
+conversion, including an integer passed to a string conversion. The
+format now includes the missing descriptor-status conversion so the row
+uses the intended argument types and values.

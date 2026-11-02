@@ -542,7 +542,7 @@ GxCollectUsbInventory (
     }
 
     UnicodeSPrint ((*Rows)[Index].Text, sizeof ((*Rows)[Index].Text),
-      L"%02u %s %04x:%04x IF=%u CLS=%s MSC=%a %s",
+      L"%02u %s DESC=%s %04x:%04x IF=%u CLS=%s MSC=%a %s",
       Index + 1,
       (*Rows)[Index].UsbPath ? L"USB" : L"NO-PATH",
       (*Rows)[Index].DescriptorReady ? L"READY" : L"ERROR",
