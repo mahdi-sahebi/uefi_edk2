@@ -13,6 +13,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 **/
 
 #include "Bds.h"
+#include <Library/GxDxeDiagnosticsLib.h>
 #include "Language.h"
 #include "HwErrRecSupport.h"
 #include <Library/VariablePolicyHelperLib.h>
@@ -435,7 +436,11 @@ BootBootOptions (
     // All the driver options should have been processed since
     // now boot will be performed.
     //
+    DEBUG ((DEBUG_ERROR, "[GX-BDS] boot option %04x %s begin\n",
+      BootOptions[Index].OptionNumber, BootOptions[Index].Description));
     EfiBootManagerBoot (&BootOptions[Index]);
+    DEBUG ((DEBUG_ERROR, "[GX-BDS] boot option %04x returned %r\n",
+      BootOptions[Index].OptionNumber, BootOptions[Index].Status));
 
     //
     // If the boot via Boot#### returns with a status of EFI_SUCCESS, platform firmware
@@ -732,6 +737,8 @@ BdsEntry (
   PERF_CROSSMODULE_END ("DXE");
   PERF_CROSSMODULE_BEGIN ("BDS");
   DEBUG ((DEBUG_INFO, "[Bds] Entry...\n"));
+  DEBUG ((DEBUG_ERROR, "[GX-BDS] entry\n"));
+  GxDxeDiagnosticsLog ("BDS ENTRY");
 
   //
   // Fill in FirmwareVendor and FirmwareRevision from PCDs
@@ -955,7 +962,9 @@ BdsEntry (
   // > Authentication action: 1. connect Auth devices; 2. Identify auto logon user.
   //
   PERF_INMODULE_BEGIN ("PlatformBootManagerBeforeConsole");
+  DEBUG ((DEBUG_ERROR, "[GX-BDS] before-console begin\n"));
   PlatformBootManagerBeforeConsole ();
+  DEBUG ((DEBUG_ERROR, "[GX-BDS] before-console complete\n"));
   PERF_INMODULE_END ("PlatformBootManagerBeforeConsole");
 
   //
@@ -974,6 +983,7 @@ BdsEntry (
   // Connect consoles
   //
   PERF_INMODULE_BEGIN ("EfiBootManagerConnectAllDefaultConsoles");
+  DEBUG ((DEBUG_ERROR, "[GX-BDS] console connection begin\n"));
   if (PcdGetBool (PcdConInConnectOnDemand)) {
     EfiBootManagerConnectConsoleVariable (ConOut);
     EfiBootManagerConnectConsoleVariable (ErrOut);
@@ -985,6 +995,8 @@ BdsEntry (
   }
 
   PERF_INMODULE_END ("EfiBootManagerConnectAllDefaultConsoles");
+  DEBUG ((DEBUG_ERROR, "[GX-BDS] console connection complete ConIn=%p ConOut=%p\n",
+    gST->ConIn, gST->ConOut));
 
   //
   // Do the platform specific action after the console is ready
@@ -998,7 +1010,9 @@ BdsEntry (
   // > Special boot: e.g.: USB boot, enter UI
   //
   PERF_INMODULE_BEGIN ("PlatformBootManagerAfterConsole");
+  DEBUG ((DEBUG_ERROR, "[GX-BDS] after-console begin\n"));
   PlatformBootManagerAfterConsole ();
+  DEBUG ((DEBUG_ERROR, "[GX-BDS] after-console complete\n"));
   PERF_INMODULE_END ("PlatformBootManagerAfterConsole");
 
   //
@@ -1059,14 +1073,17 @@ BdsEntry (
   //
   // BootManagerMenu doesn't contain the correct information when return status is EFI_NOT_FOUND.
   //
+  GxDxeDiagnosticsLog ("BDS MENU LOOKUP BEGIN");
   BootManagerMenuStatus = EfiBootManagerGetBootManagerMenu (&BootManagerMenu);
+  GxDxeDiagnosticsLog (EFI_ERROR (BootManagerMenuStatus) ? "BDS MENU LOOKUP FAILED" : "BDS MENU LOOKUP RETURNED");
+  DEBUG ((DEBUG_ERROR, "[GX-BDS] boot manager menu status=%r\n", BootManagerMenuStatus));
 
   BootFwUi         = (BOOLEAN)((OsIndication & EFI_OS_INDICATIONS_BOOT_TO_FW_UI) != 0);
   PlatformRecovery = (BOOLEAN)((OsIndication & EFI_OS_INDICATIONS_START_PLATFORM_RECOVERY) != 0);
   //
   // Clear EFI_OS_INDICATIONS_BOOT_TO_FW_UI to acknowledge OS
   //
-  if (BootFwUi || PlatformRecovery) {
+  if (((OsIndication & EFI_OS_INDICATIONS_BOOT_TO_FW_UI) != 0) || PlatformRecovery) {
     OsIndication &= ~((UINT64)(EFI_OS_INDICATIONS_BOOT_TO_FW_UI | EFI_OS_INDICATIONS_START_PLATFORM_RECOVERY));
     Status        = gRT->SetVariable (
                            EFI_OS_INDICATIONS_VARIABLE_NAME,
@@ -1095,9 +1112,13 @@ BdsEntry (
     //
     // Directly enter the setup page.
     //
+    DEBUG ((DEBUG_ERROR, "[GX-BDS] Boot Manager Menu launch begin option=%04x\n",
+      BootManagerMenu.OptionNumber));
+    GxDxeDiagnosticsLog ("BDS MENU LAUNCH BEGIN");
     EfiBootManagerBoot (&BootManagerMenu);
+    DEBUG ((DEBUG_ERROR, "[GX-BDS] Boot Manager Menu returned status=%r\n", BootManagerMenu.Status));
+    GxDxeDiagnosticsLog (EFI_ERROR (BootManagerMenu.Status) ? "BDS MENU RETURNED ERROR" : "BDS MENU RETURNED SUCCESS");
   }
-
   if (!PlatformRecovery) {
     //
     // Execute SysPrep####
@@ -1161,6 +1182,7 @@ BdsEntry (
       // Retry to boot if any of the boot succeeds
       //
       LoadOptions = EfiBootManagerGetLoadOptions (&LoadOptionCount, LoadOptionTypeBoot);
+      DEBUG ((DEBUG_ERROR, "[GX-BDS] boot option count=%u\n", LoadOptionCount));
       BootSuccess = BootBootOptions (LoadOptions, LoadOptionCount, (BootManagerMenuStatus != EFI_NOT_FOUND) ? &BootManagerMenu : NULL);
       EfiBootManagerFreeLoadOptions (LoadOptions, LoadOptionCount);
     } while (BootSuccess);
