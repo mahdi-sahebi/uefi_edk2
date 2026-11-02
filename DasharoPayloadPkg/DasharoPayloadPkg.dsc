@@ -148,7 +148,11 @@
   DEFINE NETWORK_IPXE                   = FALSE
 
 [BuildOptions]
+!if $(TPM_ENABLE) == TRUE
+  *_*_*_CC_FLAGS                 = -D DISABLE_NEW_DEPRECATED_INTERFACES -Wno-stringop-overflow -mno-mmx -mno-sse -DSEC_UART_DEFAULT_BASE=$(SOL_UART_BASE) -DPLATFORM_TPM_ENABLED
+!else
   *_*_*_CC_FLAGS                 = -D DISABLE_NEW_DEPRECATED_INTERFACES -Wno-stringop-overflow -mno-mmx -mno-sse -DSEC_UART_DEFAULT_BASE=$(SOL_UART_BASE)
+!endif
   # Keep DEBUG_ERROR available in RELEASE; the PCD mask filters serial output.
 
 
@@ -795,7 +799,11 @@ OrderedCollectionLib|MdePkg/Library/BaseOrderedCollectionRedBlackTreeLib/BaseOrd
 
   UefiCpuPkg/CpuDxe/CpuDxe.inf
   MdeModulePkg/Universal/DriverHealthManagerDxe/DriverHealthManagerDxe.inf
-  MdeModulePkg/Universal/BdsDxe/BdsDxe.inf
+  MdeModulePkg/Universal/BdsDxe/BdsDxe.inf {
+    <LibraryClasses>
+      DebugLib|MdePkg/Library/BaseDebugLibSerialPort/BaseDebugLibSerialPort.inf
+      SerialPortLib|DasharoPayloadPkg/Library/SecSerialPortLib/SecSerialPortLib.inf
+  }
   MdeModulePkg/Logo/LogoDxe.inf
   MdeModulePkg/Application/UiApp/UiApp.inf {
     <LibraryClasses>
@@ -804,7 +812,11 @@ OrderedCollectionLib|MdePkg/Library/BaseOrderedCollectionRedBlackTreeLib/BaseOrd
       NULL|MdeModulePkg/Library/BootManagerUiLib/BootManagerUiLib.inf
       NULL|MdeModulePkg/Library/BootMaintenanceManagerUiLib/BootMaintenanceManagerUiLib.inf
   }
-  MdeModulePkg/Application/BootManagerMenuApp/BootManagerMenuApp.inf
+  MdeModulePkg/Application/BootManagerMenuApp/BootManagerMenuApp.inf {
+    <LibraryClasses>
+      DebugLib|MdePkg/Library/BaseDebugLibSerialPort/BaseDebugLibSerialPort.inf
+      SerialPortLib|DasharoPayloadPkg/Library/SecSerialPortLib/SecSerialPortLib.inf
+  }
 !if $(CAPSULE_SUPPORT) == TRUE
   FmpDevicePkg/FmpDxe/FmpDxe.inf {
     <Defines>
@@ -1082,6 +1094,8 @@ OrderedCollectionLib|MdePkg/Library/BaseOrderedCollectionRedBlackTreeLib/BaseOrd
     #------------------------------
 
     <LibraryClasses>
+      DebugLib|MdePkg/Library/BaseDebugLibSerialPort/BaseDebugLibSerialPort.inf
+      SerialPortLib|DasharoPayloadPkg/Library/SecSerialPortLib/SecSerialPortLib.inf
       NULL|ShellPkg/Library/UefiShellLevel1CommandsLib/UefiShellLevel1CommandsLib.inf
       NULL|ShellPkg/Library/UefiShellLevel2CommandsLib/UefiShellLevel2CommandsLib.inf
       NULL|ShellPkg/Library/UefiShellLevel3CommandsLib/UefiShellLevel3CommandsLib.inf
