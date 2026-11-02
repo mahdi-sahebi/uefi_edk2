@@ -15,6 +15,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Library/DebugLib.h>
 #include <Library/BlParseLib.h>
 #include <Library/BmpSupportLib.h>
+#include <Library/GxDxeDiagnosticsLib.h>
 
 typedef struct {
   EFI_IMAGE_ID                             ImageId;
@@ -64,6 +65,8 @@ GetImage (
   EFI_STATUS                     Status;
   EFI_PHYSICAL_ADDRESS           BmpAddr;
   UINT32                         BmpSize;
+  UINTN                          BmpHeight;
+  UINTN                          BmpWidth;
 
   if ((Instance == NULL) || (Image == NULL) ||
       (Attribute == NULL) || (OffsetX == NULL) || (OffsetY == NULL))
@@ -78,7 +81,14 @@ GetImage (
 
   (*Instance)++;
 
+  BmpAddr = 0;
+  BmpSize = 0;
+  BmpHeight = 0;
+  BmpWidth = 0;
   Status = ParseBootLogo (&BmpAddr, &BmpSize);
+  GxDxeDiagnosticsLog (EFI_ERROR (Status) ? "LOGO CBMEM PARSE FAILED" : "LOGO CBMEM PARSE RETURNED");
+  DEBUG ((DEBUG_ERROR, "[GX-LOGO] CBMEM logo status=%r address=0x%lx size=0x%x\n",
+    Status, BmpAddr, BmpSize));
   if (!EFI_ERROR (Status)) {
     // Logo from CBMEM
     *Attribute = EdkiiPlatformLogoDisplayAttributeCenter;
@@ -92,12 +102,26 @@ GetImage (
             BmpSize,
             &Blt,
             &GopBltSize,
-            (UINTN*) &(Image->Height),
-            (UINTN*) &(Image->Width));
+            &BmpHeight,
+            &BmpWidth);
 
     if (!EFI_ERROR (Status)) {
-      Image->Bitmap = Blt;
-      return Status;
+      if ((BmpWidth > MAX_UINT16) || (BmpHeight > MAX_UINT16)) {
+        DEBUG ((DEBUG_ERROR, "[GX-LOGO] CBMEM bitmap dimensions exceed EFI_IMAGE_INPUT: %ux%u\n",
+          BmpWidth, BmpHeight));
+        if (Blt != NULL) {
+          gBS->FreePool (Blt);
+        }
+        Status = EFI_UNSUPPORTED;
+      } else {
+        Image->Flags  = 0;
+        Image->Width  = (UINT16)BmpWidth;
+        Image->Height = (UINT16)BmpHeight;
+        Image->Bitmap = Blt;
+        GxDxeDiagnosticsLog ("LOGO CBMEM BITMAP READY");
+        DEBUG ((DEBUG_ERROR, "[GX-LOGO] using CBMEM bitmap %ux%u\n", Image->Width, Image->Height));
+        return Status;
+      }
     }
 
     DEBUG ((DEBUG_ERROR, "Failed to translate logo image: %r\n", Status));
@@ -107,7 +131,9 @@ GetImage (
   *Attribute = mLogos[Current].Attribute;
   *OffsetX   = mLogos[Current].OffsetX;
   *OffsetY   = mLogos[Current].OffsetY;
-  return mHiiImageEx->GetImageEx (mHiiImageEx, mHiiHandle, mLogos[Current].ImageId, Image);
+  Status = mHiiImageEx->GetImageEx (mHiiImageEx, mHiiHandle, mLogos[Current].ImageId, Image);
+  DEBUG ((DEBUG_ERROR, "[GX-LOGO] builtin bitmap status=%r\n", Status));
+  return Status;
 }
 
 EDKII_PLATFORM_LOGO_PROTOCOL  mPlatformLogo = {
@@ -187,5 +213,6 @@ InitializeLogo (
                     );
   }
 
+  DEBUG ((DEBUG_ERROR, "[GX-LOGO] protocol install status=%r\n", Status));
   return Status;
 }
