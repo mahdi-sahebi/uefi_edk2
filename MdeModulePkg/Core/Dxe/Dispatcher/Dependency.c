@@ -292,6 +292,10 @@ CoreIsSchedulable (
         Status = CoreLocateProtocol (&DriverGuid, NULL, &Interface);
 
         if (EFI_ERROR (Status)) {
+          // A missing protocol is the normal FALSE result for a DEPEX PUSH.
+          // Keep this per-operand detail out of the error-level SOL trace.
+          DEBUG ((DEBUG_VERBOSE, "[GX-DEPEX] driver=%g protocol=%g lookup=%r (operand FALSE)\n",
+            &DriverEntry->FileName, &DriverGuid, Status));
           DEBUG ((DEBUG_DISPATCH, "  PUSH GUID(%g) = FALSE\n", &DriverGuid));
           Status = PushBool (FALSE);
         } else {
