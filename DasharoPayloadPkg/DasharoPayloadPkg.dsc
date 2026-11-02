@@ -97,6 +97,7 @@
   DEFINE SECURE_BOOT_ENABLE             = FALSE
   DEFINE SECURE_BOOT_DEFAULT_ENABLE     = TRUE
   DEFINE TPM_ENABLE                     = TRUE
+  DEFINE GOOXI_G4DEL_USB_DIAGNOSTICS    = FALSE
   DEFINE SATA_PASSWORD_ENABLE           = FALSE
   DEFINE OPAL_PASSWORD_ENABLE           = FALSE
   DEFINE LOAD_OPTION_ROMS               = TRUE
@@ -149,9 +150,17 @@
 
 [BuildOptions]
 !if $(TPM_ENABLE) == TRUE
+!if $(GOOXI_G4DEL_USB_DIAGNOSTICS) == TRUE
+  *_*_*_CC_FLAGS                 = -D DISABLE_NEW_DEPRECATED_INTERFACES -Wno-stringop-overflow -mno-mmx -mno-sse -DSEC_UART_DEFAULT_BASE=$(SOL_UART_BASE) -DPLATFORM_TPM_ENABLED -DGOOXI_G4DEL_USB_DIAGNOSTICS=1
+!else
   *_*_*_CC_FLAGS                 = -D DISABLE_NEW_DEPRECATED_INTERFACES -Wno-stringop-overflow -mno-mmx -mno-sse -DSEC_UART_DEFAULT_BASE=$(SOL_UART_BASE) -DPLATFORM_TPM_ENABLED
+!endif
+!else
+!if $(GOOXI_G4DEL_USB_DIAGNOSTICS) == TRUE
+  *_*_*_CC_FLAGS                 = -D DISABLE_NEW_DEPRECATED_INTERFACES -Wno-stringop-overflow -mno-mmx -mno-sse -DSEC_UART_DEFAULT_BASE=$(SOL_UART_BASE) -DGOOXI_G4DEL_USB_DIAGNOSTICS=1
 !else
   *_*_*_CC_FLAGS                 = -D DISABLE_NEW_DEPRECATED_INTERFACES -Wno-stringop-overflow -mno-mmx -mno-sse -DSEC_UART_DEFAULT_BASE=$(SOL_UART_BASE)
+!endif
 !endif
   # Keep DEBUG_ERROR available in RELEASE; the PCD mask filters serial output.
 
@@ -417,6 +426,8 @@ OrderedCollectionLib|MdePkg/Library/BaseOrderedCollectionRedBlackTreeLib/BaseOrd
   SerialPortLib|DasharoPayloadPkg/Library/SecSerialPortLib/SecSerialPortLib.inf
 !if $(QEMU_PLATFORM) == TRUE
   TimerLib|OvmfPkg/Library/AcpiTimerLib/BaseRomAcpiTimerLib.inf
+!else
+  TimerLib|UefiCpuPkg/Library/CpuTimerLib/BaseCpuTimerLib.inf
 !endif
 
 [LibraryClasses.IA32.PEI_CORE, LibraryClasses.IA32.PEIM]
