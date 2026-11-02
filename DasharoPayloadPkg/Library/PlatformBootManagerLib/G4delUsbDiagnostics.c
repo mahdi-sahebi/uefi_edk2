@@ -228,16 +228,13 @@ GxCopyUsbString (
   LanguageBytes = 0;
   Status        = UsbIo->UsbGetSupportedLanguages (UsbIo, &Languages, &LanguageBytes);
   if (EFI_ERROR (Status) || (Languages == NULL) || (LanguageBytes < sizeof (UINT16))) {
-    *StringStatus = Status;
-    if (Languages != NULL) {
-      FreePool (Languages);
-    }
+    *StringStatus = EFI_ERROR (Status) ? Status : EFI_NOT_FOUND;
     return;
   }
 
   String = NULL;
   Status = UsbIo->UsbGetStringDescriptor (UsbIo, Languages[0], StringId, &String);
-  FreePool (Languages);
+  // The USB bus driver owns Languages; only the returned String is ours.
   *StringStatus = Status;
   if (!EFI_ERROR (Status) && (String != NULL)) {
     StrnCpyS (Destination, DestinationChars, String, DestinationChars - 1);
