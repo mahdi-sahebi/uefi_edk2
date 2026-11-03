@@ -30,6 +30,7 @@
 [Packages]
   MdePkg/MdePkg.dec
   MdeModulePkg/MdeModulePkg.dec
+  DasharoPayloadPkg/DasharoPayloadPkg.dec
 
 [LibraryClasses]
   UefiDriverEntryPoint
@@ -41,6 +42,7 @@
   DevicePathLib
   FrameBufferBltLib
   UefiLib
+  PrintLib
   HobLib
 
 [Guids]
@@ -48,6 +50,7 @@
   gEfiGraphicsDeviceInfoHobGuid                 ## CONSUMES ## HOB
 
 [Protocols]
+  gGxDxeDiagnosticsProtocolGuid                 ## SOMETIMES_CONSUMES
   gEfiGraphicsOutputProtocolGuid                ## BY_START
   gEfiDevicePathProtocolGuid                    ## BY_START
   gEfiPciIoProtocolGuid                         ## TO_START
