@@ -14,6 +14,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Guid/GlobalVariable.h>
 #include <Guid/Tcg2PhysicalPresenceData.h>
 #include <Library/CustomizedDisplayLib.h>
+#include <Library/PrintLib.h>
 #include <Library/BlParseLib.h>
 #include <Library/CapsuleLib.h>
 #include <Library/HobLib.h>
@@ -23,6 +24,9 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <DasharoOptions.h>
 #include <Protocol/UsbIo.h>
 #include <Protocol/Usb2HostController.h>
+#include <Protocol/SimpleTextIn.h>
+#include <Library/GxDxeDiagnosticsLib.h>
+#include "G4delUsbDiagnostics.h"
 
 EFI_GUID mBootMenuFile = {
   0xEEC25BDC, 0x67F2, 0x4D95, { 0xB1, 0xD5, 0xF8, 0x1B, 0x20, 0x39, 0xD1, 0x1D }
@@ -32,6 +36,7 @@ EFI_GUID mBootMenuFile = {
 extern BOOLEAN mQuietBoot;
 extern BOOLEAN mFastBoot;
 
+#if !defined (GOOXI_G4DEL_USB_DIAGNOSTICS) || !GOOXI_G4DEL_USB_DIAGNOSTICS
 STATIC
 VOID
 GxLogUsbState (
@@ -76,6 +81,7 @@ GxLogUsbState (
 
   FreePool (Handles);
 }
+#endif
 
 STATIC
 EFI_STATUS
@@ -234,6 +240,93 @@ InstallReadyToLock (
   return;
 }
 
+STATIC
+VOID
+GxLogConsoleHandlePath (
+  IN CONST CHAR8  *Name,
+  IN EFI_HANDLE   Handle
+  )
+{
+  EFI_DEVICE_PATH_PROTOCOL  *DevicePath;
+  CHAR16                    *DevicePathText;
+
+  DevicePath     = (Handle != NULL) ? DevicePathFromHandle (Handle) : NULL;
+  DevicePathText = ConvertDevicePathToText (DevicePath, FALSE, FALSE);
+  DEBUG ((DEBUG_ERROR, "[GX-CONSOLE] %a handle=%p path='%s'\n",
+    Name, Handle, (DevicePathText != NULL) ? DevicePathText : L"<unavailable>"));
+  if (DevicePathText != NULL) {
+    FreePool (DevicePathText);
+  }
+}
+
+STATIC
+VOID
+GxLogConsoleState (
+  IN CONST CHAR8  *Stage
+  )
+{
+  EFI_STATUS             Status;
+  CHAR8                  Message[96];
+  EFI_HANDLE             *InputHandles;
+  UINTN                  InputHandleCount;
+  UINTN                  Index;
+  EFI_SIMPLE_TEXT_INPUT_PROTOCOL *SimpleTextIn;
+  EFI_DEVICE_PATH_PROTOCOL    *DevicePath;
+  CHAR16                      *DevicePathText;
+
+  AsciiSPrint (Message, sizeof (Message), "BDS %a CON IN%u OUT%u KEY%u ERR%u",
+    Stage, (gST->ConIn != NULL), (gST->ConOut != NULL),
+    ((gST->ConIn != NULL) && (gST->ConIn->WaitForKey != NULL)), (gST->StdErr != NULL));
+  GxDxeDiagnosticsLog (Message);
+  DEBUG ((DEBUG_ERROR,
+    "[GX-CONSOLE] %a ConIn=%p WaitForKey=%p ConOut=%p ErrOut=%p\n",
+    Stage,
+    gST->ConIn,
+    (gST->ConIn != NULL) ? gST->ConIn->WaitForKey : NULL,
+    gST->ConOut,
+    gST->StdErr));
+  GxLogConsoleHandlePath ("ConInHandle", gST->ConsoleInHandle);
+  GxLogConsoleHandlePath ("ConOutHandle", gST->ConsoleOutHandle);
+  GxLogConsoleHandlePath ("ErrOutHandle", gST->StandardErrorHandle);
+
+  InputHandles     = NULL;
+  InputHandleCount = 0;
+  Status           = gBS->LocateHandleBuffer (
+                       ByProtocol,
+                       &gEfiSimpleTextInProtocolGuid,
+                       NULL,
+                       &InputHandleCount,
+                       &InputHandles
+                       );
+  DEBUG ((DEBUG_ERROR, "[GX-CONSOLE] %a SimpleTextIn handles status=%r count=%u\n",
+    Stage, Status, InputHandleCount));
+  if (EFI_ERROR (Status)) {
+    return;
+  }
+
+  for (Index = 0; Index < InputHandleCount; Index++) {
+    SimpleTextIn  = NULL;
+    DevicePath    = DevicePathFromHandle (InputHandles[Index]);
+    DevicePathText = ConvertDevicePathToText (DevicePath, FALSE, FALSE);
+    Status = gBS->HandleProtocol (
+                    InputHandles[Index],
+                    &gEfiSimpleTextInProtocolGuid,
+                    (VOID **)&SimpleTextIn
+                    );
+    DEBUG ((DEBUG_ERROR,
+      "[GX-CONSOLE] %a SimpleTextIn[%u] handle=%p status=%r WaitForKey=%p ReadKeyStroke=%p path='%s'\n",
+      Stage, Index, InputHandles[Index], Status,
+      (SimpleTextIn != NULL) ? SimpleTextIn->WaitForKey : NULL,
+      (SimpleTextIn != NULL) ? SimpleTextIn->ReadKeyStroke : NULL,
+      (DevicePathText != NULL) ? DevicePathText : L"<unavailable>"));
+    if (DevicePathText != NULL) {
+      FreePool (DevicePathText);
+    }
+  }
+
+  FreePool (InputHandles);
+}
+
 /**
   Return the index of the load option in the load option array.
 
@@ -288,6 +381,8 @@ SyncFvBootOption (
   EFI_DEVICE_PATH_PROTOCOL          *DevicePath;
   EFI_DEVICE_PATH_PROTOCOL          *FileDevicePath;
   BOOLEAN                           FileExists;
+  BOOLEAN                           IsShell;
+  CHAR8                             DiagnosticMessage[128];
 
   Status = gBS->HandleProtocol (
                   gImageHandle,
@@ -306,6 +401,12 @@ SyncFvBootOption (
   ASSERT (DevicePath != NULL);
 
   // Search if given file exists anywhere
+  IsShell = (BOOLEAN)(StrCmp (Description, L"UEFI Shell") == 0);
+  FileDevicePath = NULL;
+  if (IsShell) {
+    GxDxeDiagnosticsLog ("SHELL FV LOOKUP BEGIN");
+    DEBUG ((DEBUG_ERROR, "[GX-BDS] Shell FV lookup begin file_guid=%g\n", FileGuid));
+  }
   Status = GetFileDevicePathFromAnyFv (
              FileGuid,
              EFI_SECTION_ALL,
@@ -316,6 +417,16 @@ SyncFvBootOption (
   FileExists = !EFI_ERROR (Status);
   DEBUG ((DEBUG_ERROR, "[GX-BDS] FV option %s present=%d lookup=%r\n",
     Description, FileExists, Status));
+  if (IsShell) {
+    AsciiSPrint (DiagnosticMessage, sizeof (DiagnosticMessage), "SHELL FV LOOKUP %a STATUS=%r",
+      FileExists ? "PRESENT" : "MISSING", Status);
+    GxDxeDiagnosticsLog (DiagnosticMessage);
+    DEBUG ((DEBUG_ERROR, "[GX-BDS] Shell FV lookup returned present=%u status=%r path=%p\n",
+      FileExists, Status, FileDevicePath));
+  }
+  if (FileExists && (FileDevicePath != NULL)) {
+    FreePool (FileDevicePath);
+  }
 
   Status = EfiBootManagerInitializeLoadOption (
              &NewOption,
@@ -332,8 +443,21 @@ SyncFvBootOption (
 
   // No need to check if the file exists here, because EfiBootManager will
   // print a message on the screen if file was not found.
-  if (BootNow)
+  if (BootNow) {
+    if (IsShell) {
+      GxLogConsoleState ("PRE-SHELL");
+      GxDxeDiagnosticsLog ("SHELL LAUNCH BEGIN");
+    }
+    DEBUG ((DEBUG_ERROR, "[GX-BDS] boot option launch begin name='%s'\n", Description));
     EfiBootManagerBoot (&NewOption);
+    DEBUG ((DEBUG_ERROR, "[GX-BDS] boot option launch returned name='%s' status=%r\n",
+      Description, NewOption.Status));
+    if (IsShell) {
+      AsciiSPrint (DiagnosticMessage, sizeof (DiagnosticMessage), "SHELL LAUNCH RETURN STATUS=%r",
+        NewOption.Status);
+      GxDxeDiagnosticsLog (DiagnosticMessage);
+    }
+  }
 
   BootOptions = EfiBootManagerGetLoadOptions (
                   &BootOptionCount, LoadOptionTypeBoot
@@ -1034,6 +1158,11 @@ PlatformBootManagerBeforeConsole (
 
   DEBUG((EFI_D_ERROR, "Boot Manager option: %r, Size: %x, Enabled: %d\n",
                       Status, VarSize, BootMenuEnable));
+
+#if defined (GOOXI_G4DEL_USB_DIAGNOSTICS) && GOOXI_G4DEL_USB_DIAGNOSTICS
+  BootMenuEnable = TRUE;
+  DEBUG ((DEBUG_ERROR, "[GX-BDS] G4DEL diagnostics force Boot Manager Menu option available\n"));
+#endif
 
   if (EFI_ERROR(Status) || VarSize != sizeof(BootMenuEnable) || BootMenuEnable) {
     DEBUG((EFI_D_INFO, "Registering Boot Manager key option\n"));
@@ -2091,6 +2220,9 @@ PlatformBootManagerAfterConsole (
   Black.Blue = Black.Green = Black.Red = Black.Reserved = 0;
   White.Blue = White.Green = White.Red = White.Reserved = 0xFF;
 
+  GxDxeDiagnosticsLog ("BDS PLATFORM AFTER-CONSOLE BEGIN");
+  DEBUG ((DEBUG_ERROR, "[GX-BDS] platform after-console begin\n"));
+
   FUMEnabled = IsFumEnabled ();
 
   gST->ConOut->EnableCursor (gST->ConOut, FALSE);
@@ -2100,7 +2232,11 @@ PlatformBootManagerAfterConsole (
   LogoStatus = BootLogoEnableLogo ();
   DEBUG ((DEBUG_ERROR, "[GX-LOGO] display returned status=%r\n", LogoStatus));
 
+#if defined (GOOXI_G4DEL_USB_DIAGNOSTICS) && GOOXI_G4DEL_USB_DIAGNOSTICS
+  if (TRUE) {
+#else
   if (!mFastBoot || FUMEnabled) {
+#endif
     // FIXME: USB devices are not being detected unless we wait a bit.
     // But don't wait with fastboot enabled. We typically don't boot a full blown OS from USB.
     gBS->Stall (100 * 1000);
@@ -2109,6 +2245,12 @@ PlatformBootManagerAfterConsole (
     DEBUG ((DEBUG_ERROR, "[GX-USB] connect all begin\n"));
     EfiBootManagerConnectAll ();
     DEBUG ((DEBUG_ERROR, "[GX-USB] connect all returned\n"));
+
+#if defined (GOOXI_G4DEL_USB_DIAGNOSTICS) && GOOXI_G4DEL_USB_DIAGNOSTICS
+    DEBUG ((DEBUG_ERROR, "[GX-USB] G4DEL bounded enumeration settle begin usec=1000000\n"));
+    gBS->Stall (1000 * 1000);
+    DEBUG ((DEBUG_ERROR, "[GX-USB] G4DEL bounded enumeration settle returned\n"));
+#endif
 
     // Detect and register FTDI USB-UART converters
     // The FTDI can only be detected after all protocols are bound thanks to
@@ -2121,12 +2263,25 @@ PlatformBootManagerAfterConsole (
   } else {
     DEBUG ((DEBUG_ERROR, "[GX-USB] full connection skipped by Fast Boot\n"));
   }
-  GxLogUsbState ();
   if (EFI_ERROR (LogoStatus)) {
     DEBUG ((DEBUG_ERROR, "[GX-LOGO] retry after device connection\n"));
     LogoStatus = BootLogoEnableLogo ();
     DEBUG ((DEBUG_ERROR, "[GX-LOGO] retry returned status=%r\n", LogoStatus));
   }
+#if defined (GOOXI_G4DEL_USB_DIAGNOSTICS) && GOOXI_G4DEL_USB_DIAGNOSTICS
+  GxDxeDiagnosticsLog ("BDS USB DRIVER STATUS BEGIN");
+  DEBUG ((DEBUG_ERROR, "[GX-BDS] USB driver status page begin\n"));
+  GxDisplayUsbDriverStatus ();
+  GxDxeDiagnosticsLog ("BDS USB DRIVER STATUS RETURNED");
+  DEBUG ((DEBUG_ERROR, "[GX-BDS] USB driver status page returned\n"));
+  GxDxeDiagnosticsLog ("BDS USB INVENTORY BEGIN");
+  DEBUG ((DEBUG_ERROR, "[GX-BDS] USB inventory begin\n"));
+  GxDisplayUsbInventory ();
+  GxDxeDiagnosticsLog ("BDS USB INVENTORY RETURNED");
+  DEBUG ((DEBUG_ERROR, "[GX-BDS] USB inventory returned\n"));
+#else
+  GxLogUsbState ();
+#endif
 
 #ifdef PLATFORM_TPM_ENABLED
   WarnIfSinglePCRBank ();
@@ -2242,10 +2397,20 @@ PlatformBootManagerAfterConsole (
   //
   DEBUG ((DEBUG_ERROR, "[GX-BDS] Shell registration begin\n"));
   DEBUG((DEBUG_INFO, "Registering UEFI Shell boot option\n"));
+#if defined (GOOXI_G4DEL_USB_DIAGNOSTICS) && GOOXI_G4DEL_USB_DIAGNOSTICS
+  SyncFvBootOption (PcdGetPtr (PcdShellFile),
+                    L"UEFI Shell",
+                    TRUE,
+                    TRUE);
+  GxDxeDiagnosticsLog ("BDS UEFI SHELL RETURNED");
+  DEBUG ((DEBUG_ERROR, "[GX-BDS] UEFI Shell returned to platform boot manager\n"));
+  GxLogConsoleState ("POST-SHELL");
+#else
   SyncFvBootOption (PcdGetPtr (PcdShellFile),
                     L"UEFI Shell",
                     FALSE,
                     FALSE);
+#endif
   DEBUG ((DEBUG_ERROR, "[GX-BDS] Shell registration complete\n"));
 
   BootMenuKey = GetKeyStringFromScanCode (FixedPcdGet16(PcdBootMenuKey), L"F12");

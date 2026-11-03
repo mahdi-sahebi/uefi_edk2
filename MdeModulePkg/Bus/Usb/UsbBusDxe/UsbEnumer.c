@@ -678,6 +678,8 @@ UsbEnumerateNewDev (
   Bus     = Parent->Bus;
   HubApi  = HubIf->HubApi;
   Address = Bus->MaxDevices;
+  DEBUG ((DEBUG_ERROR, "[GX-USB] enumerate begin hub=%p port=%u reset=%u\n",
+    HubIf, Port, ResetIsNeeded));
 
   gBS->Stall (USB_WAIT_PORT_STABLE_STALL);
 
@@ -691,6 +693,7 @@ UsbEnumerateNewDev (
     Status = HubApi->ResetPort (HubIf, Port);
     if (EFI_ERROR (Status)) {
       DEBUG ((DEBUG_ERROR, "UsbEnumerateNewDev: failed to reset port %d - %r\n", Port, Status));
+      DEBUG ((DEBUG_ERROR, "[GX-USB] enumerate failed port=%u status=%r\n", Port, Status));
 
       return Status;
     }
@@ -703,6 +706,8 @@ UsbEnumerateNewDev (
   Child = UsbCreateDevice (HubIf, Port);
 
   if (Child == NULL) {
+    DEBUG ((DEBUG_ERROR, "[GX-USB] enumerate failed port=%u status=%r\n",
+      Port, EFI_OUT_OF_RESOURCES));
     return EFI_OUT_OF_RESOURCES;
   }
 
@@ -822,6 +827,8 @@ UsbEnumerateNewDev (
     DEBUG ((DEBUG_ERROR, "UsbEnumerateNewDev: failed to build descriptor table - %r\n", Status));
     goto ON_ERROR;
   }
+  DEBUG ((DEBUG_ERROR, "[GX-USB] descriptor port=%u address=%u vid=%04x pid=%04x\n",
+    Port, Child->Address, Child->DevDesc->Desc.IdVendor, Child->DevDesc->Desc.IdProduct));
 
   //
   // Select a default configuration: UEFI must set the configuration
@@ -855,6 +862,8 @@ UsbEnumerateNewDev (
     (EFI_IO_BUS_USB | EFI_IOB_PC_HOTPLUG),
     Bus->DevicePath
     );
+  DEBUG ((DEBUG_ERROR, "[GX-USB] enumerate returned port=%u address=%u status=%r\n",
+    Port, Child->Address, EFI_SUCCESS));
   return EFI_SUCCESS;
 
 ON_ERROR:
@@ -872,6 +881,7 @@ ON_ERROR:
   //
   // EDKII UHCI/EHCI doesn't get impacted as it's make sense to reserve s/w resource till it gets unplugged.
   //
+  DEBUG ((DEBUG_ERROR, "[GX-USB] enumerate failed port=%u status=%r\n", Port, Status));
   return Status;
 }
 

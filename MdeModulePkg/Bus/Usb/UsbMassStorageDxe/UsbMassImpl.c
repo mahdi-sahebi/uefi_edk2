@@ -802,6 +802,7 @@ USBMassDriverBindingStart (
   EFI_USB_IO_PROTOCOL       *UsbIo;
   EFI_TPL                   OldTpl;
 
+  DEBUG ((DEBUG_ERROR, "[GX-USB] mass storage start controller=%p\n", Controller));
   OldTpl = gBS->RaiseTPL (TPL_CALLBACK);
 
   Transport = NULL;
@@ -884,6 +885,8 @@ USBMassDriverBindingStart (
   }
 
 Exit:
+  DEBUG ((DEBUG_ERROR, "[GX-USB] mass storage returned controller=%p status=%r max_lun=%u\n",
+    Controller, Status, MaxLun));
   gBS->RestoreTPL (OldTpl);
   return Status;
 }

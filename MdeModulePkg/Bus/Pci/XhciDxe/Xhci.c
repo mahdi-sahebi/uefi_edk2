@@ -1974,6 +1974,7 @@ XhcDriverBindingStart (
   USB_XHCI_INSTANCE         *Xhc;
   EFI_DEVICE_PATH_PROTOCOL  *HcDevicePath;
 
+  DEBUG ((DEBUG_ERROR, "[GX-XHCI] start controller=%p\n", Controller));
   //
   // Open the PciIo Protocol, then enable the USB host controller
   //
@@ -1987,6 +1988,7 @@ XhcDriverBindingStart (
                   );
 
   if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "[GX-XHCI] open PCI I/O failed controller=%p status=%r\n", Controller, Status));
     return Status;
   }
 
@@ -2048,6 +2050,8 @@ XhcDriverBindingStart (
 
   if (Xhc == NULL) {
     DEBUG ((DEBUG_ERROR, "XhcDriverBindingStart: failed to create USB2_HC\n"));
+    DEBUG ((DEBUG_ERROR, "[GX-XHCI] start failed controller=%p status=%r\n",
+      Controller, EFI_OUT_OF_RESOURCES));
     return EFI_OUT_OF_RESOURCES;
   }
 
@@ -2077,7 +2081,9 @@ XhcDriverBindingStart (
 
   XhcSetBiosOwnership (Xhc);
 
+  DEBUG ((DEBUG_ERROR, "[GX-XHCI] reset begin controller=%p\n", Controller));
   Status = XhcResetHC (Xhc, XHC_RESET_TIMEOUT);
+  DEBUG ((DEBUG_ERROR, "[GX-XHCI] reset returned controller=%p status=%r\n", Controller, Status));
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a: failed to reset HC\n", __func__));
     goto FREE_POOL;
@@ -2156,7 +2162,8 @@ XhcDriverBindingStart (
     goto FREE_POOL;
   }
 
-  DEBUG ((DEBUG_INFO, "XhcDriverBindingStart: XHCI started for controller @ %x\n", Controller));
+  DEBUG ((DEBUG_ERROR, "[GX-XHCI] start returned controller=%p status=%r ports=%u\n",
+    Controller, Status, Xhc->HcSParams1.Data.MaxPorts));
   return EFI_SUCCESS;
 
 FREE_POOL:
@@ -2184,6 +2191,7 @@ CLOSE_PCIIO:
          Controller
          );
 
+  DEBUG ((DEBUG_ERROR, "[GX-XHCI] start failed controller=%p status=%r\n", Controller, Status));
   return Status;
 }
 

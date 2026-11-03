@@ -150,6 +150,7 @@ USBKeyboardDriverBindingStart (
   BOOLEAN                      Found;
   EFI_TPL                      OldTpl;
 
+  DEBUG ((DEBUG_ERROR, "[GX-USB] keyboard start controller=%p\n", Controller));
   OldTpl = gBS->RaiseTPL (TPL_CALLBACK);
   //
   // Open USB I/O Protocol
@@ -168,6 +169,10 @@ USBKeyboardDriverBindingStart (
 
   UsbKeyboardDevice = AllocateZeroPool (sizeof (USB_KB_DEV));
   ASSERT (UsbKeyboardDevice != NULL);
+  if (UsbKeyboardDevice == NULL) {
+    Status = EFI_OUT_OF_RESOURCES;
+    goto ErrorExit;
+  }
 
   //
   // Get the Device Path Protocol on Controller's handle
@@ -417,6 +422,7 @@ USBKeyboardDriverBindingStart (
     FALSE
     );
 
+  DEBUG ((DEBUG_ERROR, "[GX-USB] keyboard ready controller=%p\n", Controller));
   gBS->RestoreTPL (OldTpl);
   return EFI_SUCCESS;
 
@@ -458,6 +464,8 @@ ErrorExit:
          );
 
 ErrorExit1:
+  DEBUG ((DEBUG_ERROR, "[GX-USB] keyboard failed controller=%p status=%r\n",
+    Controller, Status));
   gBS->RestoreTPL (OldTpl);
 
   return Status;
