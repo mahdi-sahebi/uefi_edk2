@@ -11,6 +11,19 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #define _DXE_MAIN_H_
 
 #include <PiDxe.h>
+#include <Protocol/GxDxeDiagnostics.h>
+
+// Legacy text-mode breadcrumb, also mirrored to the serial debug log.
+VOID
+GxDxeCheckpoint (
+  IN UINTN        Sequence,
+  IN CONST CHAR8  *Message
+  );
+
+VOID
+GxDxeLog (
+  IN CONST CHAR8  *Message
+  );
 
 #include <Protocol/LoadedImage.h>
 #include <Protocol/GuidedSectionExtraction.h>
@@ -158,6 +171,11 @@ typedef struct {
   BOOLEAN                          Untrusted;
   BOOLEAN                          Initialized;
   BOOLEAN                          DepexProtocolError;
+
+  BOOLEAN                          GxLoadAttempted;
+  BOOLEAN                          GxStartAttempted;
+  EFI_STATUS                       GxLoadStatus;
+  EFI_STATUS                       GxStartStatus;
 
   EFI_HANDLE                       ImageHandle;
   BOOLEAN                          IsFvImage;
@@ -1915,6 +1933,13 @@ EFI_STATUS
 EFIAPI
 CoreDispatcher (
   VOID
+  );
+
+EFI_STATUS
+EFIAPI
+CoreGetDriverStatus (
+  IN  CONST EFI_GUID          *FileName,
+  OUT GX_DXE_DRIVER_STATUS    *DriverStatus
   );
 
 /**

@@ -32,6 +32,53 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 **/
 
 #include "DxeMain.h"
+#include <Library/PrintLib.h>
+#include <Library/BaseLib.h>
+
+STATIC
+VOID
+GxGetDriverDisplayName (
+  IN  EFI_CORE_DRIVER_ENTRY  *DriverEntry,
+  OUT CHAR8                  *Name,
+  IN  UINTN                  NameSize
+  )
+{
+  EFI_STATUS  Status;
+  CHAR16      *UiName;
+  UINTN       UiNameSize;
+  UINT32      AuthenticationStatus;
+
+  if ((Name == NULL) || (NameSize == 0)) {
+    return;
+  }
+
+  Name[0] = '\0';
+  UiName  = NULL;
+  Status  = EFI_NOT_FOUND;
+  if ((DriverEntry != NULL) && (DriverEntry->Fv != NULL)) {
+    Status = DriverEntry->Fv->ReadSection (
+                               DriverEntry->Fv,
+                               &DriverEntry->FileName,
+                               EFI_SECTION_USER_INTERFACE,
+                               0,
+                               (VOID **)&UiName,
+                               &UiNameSize,
+                               &AuthenticationStatus
+                               );
+  }
+
+  if (!EFI_ERROR (Status) && (UiName != NULL) && (UiNameSize >= sizeof (CHAR16))) {
+    Status = UnicodeStrToAsciiStrS (UiName, Name, NameSize);
+    FreePool (UiName);
+    if (!EFI_ERROR (Status) && (Name[0] != '\0')) {
+      return;
+    }
+  } else if (UiName != NULL) {
+    FreePool (UiName);
+  }
+
+  AsciiSPrint (Name, NameSize, "%g", &DriverEntry->FileName);
+}
 
 //
 // The Driver List contains one copy of every driver that has been discovered.
@@ -407,6 +454,18 @@ CoreDispatcher (
   EFI_CORE_DRIVER_ENTRY  *DriverEntry;
   BOOLEAN                ReadyToRun;
   EFI_EVENT              DxeDispatchEvent;
+  CHAR8                  DriverMessage[128];
+  CHAR8                  DriverDisplayName[64];
+  UINTN                  DriverCount;
+  UINTN                  LoadedCount;
+  UINTN                  LoadFailedCount;
+  UINTN                  ExecutedCount;
+  UINTN                  ExecutionFailedCount;
+  UINTN                  PendingCount;
+  UINTN                  FvImageCount;
+  UINTN                  ScanCount;
+  UINTN                  ScanIndex;
+  UINTN                  ScheduledCount;
 
   PERF_FUNCTION_BEGIN ();
 
@@ -414,6 +473,7 @@ CoreDispatcher (
     //
     // If the dispatcher is running don't let it be restarted.
     //
+    DEBUG ((DEBUG_ERROR, "[GX-DISPATCH] reentry blocked\n"));
     return EFI_ALREADY_STARTED;
   }
 
@@ -428,9 +488,12 @@ CoreDispatcher (
              &DxeDispatchEvent
              );
   if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "[GX-DISPATCH] create event failed status=%r\n", Status));
+    gDispatcherRunning = FALSE;
     return Status;
   }
 
+  DEBUG ((DEBUG_ERROR, "[GX-DISPATCH] begin\n"));
   ReturnStatus = EFI_NOT_FOUND;
   do {
     //
@@ -450,7 +513,11 @@ CoreDispatcher (
       // skip the LoadImage
       //
       if ((DriverEntry->ImageHandle == NULL) && !DriverEntry->IsFvImage) {
+        DEBUG ((DEBUG_ERROR, "[GX-DISPATCH] load begin %g\n", &DriverEntry->FileName));
+        AsciiSPrint (DriverMessage, sizeof (DriverMessage), "LOAD START %g", &DriverEntry->FileName);
+        GxDxeLog (DriverMessage);
         DEBUG ((DEBUG_INFO, "Loading driver %g\n", &DriverEntry->FileName));
+        DriverEntry->GxLoadAttempted = TRUE;
         Status = CoreLoadImage (
                    FALSE,
                    gDxeCoreImageHandle,
@@ -459,6 +526,12 @@ CoreDispatcher (
                    0,
                    &DriverEntry->ImageHandle
                    );
+        DriverEntry->GxLoadStatus = Status;
+        DEBUG ((DEBUG_ERROR, "[GX-DISPATCH] load end %g status=%r handle=%p\n",
+          &DriverEntry->FileName, Status, DriverEntry->ImageHandle));
+        AsciiSPrint (DriverMessage, sizeof (DriverMessage), "LOAD %a %g %r",
+          EFI_ERROR (Status) ? "FAIL" : "OK", &DriverEntry->FileName, Status);
+        GxDxeLog (DriverMessage);
 
         //
         // Update the driver state to reflect that it's been loaded
@@ -506,7 +579,14 @@ CoreDispatcher (
         //
         // Produce a firmware volume block protocol for FvImage so it gets dispatched from.
         //
+        DEBUG ((DEBUG_ERROR, "[GX-DISPATCH] FV image begin %g\n", &DriverEntry->FileName));
+        AsciiSPrint (DriverMessage, sizeof (DriverMessage), "FV IMAGE START %g", &DriverEntry->FileName);
+        GxDxeLog (DriverMessage);
         Status = CoreProcessFvImageFile (DriverEntry->Fv, DriverEntry->FvHandle, &DriverEntry->FileName);
+        DEBUG ((DEBUG_ERROR, "[GX-DISPATCH] FV image end %g status=%r\n", &DriverEntry->FileName, Status));
+        AsciiSPrint (DriverMessage, sizeof (DriverMessage), "FV IMAGE %a %g %r",
+          EFI_ERROR (Status) ? "FAIL" : "OK", &DriverEntry->FileName, Status);
+        GxDxeLog (DriverMessage);
       } else {
         REPORT_STATUS_CODE_WITH_EXTENDED_DATA (
           EFI_PROGRESS_CODE,
@@ -516,10 +596,19 @@ CoreDispatcher (
           );
         ASSERT (DriverEntry->ImageHandle != NULL);
 
-        DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] CHECKPOINT DXE driver enter %g\n", &DriverEntry->FileName));
+        GxGetDriverDisplayName (DriverEntry, DriverDisplayName, sizeof (DriverDisplayName));
+        DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] CHECKPOINT DXE driver enter name='%a' guid=%g\n",
+          DriverDisplayName, &DriverEntry->FileName));
+        AsciiSPrint (DriverMessage, sizeof (DriverMessage), "DXE START %a", DriverDisplayName);
+        GxDxeCheckpoint (13, DriverMessage);
+        DriverEntry->GxStartAttempted = TRUE;
         Status = CoreStartImage (DriverEntry->ImageHandle, NULL, NULL);
-        DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] CHECKPOINT DXE driver returned %g status=%r\n",
-          &DriverEntry->FileName, Status));
+        DriverEntry->GxStartStatus = Status;
+        AsciiSPrint (DriverMessage, sizeof (DriverMessage), "DXE %a %a %r",
+          EFI_ERROR (Status) ? "FAIL" : "OK", DriverDisplayName, Status);
+        GxDxeCheckpoint (13, DriverMessage);
+        DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] CHECKPOINT DXE driver returned name='%a' guid=%g status=%r\n",
+          DriverDisplayName, &DriverEntry->FileName, Status));
 
         if (EFI_ERROR (Status)) {
           DEBUG ((DEBUG_ERROR, "DXE start failed for %g: %r\n", &DriverEntry->FileName, Status));
@@ -542,15 +631,33 @@ CoreDispatcher (
     // on UEFI protocols
     //
     if (!EFI_ERROR (ReturnStatus)) {
+      DEBUG ((DEBUG_ERROR, "[GX-DISPATCH] signal round complete\n"));
       CoreSignalEvent (DxeDispatchEvent);
+      DEBUG ((DEBUG_ERROR, "[GX-DISPATCH] signal returned\n"));
     }
 
     //
     // Search DriverList for items to place on Scheduled Queue
     //
     ReadyToRun = FALSE;
+    ScanCount = 0;
+    for (Link = mDiscoveredList.ForwardLink; Link != &mDiscoveredList; Link = Link->ForwardLink) {
+      ScanCount++;
+    }
+
+    ScanIndex      = 0;
+    ScheduledCount = 0;
+    DEBUG ((DEBUG_ERROR, "[GX-DISPATCH] depex scan begin drivers=%u\n", ScanCount));
     for (Link = mDiscoveredList.ForwardLink; Link != &mDiscoveredList; Link = Link->ForwardLink) {
       DriverEntry = CR (Link, EFI_CORE_DRIVER_ENTRY, Link, EFI_CORE_DRIVER_ENTRY_SIGNATURE);
+      ScanIndex++;
+
+      // Periodic progress keeps the SOL trace useful without logging each
+      // individual protocol operand in every driver's DEPEX expression.
+      if ((ScanIndex == 1) || ((ScanIndex % 16) == 0) || (ScanIndex == ScanCount)) {
+        DEBUG ((DEBUG_ERROR, "[GX-DISPATCH] depex scan progress %u/%u driver=%g\n",
+          ScanIndex, ScanCount, &DriverEntry->FileName));
+      }
 
       if (DriverEntry->DepexProtocolError) {
         //
@@ -563,6 +670,7 @@ CoreDispatcher (
         if (CoreIsSchedulable (DriverEntry)) {
           CoreInsertOnScheduledQueueWhileProcessingBeforeAndAfter (DriverEntry);
           ReadyToRun = TRUE;
+          ScheduledCount++;
         }
       } else {
         if (DriverEntry->Unrequested) {
@@ -572,6 +680,8 @@ CoreDispatcher (
         }
       }
     }
+    DEBUG ((DEBUG_ERROR, "[GX-DISPATCH] depex scan end scanned=%u scheduled=%u ready=%u\n",
+      ScanIndex, ScheduledCount, ReadyToRun));
   } while (ReadyToRun);
 
   //
@@ -579,11 +689,117 @@ CoreDispatcher (
   //
   CoreCloseEvent (DxeDispatchEvent);
 
+  // Report a complete inventory, including load, execution and pending state.
+  DriverCount          = 0;
+  LoadedCount          = 0;
+  LoadFailedCount      = 0;
+  ExecutedCount        = 0;
+  ExecutionFailedCount = 0;
+  PendingCount         = 0;
+  FvImageCount         = 0;
+  for (Link = mDiscoveredList.ForwardLink; Link != &mDiscoveredList; Link = Link->ForwardLink) {
+    DriverEntry = CR (Link, EFI_CORE_DRIVER_ENTRY, Link, EFI_CORE_DRIVER_ENTRY_SIGNATURE);
+    GxGetDriverDisplayName (DriverEntry, DriverDisplayName, sizeof (DriverDisplayName));
+    DriverCount++;
+    if (DriverEntry->IsFvImage) {
+      FvImageCount++;
+      AsciiSPrint (DriverMessage, sizeof (DriverMessage), "DRIVER FV IMAGE %a", DriverDisplayName);
+    } else if (DriverEntry->GxLoadAttempted && EFI_ERROR (DriverEntry->GxLoadStatus)) {
+      LoadFailedCount++;
+      AsciiSPrint (DriverMessage, sizeof (DriverMessage), "DRIVER LOAD FAIL %a %r",
+        DriverDisplayName, DriverEntry->GxLoadStatus);
+    } else if (DriverEntry->ImageHandle != NULL) {
+      LoadedCount++;
+      if (DriverEntry->GxStartAttempted) {
+        if (EFI_ERROR (DriverEntry->GxStartStatus)) {
+          ExecutionFailedCount++;
+          AsciiSPrint (DriverMessage, sizeof (DriverMessage), "DRIVER RUN FAIL %a %r",
+            DriverDisplayName, DriverEntry->GxStartStatus);
+        } else {
+          ExecutedCount++;
+          AsciiSPrint (DriverMessage, sizeof (DriverMessage), "DRIVER RUN OK %a",
+            DriverDisplayName);
+        }
+      } else {
+        PendingCount++;
+        AsciiSPrint (DriverMessage, sizeof (DriverMessage), "DRIVER LOADED NOT RUN %a",
+          DriverDisplayName);
+      }
+    } else if (!DriverEntry->Initialized) {
+      PendingCount++;
+      AsciiSPrint (DriverMessage, sizeof (DriverMessage), "DRIVER PENDING %a",
+        DriverDisplayName);
+    } else {
+      AsciiSPrint (DriverMessage, sizeof (DriverMessage), "DRIVER NOT LOADED %a",
+        DriverDisplayName);
+    }
+    GxDxeLog (DriverMessage);
+
+    if (!DriverEntry->Initialized) {
+      DEBUG ((DEBUG_ERROR, "[GX-DISPATCH] pending %g dependent=%u depex_error=%u unrequested=%u untrusted=%u before=%u after=%u\n",
+        &DriverEntry->FileName, DriverEntry->Dependent, DriverEntry->DepexProtocolError,
+        DriverEntry->Unrequested, DriverEntry->Untrusted, DriverEntry->Before, DriverEntry->After));
+    }
+  }
+
+  DEBUG ((DEBUG_ERROR, "[GX-DISPATCH] summary dxe_drivers=%u fv_images=%u loaded=%u load_failed=%u executed=%u execution_failed=%u pending=%u\n",
+    DriverCount - FvImageCount, FvImageCount, LoadedCount, LoadFailedCount,
+    ExecutedCount, ExecutionFailedCount, PendingCount));
+  AsciiSPrint (DriverMessage, sizeof (DriverMessage), "SUMMARY DXE %u FV %u LOAD %u FAIL %u RUN %u FAIL %u PEND %u",
+    DriverCount - FvImageCount, FvImageCount, LoadedCount, LoadFailedCount,
+    ExecutedCount, ExecutionFailedCount, PendingCount);
+  GxDxeLog (DriverMessage);
+
   gDispatcherRunning = FALSE;
+  DEBUG ((DEBUG_ERROR, "[GX-DISPATCH] end status=%r\n", ReturnStatus));
 
   PERF_FUNCTION_END ();
 
   return ReturnStatus;
+}
+
+EFI_STATUS
+EFIAPI
+CoreGetDriverStatus (
+  IN  CONST EFI_GUID          *FileName,
+  OUT GX_DXE_DRIVER_STATUS    *DriverStatus
+  )
+{
+  LIST_ENTRY             *Link;
+  EFI_CORE_DRIVER_ENTRY  *DriverEntry;
+
+  if ((FileName == NULL) || (DriverStatus == NULL)) {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  ZeroMem (DriverStatus, sizeof (*DriverStatus));
+  DriverStatus->LoadStatus  = EFI_NOT_READY;
+  DriverStatus->StartStatus = EFI_NOT_READY;
+  CopyGuid (&DriverStatus->FileName, FileName);
+
+  CoreAcquireDispatcherLock ();
+  for (Link = mDiscoveredList.ForwardLink; Link != &mDiscoveredList; Link = Link->ForwardLink) {
+    DriverEntry = CR (Link, EFI_CORE_DRIVER_ENTRY, Link, EFI_CORE_DRIVER_ENTRY_SIGNATURE);
+    if (CompareGuid (&DriverEntry->FileName, FileName)) {
+      DriverStatus->Discovered         = TRUE;
+      DriverStatus->Initialized        = DriverEntry->Initialized;
+      DriverStatus->Scheduled          = DriverEntry->Scheduled;
+      DriverStatus->Dependent          = DriverEntry->Dependent;
+      DriverStatus->Unrequested        = DriverEntry->Unrequested;
+      DriverStatus->Untrusted          = DriverEntry->Untrusted;
+      DriverStatus->DepexProtocolError = DriverEntry->DepexProtocolError;
+      DriverStatus->LoadAttempted      = DriverEntry->GxLoadAttempted;
+      DriverStatus->ImageLoaded        = (DriverEntry->ImageHandle != NULL);
+      DriverStatus->LoadStatus         = DriverEntry->GxLoadAttempted ? DriverEntry->GxLoadStatus : EFI_NOT_READY;
+      DriverStatus->StartAttempted     = DriverEntry->GxStartAttempted;
+      DriverStatus->StartStatus        = DriverEntry->GxStartAttempted ? DriverEntry->GxStartStatus : EFI_NOT_READY;
+      CoreReleaseDispatcherLock ();
+      return EFI_SUCCESS;
+    }
+  }
+
+  CoreReleaseDispatcherLock ();
+  return EFI_NOT_FOUND;
 }
 
 /**
@@ -869,6 +1085,8 @@ CoreAddToDriverList (
   )
 {
   EFI_CORE_DRIVER_ENTRY  *DriverEntry;
+  CHAR8                  DriverNameText[64];
+  CHAR8                  DriverMessage[128];
 
   //
   // Create the Driver Entry for the list. ZeroPool initializes lots of variables to
@@ -893,6 +1111,26 @@ CoreAddToDriverList (
   InsertTailList (&mDiscoveredList, &DriverEntry->Link);
 
   CoreReleaseDispatcherLock ();
+
+  GxGetDriverDisplayName (DriverEntry, DriverNameText, sizeof (DriverNameText));
+  // Keep the FV file GUID visible in the VGA ring so a runtime row can be
+  // matched directly to the generated DXE volume inventory. The full DEPEX
+  // state remains in the serial record below.
+  AsciiSPrint (DriverMessage, sizeof (DriverMessage),
+    "DISC %a %g",
+    DriverNameText,
+    &DriverEntry->FileName);
+  GxDxeLog (DriverMessage);
+  DEBUG ((DEBUG_ERROR,
+    "[GX-DISCOVERY] %a name='%a' guid=%g depex_read_error=%u dependent=%u sor_unrequested=%u before=%u after=%u\n",
+    DriverEntry->IsFvImage ? "FV_IMAGE" : "DRIVER",
+    DriverNameText,
+    &DriverEntry->FileName,
+    DriverEntry->DepexProtocolError,
+    DriverEntry->Dependent,
+    DriverEntry->Unrequested,
+    DriverEntry->Before,
+    DriverEntry->After));
 
   return EFI_SUCCESS;
 }

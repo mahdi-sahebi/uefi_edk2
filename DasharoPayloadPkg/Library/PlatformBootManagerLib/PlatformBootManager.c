@@ -22,6 +22,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Coreboot.h>
 #include <DasharoOptions.h>
 #include <Protocol/UsbIo.h>
+#include <Protocol/Usb2HostController.h>
 
 EFI_GUID mBootMenuFile = {
   0xEEC25BDC, 0x67F2, 0x4D95, { 0xB1, 0xD5, 0xF8, 0x1B, 0x20, 0x39, 0xD1, 0x1D }
@@ -30,6 +31,51 @@ EFI_GUID mBootMenuFile = {
 // Defined and initialized in BdsDxe
 extern BOOLEAN mQuietBoot;
 extern BOOLEAN mFastBoot;
+
+STATIC
+VOID
+GxLogUsbState (
+  VOID
+  )
+{
+  EFI_STATUS             Status;
+  EFI_HANDLE             *Handles;
+  UINTN                  Count;
+  UINTN                  Index;
+  EFI_USB_IO_PROTOCOL    *UsbIo;
+  USB_DEVICE_DESCRIPTOR  Descriptor;
+
+  Handles = NULL;
+  Count = 0;
+  Status = gBS->LocateHandleBuffer (ByProtocol, &gEfiUsb2HcProtocolGuid, NULL, &Count, &Handles);
+  DEBUG ((DEBUG_ERROR, "[GX-USB] host controllers status=%r count=%u\n", Status, Count));
+  if (Handles != NULL) {
+    FreePool (Handles);
+  }
+
+  Handles = NULL;
+  Count = 0;
+  Status = gBS->LocateHandleBuffer (ByProtocol, &gEfiUsbIoProtocolGuid, NULL, &Count, &Handles);
+  DEBUG ((DEBUG_ERROR, "[GX-USB] device interfaces status=%r count=%u\n", Status, Count));
+  if (EFI_ERROR (Status)) {
+    return;
+  }
+
+  for (Index = 0; Index < Count; Index++) {
+    Status = gBS->HandleProtocol (Handles[Index], &gEfiUsbIoProtocolGuid, (VOID **)&UsbIo);
+    if (!EFI_ERROR (Status)) {
+      Status = UsbIo->UsbGetDeviceDescriptor (UsbIo, &Descriptor);
+    }
+    if (EFI_ERROR (Status)) {
+      DEBUG ((DEBUG_ERROR, "[GX-USB] interface %u descriptor status=%r\n", Index, Status));
+    } else {
+      DEBUG ((DEBUG_ERROR, "[GX-USB] interface %u vid=%04x pid=%04x class=%02x\n",
+        Index, Descriptor.IdVendor, Descriptor.IdProduct, Descriptor.DeviceClass));
+    }
+  }
+
+  FreePool (Handles);
+}
 
 STATIC
 EFI_STATUS
@@ -268,6 +314,8 @@ SyncFvBootOption (
              );
 
   FileExists = !EFI_ERROR (Status);
+  DEBUG ((DEBUG_ERROR, "[GX-BDS] FV option %s present=%d lookup=%r\n",
+    Description, FileExists, Status));
 
   Status = EfiBootManagerInitializeLoadOption (
              &NewOption,
@@ -308,6 +356,8 @@ SyncFvBootOption (
     }
   }
 
+  DEBUG ((DEBUG_ERROR, "[GX-BDS] FV option %s index=%d result=%r\n",
+    Description, OptionIndex, Status));
   ASSERT_EFI_ERROR (Status);
 
   EfiBootManagerFreeLoadOption (&NewOption);
@@ -1250,6 +1300,7 @@ WarnIfRecoveryBoot (
 
 
 
+#ifdef PLATFORM_TPM_ENABLED
 typedef struct {
   TPM_ALG_ID AlgId;
   CHAR16    *Name;
@@ -1409,6 +1460,8 @@ WarnIfSinglePCRBank (
   DrainInput();
   BootLogoEnableLogo();
 }
+
+#endif // PLATFORM_TPM_ENABLED
 
 STATIC
 VOID
@@ -2023,6 +2076,7 @@ PlatformBootManagerAfterConsole (
 )
 {
   EFI_STATUS                     Status;
+  EFI_STATUS                     LogoStatus;
   EFI_GRAPHICS_OUTPUT_BLT_PIXEL  Black;
   EFI_GRAPHICS_OUTPUT_BLT_PIXEL  White;
   CHAR16                         *BootMenuKey;
@@ -2042,7 +2096,9 @@ PlatformBootManagerAfterConsole (
   gST->ConOut->EnableCursor (gST->ConOut, FALSE);
   gST->ConOut->ClearScreen (gST->ConOut);
 
-  BootLogoEnableLogo ();
+  DEBUG ((DEBUG_ERROR, "[GX-LOGO] display begin ConOut=%p\n", gST->ConOut));
+  LogoStatus = BootLogoEnableLogo ();
+  DEBUG ((DEBUG_ERROR, "[GX-LOGO] display returned status=%r\n", LogoStatus));
 
   if (!mFastBoot || FUMEnabled) {
     // FIXME: USB devices are not being detected unless we wait a bit.
@@ -2050,7 +2106,9 @@ PlatformBootManagerAfterConsole (
     gBS->Stall (100 * 1000);
 
     // With fast boot, we can't call ConnectAll as it would connect all consoles.
+    DEBUG ((DEBUG_ERROR, "[GX-USB] connect all begin\n"));
     EfiBootManagerConnectAll ();
+    DEBUG ((DEBUG_ERROR, "[GX-USB] connect all returned\n"));
 
     // Detect and register FTDI USB-UART converters
     // The FTDI can only be detected after all protocols are bound thanks to
@@ -2060,9 +2118,19 @@ PlatformBootManagerAfterConsole (
       // Connect just the FTDI path
       EfiBootManagerConnectDevicePath(FtdiPath, NULL);
     }
+  } else {
+    DEBUG ((DEBUG_ERROR, "[GX-USB] full connection skipped by Fast Boot\n"));
+  }
+  GxLogUsbState ();
+  if (EFI_ERROR (LogoStatus)) {
+    DEBUG ((DEBUG_ERROR, "[GX-LOGO] retry after device connection\n"));
+    LogoStatus = BootLogoEnableLogo ();
+    DEBUG ((DEBUG_ERROR, "[GX-LOGO] retry returned status=%r\n", LogoStatus));
   }
 
+#ifdef PLATFORM_TPM_ENABLED
   WarnIfSinglePCRBank ();
+#endif
   WarnIfBatteryLow ();
   WarnIfRecoveryBoot ();
   WarnIfFirmwareUpdateMode ();
@@ -2120,10 +2188,12 @@ PlatformBootManagerAfterConsole (
   }
 
   //
-  // Process TPM PPI request
+  // Process TPM PPI request only when TPM support is built in.
   //
+#ifdef PLATFORM_TPM_ENABLED
   Tcg2PhysicalPresenceLibProcessRequest (NULL);
   TcgPhysicalPresenceLibProcessRequest ();
+#endif
 
   SaveSMBIOSFields();
 
@@ -2170,11 +2240,13 @@ PlatformBootManagerAfterConsole (
   //
   // Register UEFI Shell
   //
+  DEBUG ((DEBUG_ERROR, "[GX-BDS] Shell registration begin\n"));
   DEBUG((DEBUG_INFO, "Registering UEFI Shell boot option\n"));
   SyncFvBootOption (PcdGetPtr (PcdShellFile),
                     L"UEFI Shell",
                     FALSE,
                     FALSE);
+  DEBUG ((DEBUG_ERROR, "[GX-BDS] Shell registration complete\n"));
 
   BootMenuKey = GetKeyStringFromScanCode (FixedPcdGet16(PcdBootMenuKey), L"F12");
   SetupMenuKey = GetKeyStringFromScanCode (FixedPcdGet16(PcdSetupMenuKey), L"ESC");

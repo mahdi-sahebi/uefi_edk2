@@ -83,6 +83,7 @@
   gEfiDxeSmmReadyToLockProtocolGuid
   gEfiSmmAccess2ProtocolGuid
   gEfiUsbIoProtocolGuid
+  gEfiUsb2HcProtocolGuid
   gEfiSimpleTextInProtocolGuid
   gEfiPciRootBridgeIoProtocolGuid ## CONSUMES
   gEfiDevicePathProtocolGuid      ## CONSUMES

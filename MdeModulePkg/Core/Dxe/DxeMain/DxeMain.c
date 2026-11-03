@@ -7,34 +7,245 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 **/
 
 #include "DxeMain.h"
-#include <Library/TimerLib.h>
-VOID EFIAPI SecSerialPortConfigure (IN UINT32 BootloaderParameter);
+#include <Library/SerialPortLib.h>
+#include <Library/PrintLib.h>
+#include <Protocol/GxDxeDiagnostics.h>
+#include <Guid/GraphicsInfoHob.h>
 
-#define GX_DXE_VGA_FB       0xB8000
-#define GX_DXE_VGA_COLUMNS  80
-#define GX_DXE_VGA_ROWS     25
+#define GX_DXE_FB_COLUMNS       72
+#define GX_DXE_FB_LOG_ROWS      16
+#define GX_DXE_FB_CELL_WIDTH    12
+#define GX_DXE_FB_CELL_HEIGHT   16
+
+STATIC UINTN  mGxDxeScreenRow;
+STATIC UINT32 mGxDxeSequence;
+STATIC EFI_HANDLE mGxDxeDiagnosticsHandle;
+STATIC GX_DXE_DIAGNOSTICS_PROTOCOL mGxDxeDiagnosticsProtocol;
+STATIC CONST EFI_GUID  mGxGraphicsInfoHobGuid = EFI_PEI_GRAPHICS_INFO_HOB_GUID;
 
 STATIC
+UINT8
+GxDxeGlyphColumn (
+  IN CHAR8  Character,
+  IN UINTN  Column
+  )
+{
+  // 5x7 ASCII font, stored as one 7-bit column per entry.
+  STATIC CONST UINT8  Font[][5] = {
+    { 0x3E, 0x51, 0x49, 0x45, 0x3E }, // 0
+    { 0x00, 0x42, 0x7F, 0x40, 0x00 }, // 1
+    { 0x42, 0x61, 0x51, 0x49, 0x46 }, // 2
+    { 0x21, 0x41, 0x45, 0x4B, 0x31 }, // 3
+    { 0x18, 0x14, 0x12, 0x7F, 0x10 }, // 4
+    { 0x27, 0x45, 0x45, 0x45, 0x39 }, // 5
+    { 0x3C, 0x4A, 0x49, 0x49, 0x30 }, // 6
+    { 0x01, 0x71, 0x09, 0x05, 0x03 }, // 7
+    { 0x36, 0x49, 0x49, 0x49, 0x36 }, // 8
+    { 0x06, 0x49, 0x49, 0x29, 0x1E }, // 9
+    { 0x7E, 0x11, 0x11, 0x11, 0x7E }, // A
+    { 0x7F, 0x49, 0x49, 0x49, 0x36 }, // B
+    { 0x3E, 0x41, 0x41, 0x41, 0x22 }, // C
+    { 0x7F, 0x41, 0x41, 0x22, 0x1C }, // D
+    { 0x7F, 0x49, 0x49, 0x49, 0x41 }, // E
+    { 0x7F, 0x09, 0x09, 0x09, 0x01 }, // F
+    { 0x3E, 0x41, 0x49, 0x49, 0x7A }, // G
+    { 0x7F, 0x08, 0x08, 0x08, 0x7F }, // H
+    { 0x00, 0x41, 0x7F, 0x41, 0x00 }, // I
+    { 0x20, 0x40, 0x41, 0x3F, 0x01 }, // J
+    { 0x7F, 0x08, 0x14, 0x22, 0x41 }, // K
+    { 0x7F, 0x40, 0x40, 0x40, 0x40 }, // L
+    { 0x7F, 0x02, 0x0C, 0x02, 0x7F }, // M
+    { 0x7F, 0x04, 0x08, 0x10, 0x7F }, // N
+    { 0x3E, 0x41, 0x41, 0x41, 0x3E }, // O
+    { 0x7F, 0x09, 0x09, 0x09, 0x06 }, // P
+    { 0x3E, 0x41, 0x51, 0x21, 0x5E }, // Q
+    { 0x7F, 0x09, 0x19, 0x29, 0x46 }, // R
+    { 0x46, 0x49, 0x49, 0x49, 0x31 }, // S
+    { 0x01, 0x01, 0x7F, 0x01, 0x01 }, // T
+    { 0x3F, 0x40, 0x40, 0x40, 0x3F }, // U
+    { 0x1F, 0x20, 0x40, 0x20, 0x1F }, // V
+    { 0x3F, 0x40, 0x38, 0x40, 0x3F }, // W
+    { 0x63, 0x14, 0x08, 0x14, 0x63 }, // X
+    { 0x07, 0x08, 0x70, 0x08, 0x07 }, // Y
+    { 0x61, 0x51, 0x49, 0x45, 0x43 }, // Z
+    { 0x08, 0x08, 0x08, 0x08, 0x08 }, // -
+    { 0x00, 0x36, 0x36, 0x00, 0x00 }, // :
+    { 0x00, 0x60, 0x60, 0x00, 0x00 }, // .
+    { 0x00, 0x41, 0x22, 0x14, 0x08 }, // /
+    { 0x00, 0x00, 0x00, 0x00, 0x00 }, // space
+    { 0x02, 0x01, 0x51, 0x09, 0x06 }  // ?
+  };
+  UINTN  Index;
+
+  if (Column >= 5) {
+    return 0;
+  }
+
+  if ((Character >= '0') && (Character <= '9')) {
+    Index = Character - '0';
+  } else if ((Character >= 'A') && (Character <= 'Z')) {
+    Index = 10 + Character - 'A';
+  } else {
+    switch (Character) {
+      case '-': Index = 36; break;
+      case ':': Index = 37; break;
+      case '.': Index = 38; break;
+      case '/': Index = 39; break;
+      case ' ': Index = 40; break;
+      default:  Index = 41; break;
+    }
+  }
+
+  return Font[Index][Column];
+}
+
+STATIC
+VOID
+GxDxeScreenLog (
+  IN CONST CHAR8  *Message
+  )
+{
+  VOID                              *Hob;
+  EFI_PEI_GRAPHICS_INFO_HOB         *GraphicsInfo;
+  EFI_GRAPHICS_OUTPUT_MODE_INFORMATION  *Mode;
+  volatile UINT32                   *FrameBuffer;
+  UINTN                             Row;
+  UINTN                             CharacterIndex;
+  UINTN                             X;
+  UINTN                             Y;
+  UINTN                             GlyphX;
+  UINTN                             GlyphY;
+  UINTN                             Scale;
+  UINT32                            Pixel;
+  UINT32                            Black;
+  UINT32                            White;
+
+  if (Message == NULL) {
+    return;
+  }
+
+  Hob = GetFirstGuidHob (&mGxGraphicsInfoHobGuid);
+  if ((Hob == NULL) || (GET_GUID_HOB_DATA_SIZE (Hob) < sizeof (*GraphicsInfo))) {
+    return;
+  }
+
+  GraphicsInfo = (EFI_PEI_GRAPHICS_INFO_HOB *)GET_GUID_HOB_DATA (Hob);
+  Mode = &GraphicsInfo->GraphicsMode;
+  if ((GraphicsInfo->FrameBufferBase == 0) || (Mode->HorizontalResolution < 640) ||
+      (Mode->VerticalResolution < GX_DXE_FB_CELL_HEIGHT) || (Mode->PixelsPerScanLine < Mode->HorizontalResolution))
+  {
+    return;
+  }
+
+  Scale = 2;
+  Row = mGxDxeScreenRow++ % GX_DXE_FB_LOG_ROWS;
+  FrameBuffer = (volatile UINT32 *)(UINTN)GraphicsInfo->FrameBufferBase;
+  Black = 0;
+  White = 0x00FFFFFF;
+  if (Mode->PixelFormat == PixelRedGreenBlueReserved8BitPerColor) {
+    White = 0x00FFFFFF;
+  } else if (Mode->PixelFormat != PixelBlueGreenRedReserved8BitPerColor) {
+    return;
+  }
+
+  for (CharacterIndex = 0; (Message[CharacterIndex] != '\0') && (CharacterIndex < GX_DXE_FB_COLUMNS); CharacterIndex++) {
+    UINT8  Character;
+
+    Character = Message[CharacterIndex];
+    if ((Character >= 'a') && (Character <= 'z')) {
+      Character = (CHAR8)(Character - 'a' + 'A');
+    }
+    X = CharacterIndex * GX_DXE_FB_CELL_WIDTH;
+    Y = Row * GX_DXE_FB_CELL_HEIGHT;
+    for (GlyphY = 0; GlyphY < 14; GlyphY++) {
+      for (GlyphX = 0; GlyphX < GX_DXE_FB_CELL_WIDTH; GlyphX++) {
+        Pixel = Black;
+        if ((GlyphX < 10) && (GlyphY < 14) &&
+            ((GxDxeGlyphColumn (Character, GlyphX / Scale) & (1U << (GlyphY / Scale))) != 0))
+        {
+          Pixel = White;
+        }
+        if ((X + GlyphX < Mode->HorizontalResolution) && (Y + GlyphY < Mode->VerticalResolution) &&
+            (((Y + GlyphY) * Mode->PixelsPerScanLine + X + GlyphX) * sizeof (UINT32) < GraphicsInfo->FrameBufferSize))
+        {
+          FrameBuffer[(Y + GlyphY) * Mode->PixelsPerScanLine + X + GlyphX] = Pixel;
+        }
+      }
+    }
+  }
+}
+
+VOID
+GxDxeLog (
+  IN CONST CHAR8  *Message
+  )
+{
+  CHAR8  NumberedMessage[GX_DXE_FB_COLUMNS + 1];
+
+  if (Message == NULL) {
+    return;
+  }
+
+  mGxDxeSequence++;
+  AsciiSPrint (NumberedMessage, sizeof (NumberedMessage), "%04u %a", mGxDxeSequence, Message);
+  DEBUG ((DEBUG_ERROR, "[GX-DXE] %a\n", NumberedMessage));
+  GxDxeScreenLog (NumberedMessage);
+}
+
+STATIC
+VOID
+EFIAPI
+GxDxeDiagnosticsProtocolLog (
+  IN CONST CHAR8  *Message
+  )
+{
+  GxDxeLog (Message);
+}
+
+STATIC
+EFI_STATUS
+EFIAPI
+GxDxeDiagnosticsProtocolGetDriverStatus (
+  IN  CONST EFI_GUID          *FileName,
+  OUT GX_DXE_DRIVER_STATUS    *DriverStatus
+  )
+{
+  return CoreGetDriverStatus (FileName, DriverStatus);
+}
+
 VOID
 GxDxeCheckpoint (
   IN UINTN       Sequence,
   IN CONST CHAR8 *Message
   )
 {
-  volatile UINT16 *Vga;
-  UINTN           Index;
-  UINTN           Row;
+  (VOID)Sequence;
+  GxDxeLog (Message);
+}
 
-  Row = Sequence % GX_DXE_VGA_ROWS;
-  Vga = (volatile UINT16 *)(UINTN)GX_DXE_VGA_FB + Row * GX_DXE_VGA_COLUMNS;
-  for (Index = 0; Index < GX_DXE_VGA_COLUMNS; Index++) {
-    Vga[Index] = 0x0F00;
-  }
-  for (Index = 0; Message[Index] != '\0' && Index < GX_DXE_VGA_COLUMNS; Index++) {
-    Vga[Index] = (UINT16)(0x0F00 | (UINT8)Message[Index]);
-  }
-  DEBUG ((DEBUG_ERROR, "[GX-DXE] seq=%u %a\n", Sequence, Message));
-  MicroSecondDelay (500000);
+STATIC
+VOID
+GxDxeTraceStatus (
+  IN CONST CHAR8  *Stage,
+  IN EFI_STATUS   Status
+  )
+{
+  CHAR8  Message[GX_DXE_FB_COLUMNS + 1];
+
+  AsciiSPrint (Message, sizeof (Message), "DXE %a STATUS=0x%lx", Stage, Status);
+  GxDxeLog (Message);
+}
+
+STATIC
+VOID
+GxDxeTrace (
+  IN CONST CHAR8  *Stage
+  )
+{
+  CHAR8  Message[GX_DXE_FB_COLUMNS + 1];
+
+  AsciiSPrint (Message, sizeof (Message), "DXE %a", Stage);
+  GxDxeLog (Message);
 }
 
 //
@@ -275,71 +486,94 @@ DxeMain (
   EFI_VECTOR_HANDOFF_INFO       *VectorInfo;
   VOID                          *EntryPoint;
 
-  SecSerialPortConfigure (0);
+  // Emit this marker before raw UART access.  The checkpoint below is SOL-only
+  // because the platform is using a linear framebuffer.
+  DEBUG ((DEBUG_ERROR, "[GX-DXE] DXE entry before raw UART\n"));
+  DEBUG ((DEBUG_ERROR, "[GX-DXE] raw UART write begin\n"));
+  SerialPortWrite ((UINT8 *)"[GX-DXE] serial entry\r\n", sizeof ("[GX-DXE] serial entry\r\n") - 1);
+  DEBUG ((DEBUG_ERROR, "[GX-DXE] raw UART write returned\n"));
   GxDxeCheckpoint (0, "DxeCore entry");
 
   //
   // Setup the default exception handlers
   //
+  GxDxeCheckpoint (9, "DXE vector HOB lookup begin");
+  DEBUG ((DEBUG_ERROR, "[GX-DXE] incoming HOB list=%p\n", HobStart));
   VectorInfoList = NULL;
   GuidHob        = GetNextGuidHob (&gEfiVectorHandoffInfoPpiGuid, HobStart);
   if (GuidHob != NULL) {
     VectorInfoList = (EFI_VECTOR_HANDOFF_INFO *)(GET_GUID_HOB_DATA (GuidHob));
   }
 
+  GxDxeCheckpoint (10, "DXE exception handlers begin");
   Status = InitializeCpuExceptionHandlers (VectorInfoList);
+  GxDxeTraceStatus ("exception handlers returned", Status);
   ASSERT_EFI_ERROR (Status);
 
   //
   // Setup Stack Guard
   //
   if (PcdGetBool (PcdCpuStackGuard)) {
+    GxDxeTrace ("exception stacks begin");
     Status = InitializeSeparateExceptionStacks (NULL, NULL);
+    GxDxeTraceStatus ("exception stacks returned", Status);
     ASSERT_EFI_ERROR (Status);
   }
 
   //
   // Initialize Debug Agent to support source level debug in DXE phase
   //
+  GxDxeCheckpoint (11, "DXE debug agent begin");
   InitializeDebugAgent (DEBUG_AGENT_INIT_DXE_CORE, HobStart, NULL);
+  GxDxeTrace ("debug agent returned");
 
   //
   // Initialize Memory Services
   //
+  GxDxeCheckpoint (12, "DXE memory services begin");
   CoreInitializeMemoryServices (&HobStart, &MemoryBaseAddress, &MemoryLength);
+  DEBUG ((DEBUG_ERROR, "[GX-DXE] memory services returned hob=%p base=0x%lx size=0x%lx\n",
+    HobStart, MemoryBaseAddress, MemoryLength));
 
+  GxDxeTrace ("memory profile begin");
   MemoryProfileInit (HobStart);
+  GxDxeTrace ("memory profile returned");
 
   //
   // Start the Handle Services.
   //
   Status = CoreInitializeHandleServices ();
-  GxDxeCheckpoint (1, "Handle services initialized");
+  GxDxeTraceStatus ("handle services", Status);
+  GxDxeCheckpoint (1, EFI_ERROR (Status) ? "Handle services FAILED" : "Handle services initialized");
   ASSERT_EFI_ERROR (Status);
 
   //
   // Start the Image Services.
   //
   Status = CoreInitializeImageServices (HobStart);
-  GxDxeCheckpoint (2, "Image services initialized");
+  GxDxeTraceStatus ("image services", Status);
+  GxDxeCheckpoint (2, EFI_ERROR (Status) ? "Image services FAILED" : "Image services initialized");
   ASSERT_EFI_ERROR (Status);
 
   //
   // Initialize the Global Coherency Domain Services
   //
   Status = CoreInitializeGcdServices (&HobStart, MemoryBaseAddress, MemoryLength);
-  GxDxeCheckpoint (3, "GCD services initialized");
+  GxDxeTraceStatus ("GCD services", Status);
+  GxDxeCheckpoint (3, EFI_ERROR (Status) ? "GCD services FAILED" : "GCD services initialized");
   ASSERT_EFI_ERROR (Status);
 
   //
   // Allocate the EFI System Table and EFI Runtime Service Table from EfiRuntimeServicesData
   // Use the templates to initialize the contents of the EFI System Table and EFI Runtime Services Table
   //
+  GxDxeTrace ("runtime tables begin");
   gDxeCoreST = AllocateRuntimeCopyPool (sizeof (EFI_SYSTEM_TABLE), &mEfiSystemTableTemplate);
   ASSERT (gDxeCoreST != NULL);
 
   gDxeCoreRT = AllocateRuntimeCopyPool (sizeof (EFI_RUNTIME_SERVICES), &mEfiRuntimeServicesTableTemplate);
   ASSERT (gDxeCoreRT != NULL);
+  GxDxeTrace ("runtime tables allocated");
 
   gDxeCoreST->RuntimeServices = gDxeCoreRT;
 
@@ -351,7 +585,9 @@ DxeMain (
   //
   // Call constructor for all libraries
   //
+  GxDxeTrace ("library constructors begin");
   ProcessLibraryConstructorList (gDxeCoreImageHandle, gDxeCoreST);
+  GxDxeTrace ("library constructors complete");
   PERF_CROSSMODULE_END ("PEI");
   PERF_CROSSMODULE_BEGIN ("DXE");
 
@@ -383,23 +619,27 @@ DxeMain (
   ImageContext.Handle    = (VOID *)(UINTN)gDxeCoreLoadedImage->ImageBase;
   ImageContext.ImageRead = PeCoffLoaderImageReadFromMemory;
   PeCoffLoaderRelocateImageExtraAction (&ImageContext);
+  GxDxeTrace ("PE/COFF image action complete");
 
   //
   // Install the DXE Services Table into the EFI System Tables's Configuration Table
   //
   Status = CoreInstallConfigurationTable (&gEfiDxeServicesTableGuid, gDxeCoreDS);
+  GxDxeTraceStatus ("DXE services table", Status);
   ASSERT_EFI_ERROR (Status);
 
   //
   // Install the HOB List into the EFI System Tables's Configuration Table
   //
   Status = CoreInstallConfigurationTable (&gEfiHobListGuid, HobStart);
+  GxDxeTraceStatus ("HOB configuration table", Status);
   ASSERT_EFI_ERROR (Status);
 
   //
   // Install Memory Type Information Table into the EFI System Tables's Configuration Table
   //
   Status = CoreInstallConfigurationTable (&gEfiMemoryTypeInformationGuid, &gMemoryTypeInformation);
+  GxDxeTraceStatus ("memory type table", Status);
   ASSERT_EFI_ERROR (Status);
 
   //
@@ -431,6 +671,7 @@ DxeMain (
     gDxeCoreLoadedImage,
     gDxeCoreImageHandle
     );
+  GxDxeTrace ("debug image table ready");
 
   DEBUG ((DEBUG_INFO | DEBUG_LOAD, "HOBLIST address in DXE = 0x%p\n", HobStart));
 
@@ -440,7 +681,7 @@ DxeMain (
   for (Hob.Raw = HobStart; !END_OF_HOB_LIST (Hob); Hob.Raw = GET_NEXT_HOB (Hob)) {
     if (GET_HOB_TYPE (Hob) == EFI_HOB_TYPE_MEMORY_ALLOCATION) {
       DEBUG ((
-        DEBUG_INFO | DEBUG_LOAD,
+        DEBUG_ERROR,
         "Memory Allocation 0x%08x 0x%0lx - 0x%0lx\n", \
         Hob.MemoryAllocation->AllocDescriptor.MemoryType,                      \
         Hob.MemoryAllocation->AllocDescriptor.MemoryBaseAddress,               \
@@ -452,27 +693,27 @@ DxeMain (
   for (Hob.Raw = HobStart; !END_OF_HOB_LIST (Hob); Hob.Raw = GET_NEXT_HOB (Hob)) {
     if (GET_HOB_TYPE (Hob) == EFI_HOB_TYPE_FV) {
       DEBUG ((
-        DEBUG_INFO | DEBUG_LOAD,
+        DEBUG_ERROR,
         "FV Hob            0x%0lx - 0x%0lx\n",
         Hob.FirmwareVolume->BaseAddress,
         Hob.FirmwareVolume->BaseAddress + Hob.FirmwareVolume->Length - 1
         ));
     } else if (GET_HOB_TYPE (Hob) == EFI_HOB_TYPE_FV2) {
       DEBUG ((
-        DEBUG_INFO | DEBUG_LOAD,
+        DEBUG_ERROR,
         "FV2 Hob           0x%0lx - 0x%0lx\n",
         Hob.FirmwareVolume2->BaseAddress,
         Hob.FirmwareVolume2->BaseAddress + Hob.FirmwareVolume2->Length - 1
         ));
       DEBUG ((
-        DEBUG_INFO | DEBUG_LOAD,
+        DEBUG_ERROR,
         "                  %g - %g\n",
         &Hob.FirmwareVolume2->FvName,
         &Hob.FirmwareVolume2->FileName
         ));
     } else if (GET_HOB_TYPE (Hob) == EFI_HOB_TYPE_FV3) {
       DEBUG ((
-        DEBUG_INFO | DEBUG_LOAD,
+        DEBUG_ERROR,
         "FV3 Hob           0x%0lx - 0x%0lx - 0x%x - 0x%x\n",
         Hob.FirmwareVolume3->BaseAddress,
         Hob.FirmwareVolume3->BaseAddress + Hob.FirmwareVolume3->Length - 1,
@@ -481,7 +722,7 @@ DxeMain (
         ));
       if (Hob.FirmwareVolume3->ExtractedFv) {
         DEBUG ((
-          DEBUG_INFO | DEBUG_LOAD,
+          DEBUG_ERROR,
           "                  %g - %g\n",
           &Hob.FirmwareVolume3->FvName,
           &Hob.FirmwareVolume3->FileName
@@ -491,11 +732,13 @@ DxeMain (
   }
 
   DEBUG_CODE_END ();
+  GxDxeTrace ("HOB scan complete");
 
   //
   // Initialize the Event Services
   //
   Status = CoreInitializeEventServices ();
+  GxDxeTraceStatus ("event services", Status);
   ASSERT_EFI_ERROR (Status);
 
   //
@@ -507,11 +750,13 @@ DxeMain (
 
   CoreInitializeMemoryAttributesTable ();
   CoreInitializeMemoryProtection ();
+  GxDxeTrace ("memory protection ready");
 
   //
   // Get persisted vector hand-off info from GUIDeed HOB again due to HobStart may be updated,
   // and install configuration table
   //
+  GxDxeTrace ("vector handoff begin");
   GuidHob = GetNextGuidHob (&gEfiVectorHandoffInfoPpiGuid, HobStart);
   if (GuidHob != NULL) {
     VectorInfoList = (EFI_VECTOR_HANDOFF_INFO *)(GET_GUID_HOB_DATA (GuidHob));
@@ -525,8 +770,10 @@ DxeMain (
     VectorInfo = AllocateCopyPool (sizeof (EFI_VECTOR_HANDOFF_INFO) * Index, (VOID *)VectorInfoList);
     ASSERT (VectorInfo != NULL);
     Status = CoreInstallConfigurationTable (&gEfiVectorHandoffTableGuid, (VOID *)VectorInfo);
+    GxDxeTraceStatus ("vector handoff table", Status);
     ASSERT_EFI_ERROR (Status);
   }
+  GxDxeTrace ("vector handoff complete");
 
   //
   // Get the Protocols that were passed in from PEI to DXE through GUIDed HOBs
@@ -549,6 +796,7 @@ DxeMain (
              &gEfiDecompress,
              NULL
              );
+  GxDxeTraceStatus ("decompression protocol", Status);
   ASSERT_EFI_ERROR (Status);
 
   //
@@ -557,32 +805,52 @@ DxeMain (
   // Also register for the GUIDs of optional protocols.
   //
   CoreNotifyOnProtocolInstallation ();
+  GxDxeTrace ("architectural protocol notifications ready");
 
   //
   // Produce Firmware Volume Protocols, one for each FV in the HOB list.
   //
   Status = FwVolBlockDriverInit (gDxeCoreImageHandle, gDxeCoreST);
+  GxDxeTraceStatus ("firmware volume block", Status);
   ASSERT_EFI_ERROR (Status);
 
   Status = FwVolDriverInit (gDxeCoreImageHandle, gDxeCoreST);
+  GxDxeTraceStatus ("firmware volume driver", Status);
   ASSERT_EFI_ERROR (Status);
 
   //
   // Produce the Section Extraction Protocol
   //
   Status = InitializeSectionExtraction (gDxeCoreImageHandle, gDxeCoreST);
+  GxDxeTraceStatus ("section extraction", Status);
   ASSERT_EFI_ERROR (Status);
 
   //
   // Initialize the DXE Dispatcher
   //
+  GxDxeTrace ("DXE diagnostics protocol install begin");
+  mGxDxeDiagnosticsProtocol.Log = GxDxeDiagnosticsProtocolLog;
+  mGxDxeDiagnosticsProtocol.GetDriverStatus = GxDxeDiagnosticsProtocolGetDriverStatus;
+  Status = gBS->InstallProtocolInterface (
+                  &mGxDxeDiagnosticsHandle,
+                  &gGxDxeDiagnosticsProtocolGuid,
+                  EFI_NATIVE_INTERFACE,
+                  &mGxDxeDiagnosticsProtocol
+                  );
+  GxDxeTraceStatus ("DXE diagnostics protocol install", Status);
+  ASSERT_EFI_ERROR (Status);
+
+  GxDxeTrace ("DXE dispatcher init begin");
   CoreInitializeDispatcher ();
   GxDxeCheckpoint (4, "DXE dispatcher initialized");
 
   //
   // Invoke the DXE Dispatcher
   //
-  CoreDispatcher ();
+  GxDxeTrace ("DXE dispatcher run begin");
+  GxDxeCheckpoint (8, "DXE dispatcher running");
+  Status = CoreDispatcher ();
+  GxDxeTraceStatus ("DXE dispatcher returned", Status);
   GxDxeCheckpoint (5, "DXE dispatcher completed");
 
   //
