@@ -31,6 +31,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 // #include <Library/PeCoffExtraActionLib.h>
 #include <Library/DebugAgentLib.h>
 
+
 #define mde_2__VGA_FB 0xB8000
 #define mde_2__VGA_COLUMNS 80
 
@@ -38,6 +39,7 @@ char mde_2_g_buffer[80];
 
 void mde_3_edkii_vga_write_at_offset(unsigned int line, unsigned int offset, const char *string)
 {
+#if !defined (GOOXI_G4DEL_LINEAR_GRAPHICS)
 	if (!string)
 		return;
 
@@ -50,12 +52,19 @@ void mde_3_edkii_vga_write_at_offset(unsigned int line, unsigned int offset, con
 		else
 			p[i] = 0x0F00;
 	}
+
+#else
+  (void)line;
+  (void)offset;
+  (void)string;
+#endif
 }
 
 
 static void
 log_vga_row(unsigned int line)
 {
+#if !defined (GOOXI_G4DEL_LINEAR_GRAPHICS)
     volatile const unsigned short *cells;
     char text[81];
     unsigned int i;
@@ -72,6 +81,10 @@ log_vga_row(unsigned int line)
     text[i] = '\0';
     if (i != 0)
         DEBUG ((DEBUG_ERROR, "[GX-VGA] row=%u %a\n", line, text));
+
+#else
+  (void)line;
+#endif
 }
 
 void mde_3_edkii_vga_print(unsigned int line, const char *string)
@@ -83,7 +96,11 @@ void mde_3_edkii_vga_print(unsigned int line, const char *string)
         return;
     for (i = 0; string[i] != '\0'; i++) {
         if (string[i] != ' ') {
+            #if defined (GOOXI_G4DEL_LINEAR_GRAPHICS)
+            DEBUG ((DEBUG_ERROR, "[GX-VGA] row=%u %a\n", line, string));
+#else
             log_vga_row(line);
+#endif
             break;
         }
     }
@@ -520,6 +537,8 @@ MemInfoCallback (
   Base            = MemoryMapEntry->Base;
   Size            = MemoryMapEntry->Size;
   Flag            = MemoryMapEntry->Flag;
+  DEBUG ((DEBUG_ERROR, "[GX-MEM] bootloader range type=%u base=0x%lx size=0x%lx flags=0x%lx\n",
+    Type, Base, Size, (UINT64)Flag));
 
   if ((Base  < BASE_1MB) && ((Base + Size) > BASE_1MB)) {
     Size -= (BASE_1MB - Base);
@@ -610,10 +629,22 @@ ValidateFvHeader (
   UINT32                      FtwSpareSize;
 
 
+  if ((SmmStoreInfo == NULL) || (SmmStoreInfo->MmioAddress == 0) ||
+      (SmmStoreInfo->BlockSize == 0) || (SmmStoreInfo->NumBlocks < 4) ||
+      (SmmStoreInfo->NumBlocks > MAX_UINT32 / SmmStoreInfo->BlockSize) ||
+      (SmmStoreInfo->MmioAddress > MAX_UINT32 -
+       SmmStoreInfo->NumBlocks * SmmStoreInfo->BlockSize)) {
+    return EFI_INVALID_PARAMETER;
+  }
+
   NvStorageSize = SmmStoreInfo->NumBlocks * SmmStoreInfo->BlockSize;
   FtwSpareSize   = (SmmStoreInfo->NumBlocks / 2) * SmmStoreInfo->BlockSize;
   FtwWorkingSize = SmmStoreInfo->BlockSize;
   NvVariableSize = NvStorageSize - FtwSpareSize - FtwWorkingSize;
+  if (NvVariableSize < sizeof (EFI_FIRMWARE_VOLUME_HEADER) +
+      sizeof (VARIABLE_STORE_HEADER)) {
+    return EFI_INVALID_PARAMETER;
+  }
 
   FwVolHeader        = (EFI_FIRMWARE_VOLUME_HEADER *)(UINTN)SmmStoreInfo->MmioAddress;
   if (!FwVolHeader) {
@@ -638,6 +669,13 @@ ValidateFvHeader (
       "%a: No Firmware Volume header present\n",
       __FUNCTION__
       ));
+    return EFI_NOT_FOUND;
+  }
+
+  if ((FwVolHeader->HeaderLength < sizeof (EFI_FIRMWARE_VOLUME_HEADER)) ||
+      (FwVolHeader->HeaderLength > NvVariableSize - sizeof (VARIABLE_STORE_HEADER))) {
+    DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] BlSupportPei invalid variable FV header length=0x%x\n",
+      FwVolHeader->HeaderLength));
     return EFI_NOT_FOUND;
   }
 
@@ -932,11 +970,16 @@ BlPeiEntryPoint (
   // Parse memory info
   //
   Status = ParseMemoryInfo (MemInfoCallback, &UsableLowMemTop);
-  
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] memory map parse failed status=%r\n", Status));
+    return Status;
+  }
 
-  // if (EFI_ERROR(Status)) {
-  //   return Status;
-  // }
+  if (UsableLowMemTop < BASE_1MB + PEI_MEM_SIZE) {
+    DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] insufficient low RAM top=0x%lx need=0x%lx\n",
+      UsableLowMemTop, BASE_1MB + PEI_MEM_SIZE));
+    return EFI_OUT_OF_RESOURCES;
+  }
 
   //
   // Install memory
@@ -956,6 +999,11 @@ BlPeiEntryPoint (
   );
 
   Status = PeiServicesInstallPeiMemory (PeiMemBase, PEI_MEM_SIZE);
+  DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] install PEI memory base=0x%lx size=0x%lx status=%r\n",
+    PeiMemBase, (UINT64)PEI_MEM_SIZE, Status));
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
   
   mde_3_edkii_vga_sprintf(1, "BLSf-%x,%x,%x-%x,%x",
     FileHandle,
@@ -1075,59 +1123,59 @@ BlPeiEntryPoint (
   //
   // Create guid hob for frame buffer information
   //
+  ZeroMem (&GfxInfo, sizeof (GfxInfo));
   Status = ParseGfxInfo (&GfxInfo);
-  
-  mde_3_edkii_vga_sprintf(2, "b-%x-%x-%x-%x",
-    Status,
-    GfxInfo.FrameBufferBase,
-    GfxInfo.FrameBufferSize,
-    GfxInfo.GraphicsMode
-  );
-
   if (!EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "[GX-GOP] parsed framebuffer base=0x%lx size=0x%x mode=%ux%u pitch=%u format=%u\n",
+      GfxInfo.FrameBufferBase, GfxInfo.FrameBufferSize,
+      GfxInfo.GraphicsMode.HorizontalResolution,
+      GfxInfo.GraphicsMode.VerticalResolution,
+      GfxInfo.GraphicsMode.PixelsPerScanLine,
+      GfxInfo.GraphicsMode.PixelFormat));
+    mde_3_edkii_vga_sprintf (2, "GOP %ux%u base=%x size=%x",
+      GfxInfo.GraphicsMode.HorizontalResolution,
+      GfxInfo.GraphicsMode.VerticalResolution,
+      (UINT32)GfxInfo.FrameBufferBase,
+      (UINT32)GfxInfo.FrameBufferSize);
+
     NewGfxInfo = BuildGuidHob (&gEfiGraphicsInfoHobGuid, sizeof (GfxInfo));
-    ASSERT (NewGfxInfo != NULL);
+    if (NewGfxInfo == NULL) {
+      DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] BlSupportPei graphics HOB allocation failed\n"));
+      return EFI_OUT_OF_RESOURCES;
+    }
     CopyMem (NewGfxInfo, &GfxInfo, sizeof (GfxInfo));
-    DEBUG ((DEBUG_INFO, "Created graphics info hob\n"));
+    DEBUG ((DEBUG_ERROR, "[GX-GOP] graphics info HOB installed\n"));
+  } else {
+    DEBUG ((DEBUG_ERROR, "[GX-GOP] graphics info HOB not created; ParseGfxInfo status=%r\n", Status));
+    mde_3_edkii_vga_sprintf (2, "GOP unavailable status=%x", (UINT32)Status);
   }
 
 
   Status = ParseGfxDeviceInfo (&GfxDeviceInfo);
   if (!EFI_ERROR (Status)) {
     NewGfxDeviceInfo = BuildGuidHob (&gEfiGraphicsDeviceInfoHobGuid, sizeof (GfxDeviceInfo));
-    
-    mde_3_edkii_vga_sprintf(3, "a-%x-%x-%x-%x,-%x-%x-%x-%x-%x",
-      gEfiGraphicsDeviceInfoHobGuid.Data1,
-      gEfiGraphicsDeviceInfoHobGuid.Data2,
-      gEfiGraphicsDeviceInfoHobGuid.Data3,
-      gEfiGraphicsDeviceInfoHobGuid.Data4,
-      NewGfxDeviceInfo->BarIndex,
-      NewGfxDeviceInfo->DeviceId,
-      NewGfxDeviceInfo->RevisionId,
-      NewGfxDeviceInfo->SubsystemId,
-      NewGfxDeviceInfo->VendorId
-    );
-    
-    // ASSERT (NewGfxDeviceInfo != NULL);
+    if (NewGfxDeviceInfo == NULL) {
+      DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] BlSupportPei graphics-device HOB allocation failed\n"));
+      return EFI_OUT_OF_RESOURCES;
+    }
+
     CopyMem (NewGfxDeviceInfo, &GfxDeviceInfo, sizeof (GfxDeviceInfo));
-    
-    mde_3_edkii_vga_sprintf(3, "b-%x-%x-%x-%x,-%x-%x-%x-%x-%x",
-      gEfiGraphicsDeviceInfoHobGuid.Data1,
-      gEfiGraphicsDeviceInfoHobGuid.Data2,
-      gEfiGraphicsDeviceInfoHobGuid.Data3,
-      gEfiGraphicsDeviceInfoHobGuid.Data4,
-      NewGfxDeviceInfo->BarIndex,
-      NewGfxDeviceInfo->DeviceId,
-      NewGfxDeviceInfo->RevisionId,
-      NewGfxDeviceInfo->SubsystemId,
-      NewGfxDeviceInfo->VendorId
-    );
-    DEBUG ((DEBUG_INFO, "Created graphics device info hob\n"));
+    DEBUG ((DEBUG_ERROR, "[GX-GOP] graphics-device HOB vendor=%04x device=%04x bar=%u\n",
+      NewGfxDeviceInfo->VendorId, NewGfxDeviceInfo->DeviceId,
+      NewGfxDeviceInfo->BarIndex));
+    mde_3_edkii_vga_sprintf (3, "GOP device v=%x d=%x bar=%x",
+      NewGfxDeviceInfo->VendorId, NewGfxDeviceInfo->DeviceId,
+      NewGfxDeviceInfo->BarIndex);
+    DEBUG ((DEBUG_ERROR, "[GX-GOP] graphics-device info HOB installed\n"));
+  } else {
+    DEBUG ((DEBUG_ERROR, "[GX-GOP] graphics-device HOB unavailable status=%r; GOP will probe PCI display BARs\n",
+      Status));
   }
 
   //
   // Create guid hob for SMMSTORE
   //
+  ZeroMem (&SMMSTOREInfo, sizeof (SMMSTOREInfo));
   Status = ParseSMMSTOREInfo (&SMMSTOREInfo);
 
   mde_3_edkii_vga_sprintf(4, "a-%x-%x-%x-%x-%x-%x-%x",
@@ -1141,7 +1189,21 @@ BlPeiEntryPoint (
   );
   
   if (!EFI_ERROR (Status)) {
+    if ((SMMSTOREInfo.MmioAddress == 0) ||
+        (SMMSTOREInfo.BlockSize == 0) ||
+        (SMMSTOREInfo.NumBlocks < 4) ||
+        (SMMSTOREInfo.NumBlocks > MAX_UINT32 / SMMSTOREInfo.BlockSize) ||
+        (SMMSTOREInfo.MmioAddress > MAX_UINT32 -
+         SMMSTOREInfo.NumBlocks * SMMSTOREInfo.BlockSize)) {
+      DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] BlSupportPei invalid SMMSTORE geometry base=0x%lx blocks=%u block_size=0x%x\n",
+        SMMSTOREInfo.MmioAddress, SMMSTOREInfo.NumBlocks, SMMSTOREInfo.BlockSize));
+      return EFI_INVALID_PARAMETER;
+    }
     NewSMMSTOREInfo = BuildGuidHob (&gEfiSmmStoreInfoHobGuid, sizeof (SMMSTOREInfo));
+    if (NewSMMSTOREInfo == NULL) {
+      DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] BlSupportPei SMMSTORE HOB allocation failed\n"));
+      return EFI_OUT_OF_RESOURCES;
+    }
     
     mde_3_edkii_vga_sprintf(5, "a-%x-%x,%x-%x-%x-%x-%x-%x",
       gEfiSmmStoreInfoHobGuid.Data1,
@@ -1478,6 +1540,8 @@ BlPeiEntryPoint (
   // while (1) {
   //   // i = 20;
   // }
+  DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] BlSupportPei complete acpi_hob=%p smmstore_hob=%p\n",
+    GetFirstGuidHob (&gUefiAcpiBoardInfoGuid), GetFirstGuidHob (&gEfiSmmStoreInfoHobGuid)));
   return EFI_SUCCESS;
 }
 

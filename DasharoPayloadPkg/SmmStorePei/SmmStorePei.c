@@ -37,6 +37,7 @@ SPDX-License-Identifier: GPL-2.0-or-later
 // #include <Library/PeCoffExtraActionLib.h>
 #include <Library/DebugAgentLib.h>
 
+
 #define mde_2__VGA_FB 0xB8000
 #define mde_2__VGA_COLUMNS 80
 
@@ -44,6 +45,7 @@ char mde_2_g_buffer[80];
 
 void mde_5_edkii_vga_write_at_offset(unsigned int line, unsigned int offset, const char *string)
 {
+#if !defined (GOOXI_G4DEL_LINEAR_GRAPHICS)
 	if (!string)
 		return;
 
@@ -56,12 +58,19 @@ void mde_5_edkii_vga_write_at_offset(unsigned int line, unsigned int offset, con
 		else
 			p[i] = 0x0F00;
 	}
+
+#else
+  (void)line;
+  (void)offset;
+  (void)string;
+#endif
 }
 
 
 static void
 log_vga_row(unsigned int line)
 {
+#if !defined (GOOXI_G4DEL_LINEAR_GRAPHICS)
     volatile const unsigned short *cells;
     char text[81];
     unsigned int i;
@@ -78,6 +87,10 @@ log_vga_row(unsigned int line)
     text[i] = '\0';
     if (i != 0)
         DEBUG ((DEBUG_ERROR, "[GX-VGA] row=%u %a\n", line, text));
+
+#else
+  (void)line;
+#endif
 }
 
 void mde_5_edkii_vga_print(unsigned int line, const char *string)
@@ -89,7 +102,11 @@ void mde_5_edkii_vga_print(unsigned int line, const char *string)
         return;
     for (i = 0; string[i] != '\0'; i++) {
         if (string[i] != ' ') {
+            #if defined (GOOXI_G4DEL_LINEAR_GRAPHICS)
+            DEBUG ((DEBUG_ERROR, "[GX-VGA] row=%u %a\n", line, string));
+#else
             log_vga_row(line);
+#endif
             break;
         }
     }
@@ -245,6 +262,7 @@ SmmStorePeiInitialize (
 
 
 
+  ZeroMem (&SmmStoreInfo, sizeof (SmmStoreInfo));
   Status = ParseSMMSTOREInfo (&SmmStoreInfo);
   
   mde_5_edkii_vga_sprintf(0, "SMM-%x-%x-%x-%x,-%x-%x-%x",
@@ -264,6 +282,16 @@ SmmStorePeiInitialize (
       Status
       ));
     return Status;
+  }
+
+  if ((SmmStoreInfo.MmioAddress == 0) ||
+      (SmmStoreInfo.BlockSize == 0) ||
+      (SmmStoreInfo.NumBlocks < 4) ||
+      (SmmStoreInfo.NumBlocks > MAX_UINT32 / SmmStoreInfo.BlockSize) ||
+      (SmmStoreInfo.MmioAddress > MAX_UINT32 - SmmStoreInfo.NumBlocks * SmmStoreInfo.BlockSize)) {
+    DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] SMMSTORE invalid geometry base=0x%lx blocks=%u block_size=0x%x\n",
+      SmmStoreInfo.MmioAddress, SmmStoreInfo.NumBlocks, SmmStoreInfo.BlockSize));
+    return EFI_INVALID_PARAMETER;
   }
 
   NvStorageSize = SmmStoreInfo.NumBlocks * SmmStoreInfo.BlockSize;
@@ -324,7 +352,15 @@ SmmStorePeiInitialize (
     VariableFlashInfo.FtwWorkingLength
   );
 
-  BuildGuidDataHob (&gVariableFlashInfoHobGuid, &VariableFlashInfo, sizeof (VariableFlashInfo));
+  if (BuildGuidDataHob (&gVariableFlashInfoHobGuid, &VariableFlashInfo,
+        sizeof (VariableFlashInfo)) == NULL) {
+    DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] SMMSTORE flash-info HOB allocation failed\n"));
+    return EFI_OUT_OF_RESOURCES;
+  }
+
+  DEBUG ((DEBUG_ERROR, "[EDK2-DIAG] SMMSTORE flash-info HOB ready base=0x%x size=0x%x working=0x%x spare=0x%x\n",
+    NvStorageBase, NvStorageSize, VariableFlashInfo.FtwWorkingBaseAddress,
+    VariableFlashInfo.FtwSpareBaseAddress));
   
   
   mde_5_edkii_vga_sprintf(2, "2b-%x-%x-%x-%x,%x,%x",
