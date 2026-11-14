@@ -20,6 +20,8 @@ VOID EFIAPI SecSerialPortConfigure (IN UINT32 BootloaderParameter);
 STATIC CONST CHAR8 mUefiCorebootVersionBanner[] =
   "[EDK2] UEFI_COREBOOT_VERSION=" UEFI_COREBOOT_VERSION_STRING
   " BUILD_DATE=" UEFI_COREBOOT_BUILD_DATE "\r\n";
+STATIC CONST CHAR8 mVersionBanner[] =
+  "Version " UEFI_COREBOOT_VERSION_STRING "\r\n";
 
 
 
@@ -81,9 +83,11 @@ SecStartup (
 {
   //////////////////////////// mahdi
   SecSerialPortConfigure (BootloaderParameter);
+  SerialPortWrite ((UINT8 *)mVersionBanner, sizeof (mVersionBanner) - 1);
   SerialPortWrite ((UINT8 *)mUefiCorebootVersionBanner, sizeof (mUefiCorebootVersionBanner) - 1);
   edkii_vga_configure_from_coreboot (BootloaderParameter);
   edkii_vga_clear();
+  edkii_vga_print (24, "Version " UEFI_COREBOOT_VERSION_STRING);
   edkii_vga_print (0, "EDK II SEC ENTRY 1405-08-06");
   SerialPortWrite ((UINT8 *)"EDK II SEC ENTRY 1405-08-06\r\n", sizeof ("EDK II SEC ENTRY 1405-08-06\r\n") - 1);
   MicroSecondDelay (2000000);
