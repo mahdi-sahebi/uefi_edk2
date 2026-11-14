@@ -8,6 +8,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 #include "DxeMain.h"
 #include "Image.h"
+#include <Library/PrintLib.h>
 
 //
 // Module Globals
@@ -1611,10 +1612,17 @@ CoreStartImage (
   UINT64                     HandleDatabaseKey;
   UINTN                      SetJumpFlag;
   EFI_HANDLE                 Handle;
+  CHAR8                      GxMessage[96];
 
   Handle = ImageHandle;
 
   Image = CoreLoadedImageInfo (ImageHandle);
+  if ((Image != NULL) && (Image->Type == EFI_IMAGE_SUBSYSTEM_EFI_APPLICATION)) {
+    AsciiSPrint (GxMessage, sizeof (GxMessage), "OS START begin app=%a base=%p",
+      (Image->ImageContext.PdbPointer != NULL) ? Image->ImageContext.PdbPointer : "unknown",
+      Image->Info.ImageBase);
+    GxDxeLog (GxMessage);
+  }
   if ((Image == NULL) ||  Image->Started) {
     return EFI_INVALID_PARAMETER;
   }
@@ -1702,6 +1710,12 @@ CoreStartImage (
     //
     Image->Started = TRUE;
     Image->Status  = Image->EntryPoint (ImageHandle, Image->Info.SystemTable);
+    if (Image->Type == EFI_IMAGE_SUBSYSTEM_EFI_APPLICATION) {
+      AsciiSPrint (GxMessage, sizeof (GxMessage), "OS START returned app=%a status=%r",
+        (Image->ImageContext.PdbPointer != NULL) ? Image->ImageContext.PdbPointer : "unknown",
+        Image->Status);
+      GxDxeLog (GxMessage);
+    }
 
     //
     // Add some debug information if the image returned with error.

@@ -1087,6 +1087,11 @@ CoreExitBootServices (
   )
 {
   EFI_STATUS  Status;
+  CHAR8       GxMessage[96];
+
+  AsciiSPrint (GxMessage, sizeof (GxMessage), "OS EBS begin image=%p key=0x%lx",
+    ImageHandle, (UINT64)MapKey);
+  GxDxeLog (GxMessage);
 
   //
   // Notify other drivers of their last chance to use boot services
@@ -1107,6 +1112,9 @@ CoreExitBootServices (
   //
   Status = CoreTerminateMemoryMap (MapKey);
   if (EFI_ERROR (Status)) {
+    AsciiSPrint (GxMessage, sizeof (GxMessage), "OS EBS rejected key=0x%lx status=%r",
+      (UINT64)MapKey, Status);
+    GxDxeLog (GxMessage);
     //
     // Notify other drivers that ExitBootServices fail
     //
@@ -1115,6 +1123,8 @@ CoreExitBootServices (
   }
 
   gMemoryMapTerminated = TRUE;
+  AsciiSPrint (GxMessage, sizeof (GxMessage), "OS EBS map accepted key=0x%lx", (UINT64)MapKey);
+  GxDxeLog (GxMessage);
 
   //
   // Notify other drivers that we are exiting boot services.
