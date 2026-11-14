@@ -228,16 +228,13 @@ GxCopyUsbString (
   LanguageBytes = 0;
   Status        = UsbIo->UsbGetSupportedLanguages (UsbIo, &Languages, &LanguageBytes);
   if (EFI_ERROR (Status) || (Languages == NULL) || (LanguageBytes < sizeof (UINT16))) {
-    *StringStatus = Status;
-    if (Languages != NULL) {
-      FreePool (Languages);
-    }
+    *StringStatus = EFI_ERROR (Status) ? Status : EFI_NOT_FOUND;
     return;
   }
 
   String = NULL;
   Status = UsbIo->UsbGetStringDescriptor (UsbIo, Languages[0], StringId, &String);
-  FreePool (Languages);
+  // The USB bus driver owns Languages; only the returned String is ours.
   *StringStatus = Status;
   if (!EFI_ERROR (Status) && (String != NULL)) {
     StrnCpyS (Destination, DestinationChars, String, DestinationChars - 1);
@@ -545,7 +542,7 @@ GxCollectUsbInventory (
     }
 
     UnicodeSPrint ((*Rows)[Index].Text, sizeof ((*Rows)[Index].Text),
-      L"%02u %s %04x:%04x IF=%u CLS=%s MSC=%a %s",
+      L"%02u %s DESC=%s %04x:%04x IF=%u CLS=%s MSC=%a %s",
       Index + 1,
       (*Rows)[Index].UsbPath ? L"USB" : L"NO-PATH",
       (*Rows)[Index].DescriptorReady ? L"READY" : L"ERROR",
