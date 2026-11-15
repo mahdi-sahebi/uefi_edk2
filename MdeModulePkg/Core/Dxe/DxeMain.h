@@ -25,6 +25,11 @@ GxDxeLog (
   IN CONST CHAR8  *Message
   );
 
+BOOLEAN
+GxDxeIsShellLoadTraceActive (
+  VOID
+  );
+
 #include <Protocol/LoadedImage.h>
 #include <Protocol/GuidedSectionExtraction.h>
 #include <Protocol/DevicePath.h>

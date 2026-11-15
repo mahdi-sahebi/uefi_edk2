@@ -13,15 +13,102 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Guid/GraphicsInfoHob.h>
 
 #define GX_DXE_FB_COLUMNS       72
-#define GX_DXE_FB_LOG_ROWS      16
+#define GX_DXE_FB_LOG_ROWS      24
+#define GX_DXE_FB_PINNED_ROWS   4
 #define GX_DXE_FB_CELL_WIDTH    12
 #define GX_DXE_FB_CELL_HEIGHT   16
+#define GX_DXE_LOG_BUFFER_SIZE  512
 
 STATIC UINTN  mGxDxeScreenRow;
 STATIC UINT32 mGxDxeSequence;
+STATIC UINT64 mGxDxeElapsedMilliseconds;
+STATIC UINT64 mGxDxeLastClockMilliseconds;
+STATIC BOOLEAN mGxDxeClockStarted;
+STATIC BOOLEAN mGxDxeClockFresh;
+STATIC BOOLEAN mGxDxeShellLoadTraceActive;
 STATIC EFI_HANDLE mGxDxeDiagnosticsHandle;
 STATIC GX_DXE_DIAGNOSTICS_PROTOCOL mGxDxeDiagnosticsProtocol;
 STATIC CONST EFI_GUID  mGxGraphicsInfoHobGuid = EFI_PEI_GRAPHICS_INFO_HOB_GUID;
+
+STATIC
+BOOLEAN
+GxDxeGetClockMilliseconds (
+  OUT UINT64  *ClockMilliseconds
+  )
+{
+  EFI_TIME  Time;
+  UINTN     Month;
+  UINT64    Year;
+  UINT64    Days;
+  UINT64    YearMinusOne;
+  BOOLEAN   LeapYear;
+  UINT8     MaximumDay;
+  STATIC CONST UINT8  DaysPerMonth[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+
+  if ((gDxeCoreST == NULL) || (gDxeCoreST->RuntimeServices == NULL) ||
+      EFI_ERROR (gDxeCoreST->RuntimeServices->GetTime (&Time, NULL)) ||
+      (Time.Year < 1900) || (Time.Month < 1) || (Time.Month > 12) ||
+      (Time.Day < 1) || (Time.Day > 31) || (Time.Hour > 23) ||
+      (Time.Minute > 59) || (Time.Second > 59))
+  {
+    return FALSE;
+  }
+
+  Year        = Time.Year;
+  YearMinusOne = Year - 1;
+  LeapYear    = (BOOLEAN)(((Year % 4) == 0) && (((Year % 100) != 0) || ((Year % 400) == 0)));
+  MaximumDay  = DaysPerMonth[Time.Month - 1];
+  if (LeapYear && (Time.Month == 2)) {
+    MaximumDay++;
+  }
+
+  if ((Time.Day > MaximumDay) || (Time.Nanosecond >= 1000000000)) {
+    return FALSE;
+  }
+
+  Days        = (YearMinusOne * 365) + (YearMinusOne / 4) - (YearMinusOne / 100) + (YearMinusOne / 400);
+  for (Month = 1; Month < Time.Month; Month++) {
+    Days += DaysPerMonth[Month - 1];
+  }
+
+  if (LeapYear && (Time.Month > 2)) {
+    Days++;
+  }
+
+  Days += Time.Day - 1;
+  *ClockMilliseconds = (((((Days * 24) + Time.Hour) * 60 + Time.Minute) * 60) + Time.Second) * 1000;
+  *ClockMilliseconds += Time.Nanosecond / 1000000;
+  return TRUE;
+}
+
+STATIC
+UINT64
+GxDxeUpdateElapsedMilliseconds (
+  VOID
+  )
+{
+  UINT64  ClockMilliseconds;
+
+  if (gEfiCurrentTpl != TPL_APPLICATION) {
+    mGxDxeClockFresh = FALSE;
+    return mGxDxeElapsedMilliseconds;
+  }
+
+  if (GxDxeGetClockMilliseconds (&ClockMilliseconds)) {
+    mGxDxeClockFresh = TRUE;
+    if (!mGxDxeClockStarted) {
+      mGxDxeClockStarted = TRUE;
+    } else if (ClockMilliseconds >= mGxDxeLastClockMilliseconds) {
+      mGxDxeElapsedMilliseconds += ClockMilliseconds - mGxDxeLastClockMilliseconds;
+    }
+
+    mGxDxeLastClockMilliseconds = ClockMilliseconds;
+  } else {
+    mGxDxeClockFresh = FALSE;
+  }
+
+  return mGxDxeElapsedMilliseconds;
+}
 
 STATIC
 UINT8
@@ -73,7 +160,19 @@ GxDxeGlyphColumn (
     { 0x00, 0x60, 0x60, 0x00, 0x00 }, // .
     { 0x00, 0x41, 0x22, 0x14, 0x08 }, // /
     { 0x00, 0x00, 0x00, 0x00, 0x00 }, // space
-    { 0x02, 0x01, 0x51, 0x09, 0x06 }  // ?
+      { 0x02, 0x01, 0x51, 0x09, 0x06 }, // ?
+      { 0x00, 0x08, 0x08, 0x08, 0x00 }, // _
+      { 0x14, 0x14, 0x14, 0x14, 0x14 }, // =
+      { 0x7F, 0x41, 0x41, 0x41, 0x00 }, // [
+      { 0x00, 0x41, 0x41, 0x41, 0x7F }, // ]
+      { 0x00, 0x60, 0x30, 0x00, 0x00 }, // ,
+      { 0x08, 0x08, 0x3E, 0x08, 0x08 }, // +
+      { 0x62, 0x64, 0x08, 0x13, 0x23 }, // %
+      { 0x3E, 0x41, 0x5D, 0x55, 0x1E }, // @
+      { 0x00, 0x1C, 0x22, 0x41, 0x00 }, // (
+      { 0x00, 0x41, 0x22, 0x1C, 0x00 }, // )
+      { 0x08, 0x08, 0x08, 0x08, 0x08 }, // |
+      { 0x00, 0x03, 0x0C, 0x30, 0x40 }  // backslash
   };
   UINTN  Index;
 
@@ -92,6 +191,18 @@ GxDxeGlyphColumn (
       case '.': Index = 38; break;
       case '/': Index = 39; break;
       case ' ': Index = 40; break;
+      case '_': Index = 42; break;
+      case '=': Index = 43; break;
+      case '[': Index = 44; break;
+      case ']': Index = 45; break;
+      case ',': Index = 46; break;
+      case '+': Index = 47; break;
+      case '%': Index = 48; break;
+      case '@': Index = 49; break;
+      case '(': Index = 50; break;
+      case ')': Index = 51; break;
+      case '|': Index = 52; break;
+      case '\\': Index = 53; break;
       default:  Index = 41; break;
     }
   }
@@ -116,6 +227,12 @@ GxDxeScreenLog (
   UINTN                             GlyphX;
   UINTN                             GlyphY;
   UINTN                             Scale;
+  UINTN                             MessageOffset;
+  UINTN                             ScreenRows;
+  UINTN                             PinnedRows;
+  UINTN                             RingRows;
+  UINTN                             PinnedRow;
+  BOOLEAN                           Pinned;
   UINT32                            Pixel;
   UINT32                            Black;
   UINT32                            White;
@@ -138,7 +255,38 @@ GxDxeScreenLog (
   }
 
   Scale = 2;
-  Row = mGxDxeScreenRow++ % GX_DXE_FB_LOG_ROWS;
+  ScreenRows = Mode->VerticalResolution / GX_DXE_FB_CELL_HEIGHT;
+  if (ScreenRows > GX_DXE_FB_LOG_ROWS) {
+    ScreenRows = GX_DXE_FB_LOG_ROWS;
+  }
+
+  Pinned = FALSE;
+  PinnedRow = 0;
+  if (AsciiStrStr (Message, "SHELL EXEC BEGIN") != NULL) {
+    Pinned = TRUE;
+    PinnedRow = 0;
+  } else if (AsciiStrStr (Message, "SHELL EXEC RETURN") != NULL) {
+    Pinned = TRUE;
+    PinnedRow = 0;
+  } else if ((AsciiStrStr (Message, "SHELL LOAD_IMAGE") != NULL) ||
+             (AsciiStrStr (Message, "LOAD DONE") != NULL))
+  {
+    Pinned = TRUE;
+    PinnedRow = 1;
+  } else if (AsciiStrStr (Message, "OS START BEGIN") != NULL) {
+    Pinned = TRUE;
+    PinnedRow = 2;
+  } else if (AsciiStrStr (Message, "OS EBS ") != NULL) {
+    Pinned = TRUE;
+    PinnedRow = 3;
+  }
+
+  PinnedRows = (ScreenRows >= (GX_DXE_FB_PINNED_ROWS + 4)) ? GX_DXE_FB_PINNED_ROWS : 0;
+  RingRows = ScreenRows - PinnedRows;
+  if (Pinned && (PinnedRows == 0)) {
+    Pinned = FALSE;
+  }
+
   FrameBuffer = (volatile UINT32 *)(UINTN)GraphicsInfo->FrameBufferBase;
   Black = 0;
   White = 0x00FFFFFF;
@@ -148,29 +296,53 @@ GxDxeScreenLog (
     return;
   }
 
-  for (CharacterIndex = 0; (Message[CharacterIndex] != '\0') && (CharacterIndex < GX_DXE_FB_COLUMNS); CharacterIndex++) {
-    UINT8  Character;
-
-    Character = Message[CharacterIndex];
-    if ((Character >= 'a') && (Character <= 'z')) {
-      Character = (CHAR8)(Character - 'a' + 'A');
+  for (MessageOffset = 0; Message[MessageOffset] != '\0'; MessageOffset += GX_DXE_FB_COLUMNS) {
+    if (Pinned) {
+      Row = PinnedRow;
+    } else {
+      Row = PinnedRows + (mGxDxeScreenRow++ % RingRows);
     }
-    X = CharacterIndex * GX_DXE_FB_CELL_WIDTH;
+
     Y = Row * GX_DXE_FB_CELL_HEIGHT;
-    for (GlyphY = 0; GlyphY < 14; GlyphY++) {
-      for (GlyphX = 0; GlyphX < GX_DXE_FB_CELL_WIDTH; GlyphX++) {
-        Pixel = Black;
-        if ((GlyphX < 10) && (GlyphY < 14) &&
-            ((GxDxeGlyphColumn (Character, GlyphX / Scale) & (1U << (GlyphY / Scale))) != 0))
+    for (GlyphY = 0; GlyphY < GX_DXE_FB_CELL_HEIGHT; GlyphY++) {
+      for (X = 0; X < Mode->HorizontalResolution; X++) {
+        if ((Y + GlyphY < Mode->VerticalResolution) &&
+            (((Y + GlyphY) * Mode->PixelsPerScanLine + X) * sizeof (UINT32) < GraphicsInfo->FrameBufferSize))
         {
-          Pixel = White;
-        }
-        if ((X + GlyphX < Mode->HorizontalResolution) && (Y + GlyphY < Mode->VerticalResolution) &&
-            (((Y + GlyphY) * Mode->PixelsPerScanLine + X + GlyphX) * sizeof (UINT32) < GraphicsInfo->FrameBufferSize))
-        {
-          FrameBuffer[(Y + GlyphY) * Mode->PixelsPerScanLine + X + GlyphX] = Pixel;
+          FrameBuffer[(Y + GlyphY) * Mode->PixelsPerScanLine + X] = Black;
         }
       }
+    }
+
+    for (CharacterIndex = 0; (Message[MessageOffset + CharacterIndex] != '\0') &&
+         (CharacterIndex < GX_DXE_FB_COLUMNS); CharacterIndex++)
+    {
+      UINT8  Character;
+
+      Character = Message[MessageOffset + CharacterIndex];
+      if ((Character >= 'a') && (Character <= 'z')) {
+        Character = (CHAR8)(Character - 'a' + 'A');
+      }
+      X = CharacterIndex * GX_DXE_FB_CELL_WIDTH;
+      for (GlyphY = 0; GlyphY < 14; GlyphY++) {
+        for (GlyphX = 0; GlyphX < GX_DXE_FB_CELL_WIDTH; GlyphX++) {
+          Pixel = Black;
+          if ((GlyphX < 10) && (GlyphY < 14) &&
+              ((GxDxeGlyphColumn (Character, GlyphX / Scale) & (1U << (GlyphY / Scale))) != 0))
+          {
+            Pixel = White;
+          }
+          if ((X + GlyphX < Mode->HorizontalResolution) && (Y + GlyphY < Mode->VerticalResolution) &&
+              (((Y + GlyphY) * Mode->PixelsPerScanLine + X + GlyphX) * sizeof (UINT32) < GraphicsInfo->FrameBufferSize))
+          {
+            FrameBuffer[(Y + GlyphY) * Mode->PixelsPerScanLine + X + GlyphX] = Pixel;
+          }
+        }
+      }
+    }
+
+    if (Pinned) {
+      break;
     }
   }
 }
@@ -180,15 +352,26 @@ GxDxeLog (
   IN CONST CHAR8  *Message
   )
 {
-  CHAR8  NumberedMessage[GX_DXE_FB_COLUMNS + 1];
+  CHAR8   NumberedMessage[GX_DXE_LOG_BUFFER_SIZE];
+  CHAR8   ElapsedText[32];
+  UINT64  ElapsedMilliseconds;
 
   if (Message == NULL) {
     return;
   }
 
   mGxDxeSequence++;
-  AsciiSPrint (NumberedMessage, sizeof (NumberedMessage), "%04u %a", mGxDxeSequence, Message);
-  DEBUG ((DEBUG_ERROR, "[GX-DXE] %a\n", NumberedMessage));
+  ElapsedMilliseconds = GxDxeUpdateElapsedMilliseconds ();
+  if (!mGxDxeClockStarted) {
+    AsciiSPrint (ElapsedText, sizeof (ElapsedText), "elapsed=unknown");
+  } else if (mGxDxeClockFresh) {
+    AsciiSPrint (ElapsedText, sizeof (ElapsedText), "elapsed=%lu ms", ElapsedMilliseconds);
+  } else {
+    AsciiSPrint (ElapsedText, sizeof (ElapsedText), "elapsed=%lu ms stale", ElapsedMilliseconds);
+  }
+
+  AsciiSPrint (NumberedMessage, sizeof (NumberedMessage), "[%04u %a] %a", mGxDxeSequence, ElapsedText, Message);
+  DEBUG ((DEBUG_ERROR, "[GX-DXE][%04u][%a] %a\n", mGxDxeSequence, ElapsedText, Message));
   GxDxeScreenLog (NumberedMessage);
 }
 
@@ -200,6 +383,25 @@ GxDxeDiagnosticsProtocolLog (
   )
 {
   GxDxeLog (Message);
+}
+
+STATIC
+EFI_STATUS
+EFIAPI
+GxDxeDiagnosticsProtocolSetShellLoadTrace (
+  IN BOOLEAN  Active
+  )
+{
+  mGxDxeShellLoadTraceActive = Active;
+  return EFI_SUCCESS;
+}
+
+BOOLEAN
+GxDxeIsShellLoadTraceActive (
+  VOID
+  )
+{
+  return mGxDxeShellLoadTraceActive;
 }
 
 STATIC
@@ -831,6 +1033,7 @@ DxeMain (
   GxDxeTrace ("DXE diagnostics protocol install begin");
   mGxDxeDiagnosticsProtocol.Log = GxDxeDiagnosticsProtocolLog;
   mGxDxeDiagnosticsProtocol.GetDriverStatus = GxDxeDiagnosticsProtocolGetDriverStatus;
+  mGxDxeDiagnosticsProtocol.SetShellLoadTrace = GxDxeDiagnosticsProtocolSetShellLoadTrace;
   Status = gBS->InstallProtocolInterface (
                   &mGxDxeDiagnosticsHandle,
                   &gGxDxeDiagnosticsProtocolGuid,
@@ -1086,11 +1289,18 @@ CoreExitBootServices (
   IN UINTN       MapKey
   )
 {
-  EFI_STATUS  Status;
-  CHAR8       GxMessage[96];
+  EFI_STATUS                 Status;
+  CHAR8                      GxMessage[224];
+  EFI_LOADED_IMAGE_PROTOCOL  *GxLoadedImage;
 
-  AsciiSPrint (GxMessage, sizeof (GxMessage), "OS EBS begin image=%p key=0x%lx",
-    ImageHandle, (UINT64)MapKey);
+  GxLoadedImage = NULL;
+  CoreHandleProtocol (ImageHandle, &gEfiLoadedImageProtocolGuid, (VOID **)&GxLoadedImage);
+  AsciiSPrint (GxMessage, sizeof (GxMessage), "OS EBS BEGIN image=%p parent=%p base=%p size=%lu map_key=0x%lx",
+    ImageHandle,
+    (GxLoadedImage != NULL) ? GxLoadedImage->ParentHandle : NULL,
+    (GxLoadedImage != NULL) ? GxLoadedImage->ImageBase : NULL,
+    (GxLoadedImage != NULL) ? (UINT64)GxLoadedImage->ImageSize : 0,
+    (UINT64)MapKey);
   GxDxeLog (GxMessage);
 
   //
@@ -1112,7 +1322,7 @@ CoreExitBootServices (
   //
   Status = CoreTerminateMemoryMap (MapKey);
   if (EFI_ERROR (Status)) {
-    AsciiSPrint (GxMessage, sizeof (GxMessage), "OS EBS rejected key=0x%lx status=%r",
+    AsciiSPrint (GxMessage, sizeof (GxMessage), "OS EBS REJECTED map_key=0x%lx status=%r",
       (UINT64)MapKey, Status);
     GxDxeLog (GxMessage);
     //
@@ -1123,7 +1333,7 @@ CoreExitBootServices (
   }
 
   gMemoryMapTerminated = TRUE;
-  AsciiSPrint (GxMessage, sizeof (GxMessage), "OS EBS map accepted key=0x%lx", (UINT64)MapKey);
+  AsciiSPrint (GxMessage, sizeof (GxMessage), "OS EBS MAP ACCEPTED map_key=0x%lx", (UINT64)MapKey);
   GxDxeLog (GxMessage);
 
   //

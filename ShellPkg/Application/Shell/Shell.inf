@@ -47,6 +47,7 @@
   MdePkg/MdePkg.dec
   ShellPkg/ShellPkg.dec
   MdeModulePkg/MdeModulePkg.dec
+  DasharoPayloadPkg/DasharoPayloadPkg.dec
 
 [LibraryClasses]
   BaseLib
@@ -73,6 +74,7 @@
   gShellAliasGuid                                         ## SOMETIMES_PRODUCES ## GUID
 
 [Protocols]
+  gGxDxeDiagnosticsProtocolGuid                         ## SOMETIMES_CONSUMES
   gEfiShellProtocolGuid                                   ## PRODUCES
                                                           ## SOMETIMES_CONSUMES
   gEfiShellParametersProtocolGuid                         ## PRODUCES

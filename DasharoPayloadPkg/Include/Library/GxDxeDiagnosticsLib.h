@@ -23,4 +23,19 @@ GxDxeDiagnosticsLog (
   }
 }
 
+STATIC inline
+VOID
+GxDxeDiagnosticsSetShellLoadTrace (
+  IN BOOLEAN  Active
+  )
+{
+  EFI_STATUS                   Status;
+  GX_DXE_DIAGNOSTICS_PROTOCOL  *Diagnostics;
+
+  Status = gBS->LocateProtocol (&gGxDxeDiagnosticsProtocolGuid, NULL, (VOID **)&Diagnostics);
+  if (!EFI_ERROR (Status) && (Diagnostics != NULL) && (Diagnostics->SetShellLoadTrace != NULL)) {
+    Diagnostics->SetShellLoadTrace (Active);
+  }
+}
+
 #endif

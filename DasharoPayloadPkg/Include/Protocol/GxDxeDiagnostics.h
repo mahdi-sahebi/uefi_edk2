@@ -38,9 +38,16 @@ EFI_STATUS
   OUT GX_DXE_DRIVER_STATUS    *DriverStatus
   );
 
+typedef
+EFI_STATUS
+(EFIAPI *GX_DXE_DIAGNOSTICS_SET_SHELL_LOAD_TRACE)(
+  IN BOOLEAN  Active
+  );
+
 struct _GX_DXE_DIAGNOSTICS_PROTOCOL {
   GX_DXE_DIAGNOSTICS_LOG                  Log;
   GX_DXE_DIAGNOSTICS_GET_DRIVER_STATUS    GetDriverStatus;
+  GX_DXE_DIAGNOSTICS_SET_SHELL_LOAD_TRACE SetShellLoadTrace;
 };
 
 extern EFI_GUID  gGxDxeDiagnosticsProtocolGuid;

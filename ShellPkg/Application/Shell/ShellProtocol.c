@@ -10,8 +10,74 @@
 **/
 
 #include "Shell.h"
+#include <Library/GxDxeDiagnosticsLib.h>
 
 #define INIT_NAME_BUFFER_SIZE  128
+
+STATIC
+VOID
+ShellTraceUnicode (
+  IN CONST CHAR8   *Label,
+  IN CONST CHAR16  *Text
+  )
+{
+  CHAR8   Message[160];
+  UINTN   Offset;
+  UINTN   Position;
+  UINTN   Length;
+  CHAR16  Character;
+
+  if (Text == NULL) {
+    AsciiSPrint (Message, sizeof (Message), "%a <none>", Label);
+    GxDxeDiagnosticsLog (Message);
+    return;
+  }
+
+  Length = StrLen (Text);
+  for (Offset = 0; Offset < Length; ) {
+    AsciiSPrint (Message, sizeof (Message), "%a off=%u: ", Label, Offset);
+    Position = AsciiStrLen (Message);
+    while ((Offset < Length) && (Position + 8 < sizeof (Message))) {
+      Character = Text[Offset++];
+      if ((Character >= 0x20) && (Character <= 0x7e) && (Character != '\\')) {
+        Message[Position++] = (CHAR8)Character;
+        Message[Position] = '\0';
+      } else if ((Character == '\\') && (Position + 2 < sizeof (Message))) {
+        Message[Position++] = '\\';
+        Message[Position++] = '\\';
+        Message[Position] = '\0';
+      } else {
+        AsciiSPrint (&Message[Position], sizeof (Message) - Position, "\\u%04x", Character);
+        Position += 6;
+      }
+    }
+
+    GxDxeDiagnosticsLog (Message);
+  }
+}
+
+STATIC
+VOID
+ShellTraceDevicePath (
+  IN CONST EFI_DEVICE_PATH_PROTOCOL  *DevicePath
+  )
+{
+  CHAR16  *DevicePathText;
+
+  if (DevicePath == NULL) {
+    GxDxeDiagnosticsLog ("SHELL PATH <none>");
+    return;
+  }
+
+  DevicePathText = ConvertDevicePathToText (DevicePath, FALSE, FALSE);
+  if (DevicePathText == NULL) {
+    GxDxeDiagnosticsLog ("SHELL PATH conversion failed");
+    return;
+  }
+
+  ShellTraceUnicode ("SHELL PATH", DevicePathText);
+  FreePool (DevicePathText);
+}
 
 /**
   Close an open file handle.
@@ -1498,6 +1564,8 @@ InternalShellExecuteDevicePath (
   UINTN                          Index;
   CHAR16                         *Walker;
   CHAR16                         *NewCmdLine;
+  CHAR8                          DiagnosticMessage[192];
+  BOOLEAN                        StartAttempted;
 
   if (ParentImageHandle == NULL) {
     return (EFI_INVALID_PARAMETER);
@@ -1507,9 +1575,18 @@ InternalShellExecuteDevicePath (
   ZeroMem (&ShellParamsProtocol, sizeof (EFI_SHELL_PARAMETERS_PROTOCOL));
 
   NewHandle = NULL;
+  StartAttempted = FALSE;
+  StartStatus    = EFI_NOT_STARTED;
+
+  AsciiSPrint (DiagnosticMessage, sizeof (DiagnosticMessage), "SHELL EXEC BEGIN parent=%p cmd_chars=%u",
+    *ParentImageHandle, (CommandLine != NULL) ? StrLen (CommandLine) : 0);
+  GxDxeDiagnosticsLog (DiagnosticMessage);
+  ShellTraceDevicePath (DevicePath);
+  ShellTraceUnicode ("SHELL CMD", CommandLine);
 
   NewCmdLine = AllocateCopyPool (StrSize (CommandLine), CommandLine);
   if (NewCmdLine == NULL) {
+    GxDxeDiagnosticsLog ("SHELL CMD COPY failed: OUT_OF_RESOURCES");
     return EFI_OUT_OF_RESOURCES;
   }
 
@@ -1523,6 +1600,8 @@ InternalShellExecuteDevicePath (
   // Load the image with:
   // FALSE - not from boot manager and NULL, 0 being not already in memory
   //
+  GxDxeDiagnosticsLog ("SHELL LOAD_IMAGE begin boot_policy=0 source_buffer=NULL");
+  GxDxeDiagnosticsSetShellLoadTrace (TRUE);
   Status = gBS->LoadImage (
                   FALSE,
                   *ParentImageHandle,
@@ -1531,6 +1610,9 @@ InternalShellExecuteDevicePath (
                   0,
                   &NewHandle
                   );
+  GxDxeDiagnosticsSetShellLoadTrace (FALSE);
+  AsciiSPrint (DiagnosticMessage, sizeof (DiagnosticMessage), "SHELL LOAD_IMAGE return status=%r handle=%p", Status, NewHandle);
+  GxDxeDiagnosticsLog (DiagnosticMessage);
 
   if (EFI_ERROR (Status)) {
     if (NewHandle != NULL) {
@@ -1538,6 +1620,8 @@ InternalShellExecuteDevicePath (
     }
 
     FreePool (NewCmdLine);
+    AsciiSPrint (DiagnosticMessage, sizeof (DiagnosticMessage), "SHELL EXEC RETURN status=%r start_attempted=0", Status);
+    GxDxeDiagnosticsLog (DiagnosticMessage);
     return (Status);
   }
 
@@ -1549,8 +1633,17 @@ InternalShellExecuteDevicePath (
                   NULL,
                   EFI_OPEN_PROTOCOL_GET_PROTOCOL
                   );
+  AsciiSPrint (DiagnosticMessage, sizeof (DiagnosticMessage), "SHELL OPEN_LOADED_IMAGE status=%r", Status);
+  GxDxeDiagnosticsLog (DiagnosticMessage);
 
   if (!EFI_ERROR (Status)) {
+    AsciiSPrint (DiagnosticMessage, sizeof (DiagnosticMessage),
+      "SHELL IMAGE type=%u base=%p size=%lu device=%p load_options_size=%u",
+      LoadedImage->ImageCodeType, LoadedImage->ImageBase, (UINT64)LoadedImage->ImageSize,
+      LoadedImage->DeviceHandle, LoadedImage->LoadOptionsSize);
+    GxDxeDiagnosticsLog (DiagnosticMessage);
+    ShellTraceDevicePath (LoadedImage->FilePath);
+
     //
     // If the image is not an app abort it.
     //
@@ -1570,6 +1663,9 @@ InternalShellExecuteDevicePath (
       LoadedImage->LoadOptionsSize = (UINT32)StrSize (NewCmdLine);
       LoadedImage->LoadOptions     = (VOID *)NewCmdLine;
     }
+    AsciiSPrint (DiagnosticMessage, sizeof (DiagnosticMessage), "SHELL LOAD_OPTIONS size=%u", LoadedImage->LoadOptionsSize);
+    GxDxeDiagnosticsLog (DiagnosticMessage);
+    ShellTraceUnicode ("SHELL LOAD_OPTIONS", (CONST CHAR16 *)LoadedImage->LoadOptions);
 
     //
     // Save our current environment settings for later restoration if necessary
@@ -1579,6 +1675,8 @@ InternalShellExecuteDevicePath (
       if (!EFI_ERROR (Status)) {
         Status = SetEnvironmentVariables (Environment);
       }
+      AsciiSPrint (DiagnosticMessage, sizeof (DiagnosticMessage), "SHELL ENVIRONMENT status=%r", Status);
+      GxDxeDiagnosticsLog (DiagnosticMessage);
     }
 
     //
@@ -1588,6 +1686,8 @@ InternalShellExecuteDevicePath (
     ShellParamsProtocol.StdOut = ShellInfoObject.NewShellParametersProtocol->StdOut;
     ShellParamsProtocol.StdErr = ShellInfoObject.NewShellParametersProtocol->StdErr;
     Status                     = UpdateArgcArgv (&ShellParamsProtocol, NewCmdLine, Efi_Application, NULL, NULL);
+    AsciiSPrint (DiagnosticMessage, sizeof (DiagnosticMessage), "SHELL ARGUMENTS status=%r argc=%u", Status, ShellParamsProtocol.Argc);
+    GxDxeDiagnosticsLog (DiagnosticMessage);
     if (EFI_ERROR (Status)) {
       goto UnloadImage;
     }
@@ -1622,6 +1722,8 @@ InternalShellExecuteDevicePath (
     }
 
     Status = gBS->InstallProtocolInterface (&NewHandle, &gEfiShellParametersProtocolGuid, EFI_NATIVE_INTERFACE, &ShellParamsProtocol);
+    AsciiSPrint (DiagnosticMessage, sizeof (DiagnosticMessage), "SHELL PARAMETERS_PROTOCOL install status=%r", Status);
+    GxDxeDiagnosticsLog (DiagnosticMessage);
     ASSERT_EFI_ERROR (Status);
 
     /// @todo initialize and install ShellInterface protocol on the new image for compatibility if - PcdGetBool(PcdShellSupportOldProtocols)
@@ -1630,11 +1732,15 @@ InternalShellExecuteDevicePath (
     // now start the image and if the caller wanted the return code pass it to them...
     //
     if (!EFI_ERROR (Status)) {
+      StartAttempted = TRUE;
+      GxDxeDiagnosticsLog ("SHELL START_IMAGE begin");
       StartStatus = gBS->StartImage (
                            NewHandle,
                            0,
                            NULL
                            );
+      AsciiSPrint (DiagnosticMessage, sizeof (DiagnosticMessage), "SHELL START_IMAGE return status=%r", StartStatus);
+      GxDxeDiagnosticsLog (DiagnosticMessage);
       if (StartImageStatus != NULL) {
         *StartImageStatus = StartStatus;
       }
@@ -1651,6 +1757,8 @@ InternalShellExecuteDevicePath (
 
 UnloadImage:
     // Unload image - We should only get here if we didn't call StartImage
+    AsciiSPrint (DiagnosticMessage, sizeof (DiagnosticMessage), "SHELL UNLOAD_IMAGE handle=%p status=%r", NewHandle, Status);
+    GxDxeDiagnosticsLog (DiagnosticMessage);
     gBS->UnloadImage (NewHandle);
 
 FreeAlloc:
@@ -1673,6 +1781,10 @@ FreeAlloc:
   }
 
   FreePool (NewCmdLine);
+
+  AsciiSPrint (DiagnosticMessage, sizeof (DiagnosticMessage),
+    "SHELL EXEC RETURN status=%r start_attempted=%u start_status=%r", Status, StartAttempted, StartStatus);
+  GxDxeDiagnosticsLog (DiagnosticMessage);
 
   return (Status);
 }
