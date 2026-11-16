@@ -1486,7 +1486,7 @@ CoreExitBootServices (
   }
 
   gMemoryMapTerminated = TRUE;
-  AsciiSPrint (GxMessage, sizeof (GxMessage), "OS EBS MAP ACCEPTED status=EFI_SUCCESS map_key=0x%lx", (UINT64)MapKey);
+  AsciiSPrint (GxMessage, sizeof (GxMessage), "OS EBS MAP KEY ACCEPTED status=EFI_SUCCESS map_key=0x%lx cleanup=IN_PROGRESS", (UINT64)MapKey);
   GxDxeLog (GxMessage);
 
   //
@@ -1540,6 +1540,14 @@ CoreExitBootServices (
   // Update the AtRuntime field in Runtiem AP.
   //
   gRuntime->AtRuntime = TRUE;
+
+  //
+  // This is the final diagnostic checkpoint before returning success to the
+  // caller of ExitBootServices(). Keep it after all core cleanup, and do not
+  // add boot-service allocations or protocol calls after the memory map has
+  // been terminated.
+  //
+  GxDxeLog ("OS EBS CORE RETURNING status=EFI_SUCCESS");
 
   return Status;
 }
