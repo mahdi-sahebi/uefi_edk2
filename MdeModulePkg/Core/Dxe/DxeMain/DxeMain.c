@@ -21,6 +21,8 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 STATIC UINTN  mGxDxeScreenRow;
 STATIC UINT32 mGxDxeSequence;
+STATIC EFI_HANDLE mGxDxeImagePathHandle;
+STATIC CHAR16 *mGxDxeImagePathText;
 STATIC UINT64 mGxDxeElapsedMilliseconds;
 STATIC UINT64 mGxDxeLastClockMilliseconds;
 STATIC BOOLEAN mGxDxeClockStarted;
@@ -347,9 +349,11 @@ GxDxeScreenLog (
   }
 }
 
+STATIC
 VOID
-GxDxeLog (
-  IN CONST CHAR8  *Message
+GxDxeLogInternal (
+  IN CONST CHAR8  *Message,
+  IN BOOLEAN      ShowOnScreen
   )
 {
   CHAR8   NumberedMessage[GX_DXE_LOG_BUFFER_SIZE];
@@ -372,7 +376,139 @@ GxDxeLog (
 
   AsciiSPrint (NumberedMessage, sizeof (NumberedMessage), "[%04u %a] %a", mGxDxeSequence, ElapsedText, Message);
   DEBUG ((DEBUG_ERROR, "[GX-DXE][%04u][%a] %a\n", mGxDxeSequence, ElapsedText, Message));
-  GxDxeScreenLog (NumberedMessage);
+  if (ShowOnScreen) {
+    GxDxeScreenLog (NumberedMessage);
+  }
+}
+
+VOID
+GxDxeLog (
+  IN CONST CHAR8  *Message
+  )
+{
+  GxDxeLogInternal (Message, TRUE);
+}
+
+VOID
+GxDxeLogSerialOnly (
+  IN CONST CHAR8  *Message
+  )
+{
+  GxDxeLogInternal (Message, FALSE);
+}
+
+VOID
+GxDxeLogUnicodeData (
+  IN CONST CHAR8   *Label,
+  IN CONST CHAR16  *Text,
+  IN UINTN         TextSizeInBytes
+  )
+{
+  CHAR8    Message[160];
+  CHAR8    Summary[64];
+  CHAR16   Character;
+  UINTN    CharacterCount;
+  UINTN    Offset;
+  UINTN    Position;
+  UINTN    SummaryPosition;
+  BOOLEAN  Truncated;
+
+  if ((Label == NULL) || (Text == NULL)) {
+    AsciiSPrint (Summary, sizeof (Summary), "%a <none>", (Label != NULL) ? Label : "unicode");
+    GxDxeLog (Summary);
+    return;
+  }
+
+  CharacterCount = TextSizeInBytes / sizeof (CHAR16);
+  AsciiSPrint (Summary, sizeof (Summary), "%a=", Label);
+  SummaryPosition = AsciiStrLen (Summary);
+  Truncated       = FALSE;
+  for (Offset = 0; (Offset < CharacterCount) && (SummaryPosition < 42); Offset++) {
+    CopyMem (&Character, &Text[Offset], sizeof (Character));
+    if ((Character >= 0x20) && (Character <= 0x7e) && (Character != '\\')) {
+      Summary[SummaryPosition++] = (CHAR8)Character;
+      Summary[SummaryPosition]   = '\0';
+    } else {
+      Truncated = TRUE;
+      break;
+    }
+  }
+
+  if ((Offset < CharacterCount) || (TextSizeInBytes & 1) != 0) {
+    Truncated = TRUE;
+  }
+
+  if (Truncated && (SummaryPosition < sizeof (Summary) - 4)) {
+    CopyMem (&Summary[SummaryPosition], "...", sizeof ("...") );
+  }
+
+  GxDxeLog (Summary);
+
+  for (Offset = 0; Offset < CharacterCount; ) {
+    AsciiSPrint (Message, sizeof (Message), "%a offset=%lu: ", Label, (UINT64)Offset);
+    Position = AsciiStrLen (Message);
+    while (Offset < CharacterCount) {
+      CopyMem (&Character, &Text[Offset], sizeof (Character));
+      if ((Character >= 0x20) && (Character <= 0x7e) && (Character != '\\')) {
+        if (Position + 2 >= sizeof (Message)) {
+          break;
+        }
+
+        Message[Position++] = (CHAR8)Character;
+        Message[Position]   = '\0';
+        Offset++;
+      } else if (Character == '\\') {
+        if (Position + 3 >= sizeof (Message)) {
+          break;
+        }
+
+        Message[Position++] = '\\';
+        Message[Position++] = '\\';
+        Message[Position]   = '\0';
+        Offset++;
+      } else {
+        if (Position + 7 >= sizeof (Message)) {
+          break;
+        }
+
+        AsciiSPrint (&Message[Position], sizeof (Message) - Position, "\\u%04x", Character);
+        Position += 6;
+        Offset++;
+      }
+    }
+
+    GxDxeLogSerialOnly (Message);
+  }
+
+  if ((TextSizeInBytes & 1) != 0) {
+    GxDxeLogSerialOnly ("unicode data has trailing byte");
+  }
+}
+
+VOID
+GxDxeSetCurrentImagePath (
+  IN EFI_HANDLE  ImageHandle,
+  IN CHAR16      *DevicePathText
+  )
+{
+  if (mGxDxeImagePathText != NULL) {
+    CoreFreePool (mGxDxeImagePathText);
+  }
+
+  mGxDxeImagePathHandle = ImageHandle;
+  mGxDxeImagePathText   = DevicePathText;
+}
+
+VOID
+GxDxeLogCurrentImagePath (
+  IN EFI_HANDLE  ImageHandle
+  )
+{
+  if ((mGxDxeImagePathHandle == ImageHandle) && (mGxDxeImagePathText != NULL)) {
+    GxDxeLogUnicodeData ("OS EBS PATH", mGxDxeImagePathText, StrSize (mGxDxeImagePathText));
+  } else {
+    GxDxeLog ("OS EBS PATH <unavailable>");
+  }
 }
 
 STATIC
@@ -1290,18 +1426,35 @@ CoreExitBootServices (
   )
 {
   EFI_STATUS                 Status;
+  EFI_STATUS                 GxImageStatus;
   CHAR8                      GxMessage[224];
   EFI_LOADED_IMAGE_PROTOCOL  *GxLoadedImage;
+  LOADED_IMAGE_PRIVATE_DATA   *GxImage;
 
   GxLoadedImage = NULL;
-  CoreHandleProtocol (ImageHandle, &gEfiLoadedImageProtocolGuid, (VOID **)&GxLoadedImage);
-  AsciiSPrint (GxMessage, sizeof (GxMessage), "OS EBS BEGIN image=%p parent=%p base=%p size=%lu map_key=0x%lx",
+  GxImageStatus = CoreHandleProtocol (ImageHandle, &gEfiLoadedImageProtocolGuid, (VOID **)&GxLoadedImage);
+  GxImage       = (!EFI_ERROR (GxImageStatus) && (GxLoadedImage != NULL)) ?
+                  LOADED_IMAGE_PRIVATE_DATA_FROM_THIS (GxLoadedImage) : NULL;
+  AsciiSPrint (GxMessage, sizeof (GxMessage),
+    "OS EBS BEGIN image=%p loaded_image_status=%r parent=%p base=%p size=%lu machine=%u entry=%p options=%u map_key=0x%lx",
     ImageHandle,
+    GxImageStatus,
     (GxLoadedImage != NULL) ? GxLoadedImage->ParentHandle : NULL,
     (GxLoadedImage != NULL) ? GxLoadedImage->ImageBase : NULL,
     (GxLoadedImage != NULL) ? (UINT64)GxLoadedImage->ImageSize : 0,
+    (GxImage != NULL) ? GxImage->Machine : 0,
+    (GxImage != NULL) ? GxImage->EntryPoint : NULL,
+    (GxLoadedImage != NULL) ? GxLoadedImage->LoadOptionsSize : 0,
     (UINT64)MapKey);
   GxDxeLog (GxMessage);
+
+  GxDxeLogCurrentImagePath (ImageHandle);
+
+  if ((GxLoadedImage != NULL) && (GxLoadedImage->LoadOptions != NULL) && (GxLoadedImage->LoadOptionsSize != 0)) {
+    GxDxeLogUnicodeData ("OS EBS OPTIONS", (CONST CHAR16 *)GxLoadedImage->LoadOptions, GxLoadedImage->LoadOptionsSize);
+  } else {
+    GxDxeLog ("OS EBS OPTIONS <none>");
+  }
 
   //
   // Notify other drivers of their last chance to use boot services
@@ -1333,7 +1486,7 @@ CoreExitBootServices (
   }
 
   gMemoryMapTerminated = TRUE;
-  AsciiSPrint (GxMessage, sizeof (GxMessage), "OS EBS MAP ACCEPTED map_key=0x%lx", (UINT64)MapKey);
+  AsciiSPrint (GxMessage, sizeof (GxMessage), "OS EBS MAP ACCEPTED status=EFI_SUCCESS map_key=0x%lx", (UINT64)MapKey);
   GxDxeLog (GxMessage);
 
   //

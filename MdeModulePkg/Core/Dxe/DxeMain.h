@@ -25,6 +25,27 @@ GxDxeLog (
   IN CONST CHAR8  *Message
   );
 
+VOID
+GxDxeLogSerialOnly (
+  IN CONST CHAR8  *Message
+  );
+
+VOID
+GxDxeLogUnicodeData (
+  IN CONST CHAR8   *Label,
+  IN CONST CHAR16  *Text,
+  IN UINTN         TextSizeInBytes
+  );
+VOID
+GxDxeSetCurrentImagePath (
+  IN EFI_HANDLE  ImageHandle,
+  IN CHAR16      *DevicePathText
+  );
+VOID
+GxDxeLogCurrentImagePath (
+  IN EFI_HANDLE  ImageHandle
+  );
+
 BOOLEAN
 GxDxeIsShellLoadTraceActive (
   VOID

@@ -1697,6 +1697,7 @@ CoreStartImage (
   UINTN                      SetJumpFlag;
   EFI_HANDLE                 Handle;
   CHAR8                      GxMessage[256];
+  CHAR16                     *GxDevicePathText;
 
   Handle = ImageHandle;
 
@@ -1709,8 +1710,23 @@ CoreStartImage (
       Image->Machine, Image->EntryPoint, Image->Info.LoadOptionsSize);
     GxDxeLog (GxMessage);
     if (Image->Info.FilePath != NULL) {
-      AsciiSPrint (GxMessage, sizeof (GxMessage), "OS START FILEPATH_REF handle=%p path=%p", ImageHandle, Image->Info.FilePath);
-      GxDxeLog (GxMessage);
+      GxDevicePathText = ConvertDevicePathToText (Image->Info.FilePath, FALSE, FALSE);
+      if (GxDevicePathText != NULL) {
+        GxDxeLogUnicodeData ("OS START PATH", GxDevicePathText, StrSize (GxDevicePathText));
+        GxDxeSetCurrentImagePath (ImageHandle, GxDevicePathText);
+      } else {
+        GxDxeSetCurrentImagePath (ImageHandle, NULL);
+        GxDxeLog ("OS START PATH conversion FAILED");
+      }
+    } else {
+      GxDxeSetCurrentImagePath (ImageHandle, NULL);
+      GxDxeLog ("OS START PATH <none>");
+    }
+
+    if ((Image->Info.LoadOptions != NULL) && (Image->Info.LoadOptionsSize != 0)) {
+      GxDxeLogUnicodeData ("OS START OPTIONS", (CONST CHAR16 *)Image->Info.LoadOptions, Image->Info.LoadOptionsSize);
+    } else {
+      GxDxeLog ("OS START OPTIONS <none>");
     }
   }
   if ((Image == NULL) ||  Image->Started) {
