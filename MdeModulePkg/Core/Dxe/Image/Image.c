@@ -1167,6 +1167,7 @@ CoreLoadImageCommon (
   BOOLEAN                    ImageIsFromLoadFile;
   BOOLEAN                    TraceImageLoad;
   CHAR8                      GxMessage[192];
+  CHAR16                     *GxFilePathText;
 
   SecurityStatus = EFI_SUCCESS;
 
@@ -1188,10 +1189,29 @@ CoreLoadImageCommon (
 
   TraceImageLoad = GxDxeIsShellLoadTraceActive ();
   if (TraceImageLoad) {
-    AsciiSPrint (GxMessage, sizeof (GxMessage), "LOAD BEGIN parent=%a boot=%u source_size=%lu path=%p",
+    AsciiSPrint (GxMessage, sizeof (GxMessage),
+      "LOAD BEGIN parent=%a parent_handle=%p boot=%u source_buffer=%p source_size=%lu path=%p",
       (ParentImage->ImageContext.PdbPointer != NULL) ? ParentImage->ImageContext.PdbPointer : "unknown",
-      BootPolicy, (UINT64)SourceSize, FilePath);
+      ParentImageHandle, BootPolicy, SourceBuffer, (UINT64)SourceSize, FilePath);
     GxDxeLog (GxMessage);
+    if (FilePath != NULL) {
+      GxFilePathText = ConvertDevicePathToText (FilePath, FALSE, FALSE);
+      if (GxFilePathText != NULL) {
+        GxDxeLogUnicodeData ("LOAD FILEPATH", GxFilePathText, StrSize (GxFilePathText));
+        CoreFreePool (GxFilePathText);
+      } else {
+        GxDxeLog ("LOAD FILEPATH conversion FAILED");
+      }
+    } else {
+      GxDxeLog ("LOAD FILEPATH <none>");
+    }
+    if (ParentImage->Info.FilePath != NULL) {
+      GxFilePathText = ConvertDevicePathToText (ParentImage->Info.FilePath, FALSE, FALSE);
+      if (GxFilePathText != NULL) {
+        GxDxeLogUnicodeData ("LOAD PARENT_PATH", GxFilePathText, StrSize (GxFilePathText));
+        CoreFreePool (GxFilePathText);
+      }
+    }
   }
 
   ZeroMem (&FHand, sizeof (IMAGE_FILE_HANDLE));
@@ -1698,6 +1718,8 @@ CoreStartImage (
   EFI_HANDLE                 Handle;
   CHAR8                      GxMessage[256];
   CHAR16                     *GxDevicePathText;
+  CHAR16                     *GxParentPathText;
+  LOADED_IMAGE_PRIVATE_DATA  *ParentImage;
 
   Handle = ImageHandle;
 
@@ -1709,6 +1731,28 @@ CoreStartImage (
       ImageHandle, Image->Info.ParentHandle, Image->Info.ImageBase, (UINT64)Image->Info.ImageSize,
       Image->Machine, Image->EntryPoint, Image->Info.LoadOptionsSize);
     GxDxeLog (GxMessage);
+    ParentImage = (Image->Info.ParentHandle != NULL) ?
+                  CoreLoadedImageInfo (Image->Info.ParentHandle) : NULL;
+    if (ParentImage != NULL) {
+      AsciiSPrint (GxMessage, sizeof (GxMessage),
+        "OS START PARENT handle=%p base=%p size=%lu machine=%u",
+        Image->Info.ParentHandle, ParentImage->Info.ImageBase,
+        (UINT64)ParentImage->Info.ImageSize, ParentImage->Machine);
+      GxDxeLog (GxMessage);
+      if (ParentImage->Info.FilePath != NULL) {
+        GxParentPathText = ConvertDevicePathToText (ParentImage->Info.FilePath, FALSE, FALSE);
+        if (GxParentPathText != NULL) {
+          GxDxeLogUnicodeData ("OS START PARENT_PATH", GxParentPathText, StrSize (GxParentPathText));
+          CoreFreePool (GxParentPathText);
+        } else {
+          GxDxeLog ("OS START PARENT_PATH conversion FAILED");
+        }
+      } else {
+        GxDxeLog ("OS START PARENT_PATH <none>");
+      }
+    } else {
+      GxDxeLog ("OS START PARENT image metadata unavailable");
+    }
     if (Image->Info.FilePath != NULL) {
       GxDevicePathText = ConvertDevicePathToText (Image->Info.FilePath, FALSE, FALSE);
       if (GxDevicePathText != NULL) {
@@ -1816,7 +1860,12 @@ CoreStartImage (
     //
     Image->Started = TRUE;
     if (Image->Type == EFI_IMAGE_SUBSYSTEM_EFI_APPLICATION) {
-      GxDxeLog ("OS START ENTRYPOINT begin");
+      AsciiSPrint (GxMessage, sizeof (GxMessage),
+        "OS START ENTRYPOINT begin handle=%p image=%a base=%p size=%lu machine=%u entry=%p",
+        ImageHandle,
+        (Image->ImageContext.PdbPointer != NULL) ? Image->ImageContext.PdbPointer : "unknown",
+        Image->Info.ImageBase, (UINT64)Image->Info.ImageSize, Image->Machine, Image->EntryPoint);
+      GxDxeLog (GxMessage);
     }
     Image->Status  = Image->EntryPoint (ImageHandle, Image->Info.SystemTable);
     if (Image->Type == EFI_IMAGE_SUBSYSTEM_EFI_APPLICATION) {

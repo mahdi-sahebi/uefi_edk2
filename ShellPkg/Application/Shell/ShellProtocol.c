@@ -1733,12 +1733,15 @@ InternalShellExecuteDevicePath (
     //
     if (!EFI_ERROR (Status)) {
       StartAttempted = TRUE;
+      GxDxeDiagnosticsLog ("SHELL IMAGE_TRACE enable nested LoadImage diagnostics");
+      GxDxeDiagnosticsSetShellLoadTrace (TRUE);
       GxDxeDiagnosticsLog ("SHELL START_IMAGE begin");
       StartStatus = gBS->StartImage (
                            NewHandle,
                            0,
                            NULL
                            );
+      GxDxeDiagnosticsSetShellLoadTrace (FALSE);
       AsciiSPrint (DiagnosticMessage, sizeof (DiagnosticMessage), "SHELL START_IMAGE return status=%r", StartStatus);
       GxDxeDiagnosticsLog (DiagnosticMessage);
       if (StartImageStatus != NULL) {

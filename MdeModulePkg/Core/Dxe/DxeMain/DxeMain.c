@@ -271,11 +271,19 @@ GxDxeScreenLog (
     Pinned = TRUE;
     PinnedRow = 0;
   } else if ((AsciiStrStr (Message, "SHELL LOAD_IMAGE") != NULL) ||
+             (AsciiStrStr (Message, "LOAD BEGIN") != NULL) ||
+             (AsciiStrStr (Message, "LOAD FILEPATH") != NULL) ||
+             (AsciiStrStr (Message, "LOAD PARENT_PATH") != NULL) ||
+             (AsciiStrStr (Message, "LOAD RESOLVE") != NULL) ||
+             (AsciiStrStr (Message, "LOAD FILE_READ") != NULL) ||
+             (AsciiStrStr (Message, "LOAD AUTH") != NULL) ||
+             (AsciiStrStr (Message, "LOAD PE") != NULL) ||
              (AsciiStrStr (Message, "LOAD DONE") != NULL))
   {
     Pinned = TRUE;
     PinnedRow = 1;
-  } else if (AsciiStrStr (Message, "OS START BEGIN") != NULL) {
+  } else if ((AsciiStrStr (Message, "OS START BEGIN") != NULL) ||
+             (AsciiStrStr (Message, "OS START PARENT_PATH") != NULL)) {
     Pinned = TRUE;
     PinnedRow = 2;
   } else if (AsciiStrStr (Message, "OS EBS ") != NULL) {
