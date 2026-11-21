@@ -218,7 +218,7 @@ GxDxeGlyphColumn (
 }
 
 STATIC
-VOID
+BOOLEAN
 GxDxeSaveScreenLogBackground (
   IN EFI_PEI_GRAPHICS_INFO_HOB  *GraphicsInfo,
   IN UINTN                      ScreenRows
@@ -234,8 +234,12 @@ GxDxeSaveScreenLogBackground (
   UINT32                                 *Backup;
   volatile UINT32                        *FrameBuffer;
 
-  if ((mGxDxeScreenBackup != NULL) || (GraphicsInfo == NULL)) {
-    return;
+  if (mGxDxeScreenBackup != NULL) {
+    return TRUE;
+  }
+
+  if (GraphicsInfo == NULL) {
+    return FALSE;
   }
 
   Mode = &GraphicsInfo->GraphicsMode;
@@ -244,7 +248,7 @@ GxDxeSaveScreenLogBackground (
       (Mode->HorizontalResolution > MAX_UINTN / sizeof (UINT32)) ||
       (Mode->PixelsPerScanLine > MAX_UINTN / sizeof (UINT32)))
   {
-    return;
+    return FALSE;
   }
 
   RowBytes       = Mode->HorizontalResolution * sizeof (UINT32);
@@ -255,13 +259,13 @@ GxDxeSaveScreenLogBackground (
   }
 
   if ((ScreenRows == 0) || (ScreenRows > MAX_UINTN / RowBytes)) {
-    return;
+    return FALSE;
   }
 
   BackupBytes = ScreenRows * RowBytes;
   Backup      = NULL;
   if (EFI_ERROR (CoreAllocatePool (EfiBootServicesData, BackupBytes, (VOID **)&Backup))) {
-    return;
+    return FALSE;
   }
 
   FrameBuffer = (volatile UINT32 *)(UINTN)GraphicsInfo->FrameBufferBase;
@@ -277,6 +281,7 @@ GxDxeSaveScreenLogBackground (
   mGxDxeScreenBackupRows  = ScreenRows;
   mGxDxeScreenBackupPitch = Mode->PixelsPerScanLine;
   mGxDxeScreenBackupBase  = GraphicsInfo->FrameBufferBase;
+  return TRUE;
 }
 
 STATIC
@@ -396,7 +401,13 @@ GxDxeScreenLog (
     return;
   }
 
-  GxDxeSaveScreenLogBackground (GraphicsInfo, ScreenRows);
+  // Keep the framebuffer untouched until its original pixels are saved.
+  // DXE diagnostics run before the DXE memory services are ready, so the
+  // backup allocation can fail on early calls. Drawing anyway would make a
+  // later successful backup preserve our own diagnostic overlay.
+  if (!GxDxeSaveScreenLogBackground (GraphicsInfo, ScreenRows)) {
+    return;
+  }
 
   for (MessageOffset = 0; Message[MessageOffset] != '\0'; MessageOffset += GX_DXE_FB_COLUMNS) {
     if (Pinned) {
