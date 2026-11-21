@@ -21,6 +21,11 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 STATIC UINTN  mGxDxeScreenRow;
 STATIC UINT32 mGxDxeSequence;
+STATIC UINT32 *mGxDxeScreenBackup;
+STATIC UINTN  mGxDxeScreenBackupWidth;
+STATIC UINTN  mGxDxeScreenBackupRows;
+STATIC UINTN  mGxDxeScreenBackupPitch;
+STATIC UINT64 mGxDxeScreenBackupBase;
 STATIC EFI_HANDLE mGxDxeImagePathHandle;
 STATIC CHAR16 *mGxDxeImagePathText;
 STATIC UINT64 mGxDxeElapsedMilliseconds;
@@ -214,6 +219,91 @@ GxDxeGlyphColumn (
 
 STATIC
 VOID
+GxDxeSaveScreenLogBackground (
+  IN EFI_PEI_GRAPHICS_INFO_HOB  *GraphicsInfo,
+  IN UINTN                      ScreenRows
+  )
+{
+  EFI_GRAPHICS_OUTPUT_MODE_INFORMATION  *Mode;
+  UINTN                                  RowBytes;
+  UINTN                                  ScanLineBytes;
+  UINTN                                  AvailableRows;
+  UINTN                                  BackupBytes;
+  UINTN                                  Row;
+  UINTN                                  Column;
+  UINT32                                 *Backup;
+  volatile UINT32                        *FrameBuffer;
+
+  if ((mGxDxeScreenBackup != NULL) || (GraphicsInfo == NULL)) {
+    return;
+  }
+
+  Mode = &GraphicsInfo->GraphicsMode;
+  if ((GraphicsInfo->FrameBufferBase == 0) || (Mode->HorizontalResolution == 0) ||
+      (Mode->PixelsPerScanLine < Mode->HorizontalResolution) ||
+      (Mode->HorizontalResolution > MAX_UINTN / sizeof (UINT32)) ||
+      (Mode->PixelsPerScanLine > MAX_UINTN / sizeof (UINT32)))
+  {
+    return;
+  }
+
+  RowBytes       = Mode->HorizontalResolution * sizeof (UINT32);
+  ScanLineBytes  = Mode->PixelsPerScanLine * sizeof (UINT32);
+  AvailableRows  = GraphicsInfo->FrameBufferSize / ScanLineBytes;
+  if (ScreenRows > AvailableRows) {
+    ScreenRows = AvailableRows;
+  }
+
+  if ((ScreenRows == 0) || (ScreenRows > MAX_UINTN / RowBytes)) {
+    return;
+  }
+
+  BackupBytes = ScreenRows * RowBytes;
+  Backup      = NULL;
+  if (EFI_ERROR (CoreAllocatePool (EfiBootServicesData, BackupBytes, (VOID **)&Backup))) {
+    return;
+  }
+
+  FrameBuffer = (volatile UINT32 *)(UINTN)GraphicsInfo->FrameBufferBase;
+  for (Row = 0; Row < ScreenRows; Row++) {
+    for (Column = 0; Column < Mode->HorizontalResolution; Column++) {
+      Backup[Row * Mode->HorizontalResolution + Column] =
+        FrameBuffer[Row * Mode->PixelsPerScanLine + Column];
+    }
+  }
+
+  mGxDxeScreenBackup      = Backup;
+  mGxDxeScreenBackupWidth = Mode->HorizontalResolution;
+  mGxDxeScreenBackupRows  = ScreenRows;
+  mGxDxeScreenBackupPitch = Mode->PixelsPerScanLine;
+  mGxDxeScreenBackupBase  = GraphicsInfo->FrameBufferBase;
+}
+
+STATIC
+VOID
+GxDxeRestoreScreenLogBackground (
+  VOID
+  )
+{
+  UINTN                   Row;
+  UINTN                   Column;
+  volatile UINT32         *FrameBuffer;
+
+  if (mGxDxeScreenBackup == NULL) {
+    return;
+  }
+
+  FrameBuffer = (volatile UINT32 *)(UINTN)mGxDxeScreenBackupBase;
+  for (Row = 0; Row < mGxDxeScreenBackupRows; Row++) {
+    for (Column = 0; Column < mGxDxeScreenBackupWidth; Column++) {
+      FrameBuffer[Row * mGxDxeScreenBackupPitch + Column] =
+        mGxDxeScreenBackup[Row * mGxDxeScreenBackupWidth + Column];
+    }
+  }
+}
+
+STATIC
+VOID
 GxDxeScreenLog (
   IN CONST CHAR8  *Message
   )
@@ -305,6 +395,8 @@ GxDxeScreenLog (
   } else if (Mode->PixelFormat != PixelBlueGreenRedReserved8BitPerColor) {
     return;
   }
+
+  GxDxeSaveScreenLogBackground (GraphicsInfo, ScreenRows);
 
   for (MessageOffset = 0; Message[MessageOffset] != '\0'; MessageOffset += GX_DXE_FB_COLUMNS) {
     if (Pinned) {
@@ -1555,7 +1647,8 @@ CoreExitBootServices (
   // add boot-service allocations or protocol calls after the memory map has
   // been terminated.
   //
-  GxDxeLog ("OS EBS CORE RETURNING status=EFI_SUCCESS");
+  GxDxeLogSerialOnly ("OS EBS CORE RETURNING status=EFI_SUCCESS");
+  GxDxeRestoreScreenLogBackground ();
 
   return Status;
 }
