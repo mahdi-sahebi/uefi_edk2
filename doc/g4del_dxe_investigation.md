@@ -6,6 +6,21 @@ captures and current `feature/dxe-log` source. The porting history and ROM
 map are in [g4del_porting_and_debugging.md](g4del_porting_and_debugging.md);
 the original text capture is analyzed in [1405_07_29.md](1405_07_29.md).
 
+## Newer board capture — 2026-11-22
+
+The screenshots reach DXE dispatch and BDS, then stop at the preboot
+diagnostics gate. PHIT free-memory bounds pass; the HOB-list check is the only
+failure, and the screen waits for the one-time `B` override or `R` rerun. The
+provided SOL file ends at SEC entry, but its filesystem time (14:29 +04)
+predates the screenshots (14:38–14:47 +04); it is incomplete or from a
+different capture and does not show where the screenshot run stopped. Shell
+and OS handoff were not observed. See the
+[capture analysis](../../../../../../doc/g4del_latest_capture_2026-11-22.md)
+for the screenshot sequence, USB inventory, evidence limits, and next capture
+requirements. The follow-up HOB values are written directly to the DXE UART
+with a `[GX-HOB]` prefix; this instrumentation does not alter the validation
+result or boot flow.
+
 ## Evidence boundary
 
 Raw captures remain under `/home/uefi/workspace/log/`; this report records

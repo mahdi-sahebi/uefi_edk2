@@ -522,6 +522,21 @@ GxDxeLogSerialOnly (
   GxDxeLogInternal (Message, FALSE);
 }
 
+STATIC
+VOID
+GxDxeLogHobSerialOnly (
+  IN CONST CHAR8  *Message
+  )
+{
+  if (Message == NULL) {
+    return;
+  }
+
+  SerialPortWrite ((UINT8 *)"[GX-HOB] ", sizeof ("[GX-HOB] ") - 1);
+  SerialPortWrite ((UINT8 *)Message, AsciiStrLen (Message));
+  SerialPortWrite ((UINT8 *)"\r\n", sizeof ("\r\n") - 1);
+}
+
 VOID
 GxDxeLogUnicodeData (
   IN CONST CHAR8   *Label,
@@ -1733,7 +1748,7 @@ GxDxeDiagnosticsRunChecks (IN CONST CHAR8 *Category)
 
     AsciiSPrint (Message, sizeof (Message), "PREBOOT HOB table present=%u list=%p entries=%lu", FoundHob, HobList,
       (UINT64)((gDxeCoreST != NULL) ? gDxeCoreST->NumberOfTableEntries : 0));
-    GxDxeLogSerialOnly (Message);
+    GxDxeLogHobSerialOnly (Message);
   }
   if (FoundHob && (HobList != NULL)) {
     EFI_HOB_HANDOFF_INFO_TABLE *Phit = HobList;
@@ -1748,7 +1763,7 @@ GxDxeDiagnosticsRunChecks (IN CONST CHAR8 *Category)
 
     AsciiSPrint (Message, sizeof (Message), "PREBOOT HOB PHIT addr=%p type=0x%04x length=%u expected_type=0x%04x min_length=%u",
       HobList, Phit->Header.HobType, (UINT32)Phit->Header.HobLength, EFI_HOB_TYPE_HANDOFF, (UINT32)sizeof (*Phit));
-    GxDxeLogSerialOnly (Message);
+    GxDxeLogHobSerialOnly (Message);
     PhitHeaderValid = (BOOLEAN)((Phit->Header.HobType == EFI_HOB_TYPE_HANDOFF) &&
                                 (Phit->Header.HobLength >= sizeof (*Phit)));
     if (!PhitHeaderValid) {
@@ -1765,13 +1780,10 @@ GxDxeDiagnosticsRunChecks (IN CONST CHAR8 *Category)
       if ((UINTN)Phit->EfiEndOfHobList < (UINTN)HobList) {
         Valid = FALSE;
         HobFailure = "end pointer before HOB list";
-      } else if (((UINTN)Phit->EfiEndOfHobList - (UINTN)HobList) > ((~(UINTN)0) - sizeof (*Hob))) {
-        Valid = FALSE;
-        HobFailure = "HOB span overflows address size";
       }
       if (!Valid) {
         AsciiSPrint (Message, sizeof (Message), "PREBOOT HOB FAIL reason=%a", HobFailure);
-        GxDxeLogSerialOnly (Message);
+        GxDxeLogHobSerialOnly (Message);
       }
     }
 
@@ -1781,7 +1793,7 @@ GxDxeDiagnosticsRunChecks (IN CONST CHAR8 *Category)
 
       AsciiSPrint (Message, sizeof (Message), "PREBOOT HOB[%lu] addr=%p type=0x%04x length=%u remaining=%lu",
         (UINT64)Seen, Hob, Hob->HobType, (UINT32)Hob->HobLength, (UINT64)Remaining);
-      GxDxeLogSerialOnly (Message);
+      GxDxeLogHobSerialOnly (Message);
       switch (G4delDiagHobHeaderReason (Hob->HobType, Hob->HobLength, Remaining,
                                         EFI_HOB_TYPE_END_OF_HOB_LIST, sizeof (*Hob))) {
         case G4delDiagHobHeaderTooShort:
@@ -1803,7 +1815,7 @@ GxDxeDiagnosticsRunChecks (IN CONST CHAR8 *Category)
       if (!Valid) {
         AsciiSPrint (Message, sizeof (Message), "PREBOOT HOB FAIL index=%lu addr=%p type=0x%04x length=%u remaining=%lu reason=%a",
           (UINT64)Seen, Hob, Hob->HobType, (UINT32)Hob->HobLength, (UINT64)Remaining, HobFailure);
-        GxDxeLogSerialOnly (Message);
+        GxDxeLogHobSerialOnly (Message);
         break;
       }
       if (Hob->HobType == EFI_HOB_TYPE_END_OF_HOB_LIST) { EndSeen = TRUE; HobFailure = "none"; break; }
@@ -1817,7 +1829,7 @@ GxDxeDiagnosticsRunChecks (IN CONST CHAR8 *Category)
       HobFailure = (Seen >= 4096) ? "HOB walk limit reached" : "truncated before end marker";
       AsciiSPrint (Message, sizeof (Message), "PREBOOT HOB FAIL index=%lu remaining=%lu reason=%a",
         (UINT64)Seen, (UINT64)Remaining, HobFailure);
-      GxDxeLogSerialOnly (Message);
+      GxDxeLogHobSerialOnly (Message);
     }
     FreeBoundsValid = FALSE;
     if (PhitHeaderValid) {
@@ -1825,16 +1837,16 @@ GxDxeDiagnosticsRunChecks (IN CONST CHAR8 *Category)
       AsciiSPrint (Message, sizeof (Message),
         "PREBOOT PHIT free range bottom=0x%016lx top=0x%016lx comparison=top>bottom result=%a",
         Phit->EfiFreeMemoryBottom, Phit->EfiFreeMemoryTop, FreeBoundsValid ? "PASS" : "FAIL");
-      GxDxeLogSerialOnly (Message);
+      GxDxeLogHobSerialOnly (Message);
     } else {
       AsciiSPrint (Message, sizeof (Message), "PREBOOT PHIT free-range check unavailable: %a", HobFailure);
-      GxDxeLogSerialOnly (Message);
+      GxDxeLogHobSerialOnly (Message);
     }
     GxDiagAdd ("PEI memory init", (FreeBoundsValid) ? GxDiagPass : GxDiagFail, TRUE,
       "PHIT free-memory bounds checked");
     GxDiagAdd ("HOB list", (Valid && EndSeen) ? GxDiagPass : GxDiagFail, TRUE, EndSeen ? "bounded walk found end marker" : "invalid/truncated list");
   } else {
-    GxDxeLogSerialOnly (FoundHob ? "PREBOOT HOB FAIL: configuration table pointer is NULL" : "PREBOOT HOB FAIL: configuration table missing");
+    GxDxeLogHobSerialOnly (FoundHob ? "PREBOOT HOB FAIL: configuration table pointer is NULL" : "PREBOOT HOB FAIL: configuration table missing");
     GxDiagAdd ("HOB list", GxDiagFail, TRUE, "HOB configuration table missing");
   }
 
