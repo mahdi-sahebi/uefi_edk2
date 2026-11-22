@@ -26,6 +26,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Protocol/Usb2HostController.h>
 #include <Protocol/SimpleTextIn.h>
 #include <Library/GxDxeDiagnosticsLib.h>
+#include <Protocol/GxDxeDiagnostics.h>
 #include "G4delUsbDiagnostics.h"
 
 EFI_GUID mBootMenuFile = {
@@ -2198,6 +2199,64 @@ RefreshLogo (
     Connect certain devices;
     Dispatch additional option roms.
 **/
+STATIC VOID
+GxRunPrebootDiagnostics (VOID)
+{
+  EFI_STATUS Status;
+  GX_DXE_DIAGNOSTICS_PROTOCOL *Diag;
+  GX_DIAG_CHECK Check;
+  EFI_INPUT_KEY Key;
+  UINTN Count, Failures, Warnings, Index, EventIndex;
+  EFI_EVENT WaitEvent;
+  Status = gBS->LocateProtocol (&gGxDxeDiagnosticsProtocolGuid, NULL, (VOID **)&Diag);
+  if (EFI_ERROR (Status) || (Diag == NULL)) {
+    GxDxeDiagnosticsLog ("[FAIL] PREBOOT DIAGNOSTICS PROTOCOL UNAVAILABLE");
+    Print (L"[FAIL] Preboot diagnostics protocol unavailable. Press B once to override and continue.\n");
+    while (TRUE) {
+      WaitEvent = gST->ConIn->WaitForKey;
+      Status = gBS->WaitForEvent (1, &WaitEvent, &EventIndex);
+      if (!EFI_ERROR (Status) && !EFI_ERROR (gST->ConIn->ReadKeyStroke (gST->ConIn, &Key)) &&
+          ((Key.UnicodeChar == 'b') || (Key.UnicodeChar == 'B'))) {
+        GxDxeDiagnosticsLog ("PREBOOT DIAGNOSTICS UNAVAILABLE; USER OVERRIDE ONCE");
+        return;
+      }
+    }
+  }
+  do {
+    Status = Diag->RunChecks ("all");
+    if (EFI_ERROR (Status)) {
+      Count = 1; Failures = 1; Warnings = 0;
+      GxDxeDiagnosticsLog ("[FAIL] PREBOOT DIAGNOSTICS EXECUTION FAILED");
+    } else if (EFI_ERROR (Diag->GetSummary (&Count, &Failures, &Warnings))) {
+      Count = 1; Failures = 1; Warnings = 0;
+      Status = EFI_DEVICE_ERROR;
+      GxDxeDiagnosticsLog ("[FAIL] PREBOOT DIAGNOSTICS SUMMARY UNAVAILABLE");
+    }
+    GxDxeDiagnosticsLog ("PREBOOT CHECK DASHBOARD BEGIN");
+    Print (L"\nG4DEL PREBOOT CHECKS\n");
+    if (EFI_ERROR (Status)) Print (L"[FAIL] Diagnostic check runner returned an error.\n");
+    for (Index = 0; Index < Count; Index++) {
+      CHAR8 SerialLine[GX_DIAG_DETAIL_SIZE + GX_DIAG_NAME_SIZE + 20];
+      if (EFI_ERROR (Diag->GetCheck (Index, &Check))) continue;
+      Print (Check.Result == GxDiagPass ? L"[PASS] %a: %a\n" : Check.Result == GxDiagWarn ? L"[WARN] %a: %a\n" : L"[FAIL] %a: %a\n", Check.Name, Check.Detail);
+      AsciiSPrint (SerialLine, sizeof (SerialLine), "[%a] %a: %a", Check.Result == GxDiagPass ? "PASS" : Check.Result == GxDiagWarn ? "WARN" : "FAIL", Check.Name, Check.Detail);
+      GxDxeDiagnosticsLog (SerialLine);
+    }
+    Print (L"Summary: %u checks, %u failures, %u warnings\n", Count, Failures, Warnings);
+    GxDxeDiagnosticsLog ("PREBOOT CHECK DASHBOARD END");
+    if (Failures == 0) Print (L"Press any key to continue to Boot Manager.\n");
+    else Print (L"REQUIRED CHECKS FAILED. Press B once to override or R to rerun.\n");
+    while (TRUE) {
+      WaitEvent = gST->ConIn->WaitForKey;
+      Status = gBS->WaitForEvent (1, &WaitEvent, &EventIndex);
+      if (EFI_ERROR (Status) || EFI_ERROR (gST->ConIn->ReadKeyStroke (gST->ConIn, &Key))) continue;
+      if (Failures == 0) { GxDxeDiagnosticsLog ("PREBOOT CHECKS ACKNOWLEDGED"); return; }
+      if ((Key.UnicodeChar == 'b') || (Key.UnicodeChar == 'B')) { GxDxeDiagnosticsLog ("PREBOOT FAILURES OVERRIDDEN ONCE BY USER"); return; }
+      if ((Key.UnicodeChar == 'r') || (Key.UnicodeChar == 'R')) { GxDxeDiagnosticsLog ("PREBOOT CHECKS RERUN REQUESTED"); break; }
+    }
+  } while (TRUE);
+}
+
 VOID
 EFIAPI
 PlatformBootManagerAfterConsole (
@@ -2395,6 +2454,7 @@ PlatformBootManagerAfterConsole (
   //
   // Register UEFI Shell
   //
+  GxRunPrebootDiagnostics ();
   DEBUG ((DEBUG_ERROR, "[GX-BDS] Shell registration begin\n"));
   DEBUG((DEBUG_INFO, "Registering UEFI Shell boot option\n"));
 #if defined (GOOXI_G4DEL_USB_DIAGNOSTICS) && GOOXI_G4DEL_USB_DIAGNOSTICS

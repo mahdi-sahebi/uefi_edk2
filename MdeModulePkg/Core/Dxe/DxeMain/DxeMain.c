@@ -11,6 +11,15 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Library/PrintLib.h>
 #include <Protocol/GxDxeDiagnostics.h>
 #include <Guid/GraphicsInfoHob.h>
+#include <Guid/HobList.h>
+#include <Guid/Acpi.h>
+#include <Guid/GlobalVariable.h>
+#include <Pi/PiHob.h>
+#include <Protocol/GraphicsOutput.h>
+#include <Protocol/BlockIo.h>
+#include <Protocol/SimpleFileSystem.h>
+#include <Protocol/MpService.h>
+#include <Library/G4delDiagnosticChecks.h>
 
 #define GX_DXE_FB_COLUMNS       72
 #define GX_DXE_FB_LOG_ROWS      24
@@ -35,6 +44,11 @@ STATIC BOOLEAN mGxDxeClockFresh;
 STATIC BOOLEAN mGxDxeShellLoadTraceActive;
 STATIC EFI_HANDLE mGxDxeDiagnosticsHandle;
 STATIC GX_DXE_DIAGNOSTICS_PROTOCOL mGxDxeDiagnosticsProtocol;
+STATIC GX_DIAG_CHECK mGxDiagChecks[GX_DIAG_MAX_CHECKS];
+STATIC UINTN mGxDiagCheckCount;
+STATIC EFI_STATUS EFIAPI GxDxeDiagnosticsRunChecks (IN CONST CHAR8 *Category);
+STATIC EFI_STATUS EFIAPI GxDxeDiagnosticsGetCheck (IN UINTN Index, OUT GX_DIAG_CHECK *Check);
+STATIC EFI_STATUS EFIAPI GxDxeDiagnosticsGetSummary (OUT UINTN *Count, OUT UINTN *Failures, OUT UINTN *Warnings);
 STATIC CONST EFI_GUID  mGxGraphicsInfoHobGuid = EFI_PEI_GRAPHICS_INFO_HOB_GUID;
 
 STATIC
@@ -1281,6 +1295,9 @@ DxeMain (
   mGxDxeDiagnosticsProtocol.Log = GxDxeDiagnosticsProtocolLog;
   mGxDxeDiagnosticsProtocol.GetDriverStatus = GxDxeDiagnosticsProtocolGetDriverStatus;
   mGxDxeDiagnosticsProtocol.SetShellLoadTrace = GxDxeDiagnosticsProtocolSetShellLoadTrace;
+  mGxDxeDiagnosticsProtocol.RunChecks = GxDxeDiagnosticsRunChecks;
+  mGxDxeDiagnosticsProtocol.GetCheck = GxDxeDiagnosticsGetCheck;
+  mGxDxeDiagnosticsProtocol.GetSummary = GxDxeDiagnosticsGetSummary;
   Status = gBS->InstallProtocolInterface (
                   &mGxDxeDiagnosticsHandle,
                   &gGxDxeDiagnosticsProtocolGuid,
@@ -1572,7 +1589,9 @@ CoreExitBootServices (
   // before the memory map is terminated.
   //
   if (!mExitBootServicesCalled) {
+    GxDxeLog ("OS EBS BEFORE_EXIT_BOOT_SERVICES NOTIFY BEGIN");
     CoreNotifySignalList (&gEfiEventBeforeExitBootServicesGuid);
+    GxDxeLog ("OS EBS BEFORE_EXIT_BOOT_SERVICES NOTIFY RETURNED");
     mExitBootServicesCalled = TRUE;
   }
 
@@ -1604,6 +1623,7 @@ CoreExitBootServices (
   // Notify other drivers that we are exiting boot services.
   //
   CoreNotifySignalList (&gEfiEventExitBootServicesGuid);
+  GxDxeLog ("OS EBS EXIT_BOOT_SERVICES NOTIFY RETURNED");
 
   //
   // Report that ExitBootServices() has been called
@@ -1614,6 +1634,7 @@ CoreExitBootServices (
     );
 
   MemoryProtectionExitBootServicesCallback ();
+  GxDxeLog ("OS EBS MEMORY PROTECTION CALLBACK RETURNED");
 
   //
   // Disable interrupt of Debug timer.
@@ -1624,6 +1645,7 @@ CoreExitBootServices (
   // Disable CPU Interrupts
   //
   gCpu->DisableInterrupt (gCpu);
+  GxDxeLog ("OS EBS CPU INTERRUPTS DISABLED");
 
   //
   // Clear the non-runtime values of the EFI System Table
@@ -1635,6 +1657,7 @@ CoreExitBootServices (
   gDxeCoreST->ConsoleOutHandle    = NULL;
   gDxeCoreST->StdErr              = NULL;
   gDxeCoreST->StandardErrorHandle = NULL;
+  GxDxeLog ("OS EBS CONSOLE AND BOOT SERVICES POINTERS CLEARED");
 
   //
   // Recompute the 32-bit CRC of the EFI System Table
@@ -1662,6 +1685,224 @@ CoreExitBootServices (
   GxDxeRestoreScreenLogBackground ();
 
   return Status;
+}
+
+STATIC VOID
+GxDiagAdd (IN CONST CHAR8 *Name, IN GX_DIAG_RESULT Result, IN BOOLEAN Required, IN CONST CHAR8 *Detail)
+{
+  GX_DIAG_CHECK *Check;
+  if (mGxDiagCheckCount >= GX_DIAG_MAX_CHECKS) return;
+  Check = &mGxDiagChecks[mGxDiagCheckCount++];
+  ZeroMem (Check, sizeof (*Check));
+  AsciiStrCpyS (Check->Name, sizeof (Check->Name), Name);
+  AsciiStrCpyS (Check->Detail, sizeof (Check->Detail), Detail);
+  Check->Result = Result;
+  Check->Required = Required;
+}
+
+STATIC EFI_STATUS EFIAPI
+GxDxeDiagnosticsRunChecks (IN CONST CHAR8 *Category)
+{
+  EFI_STATUS Status;
+  EFI_MEMORY_DESCRIPTOR *Map;
+  UINTN MapSize, MapKey, DescriptorSize, Index, HandleCount;
+  UINT32 DescriptorVersion;
+  EFI_CONFIGURATION_TABLE *Table;
+  VOID *HobList;
+  BOOLEAN FoundHob, FoundAcpi;
+  EFI_GUID AcpiGuid = EFI_ACPI_20_TABLE_GUID;
+  EFI_GUID GopGuid = EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID;
+  EFI_GUID BlockGuid = EFI_BLOCK_IO_PROTOCOL_GUID;
+  EFI_GUID FsGuid = EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_GUID;
+  EFI_GUID MpGuid = EFI_MP_SERVICES_PROTOCOL_GUID;
+  EFI_HANDLE *Handles;
+  EFI_GRAPHICS_OUTPUT_PROTOCOL *Gop;
+  UINTN Required, BootOrderSize;
+  (VOID)Category;
+  mGxDiagCheckCount = 0;
+
+  FoundHob = FALSE; HobList = NULL;
+  if (gDxeCoreST != NULL) {
+    for (Index = 0; Index < gDxeCoreST->NumberOfTableEntries; Index++) {
+      Table = &gDxeCoreST->ConfigurationTable[Index];
+      if (CompareGuid (&Table->VendorGuid, &gEfiHobListGuid)) { FoundHob = TRUE; HobList = Table->VendorTable; break; }
+    }
+  }
+  if (FoundHob && (HobList != NULL)) {
+    EFI_HOB_HANDOFF_INFO_TABLE *Phit = HobList;
+    EFI_HOB_GENERIC_HEADER *Hob = HobList;
+    UINTN Seen = 0;
+    BOOLEAN EndSeen = FALSE, Valid = TRUE;
+    UINTN Remaining;
+    if ((Phit->Header.HobType != EFI_HOB_TYPE_HANDOFF) || (Phit->Header.HobLength < sizeof (*Phit)) ||
+        ((UINTN)Phit->EfiEndOfHobList < (UINTN)HobList)) Valid = FALSE;
+    Remaining = Valid ? ((UINTN)Phit->EfiEndOfHobList - (UINTN)HobList + sizeof (*Hob)) : 0;
+    while (Valid && (Seen++ < 4096) && (Remaining >= sizeof (*Hob))) {
+      UINT16 HobLength;
+      if (!G4delDiagHobHeaderValid (Hob->HobType, Hob->HobLength, Remaining, EFI_HOB_TYPE_END_OF_HOB_LIST, sizeof (*Hob))) { Valid = FALSE; break; }
+      if (Hob->HobType == EFI_HOB_TYPE_END_OF_HOB_LIST) { EndSeen = TRUE; break; }
+      HobLength = Hob->HobLength;
+      Hob = (EFI_HOB_GENERIC_HEADER *)((UINT8 *)Hob + Hob->HobLength);
+      Remaining -= HobLength;
+    }
+    GxDiagAdd ("PEI memory init", (Valid && (Phit->EfiFreeMemoryTop > Phit->EfiFreeMemoryBottom)) ? GxDiagPass : GxDiagFail, TRUE,
+      "PHIT free-memory bounds checked");
+    GxDiagAdd ("HOB list", (Valid && EndSeen) ? GxDiagPass : GxDiagFail, TRUE, EndSeen ? "bounded walk found end marker" : "invalid/truncated list");
+  } else GxDiagAdd ("HOB list", GxDiagFail, TRUE, "HOB configuration table missing");
+
+  MapSize = 0; DescriptorSize = 0; MapKey = 0; DescriptorVersion = 0;
+  Status = gBS->GetMemoryMap (&MapSize, NULL, &MapKey, &DescriptorSize, &DescriptorVersion);
+  Map = NULL;
+  if (Status == EFI_BUFFER_TOO_SMALL && DescriptorSize >= sizeof (*Map)) {
+    MapSize += DescriptorSize * 4;
+    Status = CoreAllocatePool (EfiBootServicesData, MapSize, (VOID **)&Map);
+    if (!EFI_ERROR (Status)) Status = gBS->GetMemoryMap (&MapSize, Map, &MapKey, &DescriptorSize, &DescriptorVersion);
+  }
+  if (!EFI_ERROR (Status) && (DescriptorSize >= sizeof (*Map)) && (MapSize % DescriptorSize == 0)) {
+    BOOLEAN Valid = TRUE;
+    for (Index = 0; Index < MapSize / DescriptorSize; Index++) {
+      EFI_MEMORY_DESCRIPTOR *Desc = (EFI_MEMORY_DESCRIPTOR *)((UINT8 *)Map + Index * DescriptorSize);
+      UINTN Other;
+      UINT64 Length;
+      if ((Desc->NumberOfPages == 0) || (Desc->NumberOfPages > (~(UINT64)0 / EFI_PAGE_SIZE)) ||
+          !G4delDiagRangeValid (Desc->PhysicalStart, Desc->NumberOfPages * EFI_PAGE_SIZE)) { Valid = FALSE; break; }
+      Length = Desc->NumberOfPages * EFI_PAGE_SIZE;
+      for (Other = 0; Other < Index; Other++) {
+        EFI_MEMORY_DESCRIPTOR *Previous = (EFI_MEMORY_DESCRIPTOR *)((UINT8 *)Map + Other * DescriptorSize);
+        UINT64 PreviousLength = Previous->NumberOfPages * EFI_PAGE_SIZE;
+        if (G4delDiagRangesOverlap (Desc->PhysicalStart, Length, Previous->PhysicalStart, PreviousLength)) { Valid = FALSE; break; }
+      }
+      if (!Valid) break;
+    }
+    GxDiagAdd ("Memory map", Valid ? GxDiagPass : GxDiagFail, TRUE, "descriptor ranges and lengths checked");
+  } else GxDiagAdd ("Memory map", GxDiagFail, TRUE, "GetMemoryMap failed or malformed descriptors");
+  if (Map != NULL) CoreFreePool (Map);
+
+  FoundAcpi = FALSE;
+  {
+    EFI_PHYSICAL_ADDRESS RootAddress = 0;
+    BOOLEAN RootValid = FALSE;
+    UINT8 *Rsdp = NULL;
+  for (Index = 0; Index < gDxeCoreST->NumberOfTableEntries; Index++) {
+    Table = &gDxeCoreST->ConfigurationTable[Index];
+    if (CompareGuid (&Table->VendorGuid, &AcpiGuid)) {
+      Rsdp = Table->VendorTable;
+      FoundAcpi = (Rsdp != NULL) && (AsciiStrnCmp ((CHAR8 *)Rsdp, "RSD PTR ", 8) == 0) && G4delDiagChecksumValid (Rsdp, 20);
+      if (FoundAcpi && (Rsdp[15] >= 2)) {
+        UINT32 RsdpLength;
+        CopyMem (&RsdpLength, Rsdp + 20, sizeof (RsdpLength));
+        FoundAcpi = (RsdpLength >= 36) && (RsdpLength <= 4096) && G4delDiagChecksumValid (Rsdp, RsdpLength);
+      }
+      if (FoundAcpi) {
+        if (Rsdp[15] >= 2) CopyMem (&RootAddress, Rsdp + 24, sizeof (RootAddress));
+        else { UINT32 RsdtAddress; CopyMem (&RsdtAddress, Rsdp + 16, sizeof (RsdtAddress)); RootAddress = RsdtAddress; }
+      }
+      break;
+    }
+  }
+  GxDiagAdd ("ACPI RSDP", FoundAcpi ? GxDiagPass : GxDiagFail, TRUE, FoundAcpi ? "signature/checksum valid" : "missing or checksum invalid");
+    if (FoundAcpi && (RootAddress != 0)) {
+      typedef struct { UINT32 Signature; UINT32 Length; UINT8 Revision; UINT8 Checksum; UINT8 OemId[6]; UINT8 OemTableId[8]; UINT32 OemRevision; UINT32 CreatorId; UINT32 CreatorRevision; } GX_ACPI_HEADER;
+      GX_ACPI_HEADER *Root = (GX_ACPI_HEADER *)(UINTN)RootAddress;
+      UINT32 ExpectedSignature = (Rsdp[15] >= 2) ? SIGNATURE_32 ('X','S','D','T') : SIGNATURE_32 ('R','S','D','T');
+      RootValid = (Root->Signature == ExpectedSignature) && (Root->Length >= sizeof (*Root)) &&
+                  (Root->Length <= 1024 * 1024) && G4delDiagChecksumValid ((UINT8 *)Root, Root->Length);
+    }
+    GxDiagAdd ("ACPI root", RootValid ? GxDiagPass : GxDiagFail, TRUE, RootValid ? "XSDT/RSDT signature and checksum valid" : "root table missing or malformed");
+  }
+
+  {
+    EFI_MP_SERVICES_PROTOCOL *Mp;
+    UINTN CpuCount = 0, EnabledCpuCount = 0;
+    Status = gBS->LocateProtocol (&MpGuid, NULL, (VOID **)&Mp);
+    if (!EFI_ERROR (Status) && (Mp != NULL)) Status = Mp->GetNumberOfProcessors (Mp, &CpuCount, &EnabledCpuCount);
+    GxDiagAdd ("CPU status",
+      (EFI_ERROR (Status) || (CpuCount == 0) || (EnabledCpuCount == 0)) ? GxDiagWarn : GxDiagPass,
+      FALSE, EFI_ERROR (Status) ? "MP services unavailable; BSP remains active" :
+      ((CpuCount == 0) || (EnabledCpuCount == 0)) ? "processor count unavailable; check platform CPU status" : "processor topology query succeeded");
+  }
+
+  Handles = NULL; HandleCount = 0;
+  Status = gBS->LocateHandleBuffer (ByProtocol, &GopGuid, NULL, &HandleCount, &Handles);
+  if (!EFI_ERROR (Status) && (HandleCount != 0) && !EFI_ERROR (gBS->HandleProtocol (Handles[0], &GopGuid, (VOID **)&Gop)) &&
+      (Gop != NULL) && (Gop->Mode != NULL) && (Gop->Mode->Info != NULL) &&
+      G4delDiagFramebufferValid (Gop->Mode->FrameBufferBase, Gop->Mode->FrameBufferSize,
+        Gop->Mode->Info->HorizontalResolution, Gop->Mode->Info->VerticalResolution,
+        Gop->Mode->Info->PixelsPerScanLine, sizeof (EFI_GRAPHICS_OUTPUT_BLT_PIXEL))) {
+    GxDiagAdd ("GOP", GxDiagPass, FALSE, "mode and framebuffer bounds valid");
+  } else GxDiagAdd ("GOP", GxDiagWarn, FALSE, "no GOP or invalid framebuffer mode");
+  if (Handles != NULL) CoreFreePool (Handles);
+  Handles = NULL; HandleCount = 0;
+  Status = gBS->LocateHandleBuffer (ByProtocol, &BlockGuid, NULL, &HandleCount, &Handles);
+  GxDiagAdd ("Block I/O", (!EFI_ERROR (Status) && HandleCount != 0) ? GxDiagPass : GxDiagWarn, FALSE, (!EFI_ERROR (Status) && HandleCount != 0) ? "storage handles present" : "no block devices");
+  if (Handles != NULL) CoreFreePool (Handles);
+  Handles = NULL; HandleCount = 0;
+  Status = gBS->LocateHandleBuffer (ByProtocol, &FsGuid, NULL, &HandleCount, &Handles);
+  GxDiagAdd ("File systems", (!EFI_ERROR (Status) && HandleCount != 0) ? GxDiagPass : GxDiagWarn, FALSE, (!EFI_ERROR (Status) && HandleCount != 0) ? "filesystem handles present" : "no filesystem handles");
+  if (Handles != NULL) CoreFreePool (Handles);
+  GxDiagAdd ("UEFI consoles", (gDxeCoreST->ConOut != NULL && gDxeCoreST->ConIn != NULL) ? GxDiagPass : GxDiagFail, TRUE, "ConIn/ConOut pointers checked");
+
+  BootOrderSize = 0;
+  Status = gDxeCoreST->RuntimeServices->GetVariable (L"BootOrder", &gEfiGlobalVariableGuid, NULL, &BootOrderSize, NULL);
+  if (Status == EFI_BUFFER_TOO_SMALL && (BootOrderSize != 0) && ((BootOrderSize % sizeof (UINT16)) == 0)) {
+    UINT16 *BootOrder;
+    Required = BootOrderSize;
+    Status = CoreAllocatePool (EfiBootServicesData, Required, (VOID **)&BootOrder);
+    if (!EFI_ERROR (Status)) {
+      Status = gDxeCoreST->RuntimeServices->GetVariable (L"BootOrder", &gEfiGlobalVariableGuid, NULL, &Required, BootOrder);
+      if (!EFI_ERROR (Status) && (Required % sizeof (UINT16) == 0)) {
+        GxDiagAdd ("Boot paths", (Required != 0) ? GxDiagPass : GxDiagWarn, FALSE, "BootOrder entries readable");
+      } else GxDiagAdd ("Boot paths", GxDiagWarn, FALSE, "BootOrder could not be read");
+      CoreFreePool (BootOrder);
+    } else GxDiagAdd ("Boot paths", GxDiagWarn, FALSE, "BootOrder allocation failed");
+  } else GxDiagAdd ("Boot paths", GxDiagWarn, FALSE, "BootOrder absent or malformed");
+
+  if ((Category != NULL) && (AsciiStrCmp (Category, "all") != 0)) {
+    UINTN ReadIndex, WriteIndex;
+    CONST CHAR8 *Wanted = Category;
+    BOOLEAN CategoryValid = (AsciiStrCmp (Wanted, "hob") == 0) || (AsciiStrCmp (Wanted, "memory") == 0) ||
+      (AsciiStrCmp (Wanted, "acpi") == 0) || (AsciiStrCmp (Wanted, "cpu") == 0) || (AsciiStrCmp (Wanted, "graphics") == 0) ||
+      (AsciiStrCmp (Wanted, "console") == 0) || (AsciiStrCmp (Wanted, "storage") == 0) || (AsciiStrCmp (Wanted, "boot") == 0);
+    if (!CategoryValid) return EFI_INVALID_PARAMETER;
+    WriteIndex = 0;
+    for (ReadIndex = 0; ReadIndex < mGxDiagCheckCount; ReadIndex++) {
+      GX_DIAG_CHECK *Check = &mGxDiagChecks[ReadIndex];
+      BOOLEAN Keep = ((AsciiStrCmp (Wanted, "hob") == 0) && (AsciiStrCmp (Check->Name, "HOB list") == 0)) ||
+        ((AsciiStrCmp (Wanted, "memory") == 0) && (AsciiStrCmp (Check->Name, "Memory map") == 0)) ||
+        ((AsciiStrCmp (Wanted, "acpi") == 0) && (AsciiStrCmp (Check->Name, "ACPI RSDP") == 0)) ||
+        ((AsciiStrCmp (Wanted, "acpi") == 0) && (AsciiStrCmp (Check->Name, "ACPI root") == 0)) ||
+        ((AsciiStrCmp (Wanted, "memory") == 0) && (AsciiStrCmp (Check->Name, "PEI memory init") == 0)) ||
+        ((AsciiStrCmp (Wanted, "cpu") == 0) && (AsciiStrCmp (Check->Name, "CPU status") == 0)) ||
+        ((AsciiStrCmp (Wanted, "graphics") == 0) && (AsciiStrCmp (Check->Name, "GOP") == 0)) ||
+        ((AsciiStrCmp (Wanted, "console") == 0) && (AsciiStrCmp (Check->Name, "UEFI consoles") == 0)) ||
+        ((AsciiStrCmp (Wanted, "storage") == 0) && ((AsciiStrCmp (Check->Name, "Block I/O") == 0) || (AsciiStrCmp (Check->Name, "File systems") == 0))) ||
+        ((AsciiStrCmp (Wanted, "boot") == 0) && (AsciiStrCmp (Check->Name, "Boot paths") == 0));
+      if (Keep) { if (WriteIndex != ReadIndex) CopyMem (&mGxDiagChecks[WriteIndex], Check, sizeof (*Check)); WriteIndex++; }
+    }
+    mGxDiagCheckCount = WriteIndex;
+  }
+  return EFI_SUCCESS;
+}
+
+STATIC EFI_STATUS EFIAPI
+GxDxeDiagnosticsGetCheck (IN UINTN Index, OUT GX_DIAG_CHECK *Check)
+{
+  if ((Check == NULL) || (Index >= mGxDiagCheckCount)) return EFI_NOT_FOUND;
+  CopyMem (Check, &mGxDiagChecks[Index], sizeof (*Check));
+  return EFI_SUCCESS;
+}
+
+STATIC EFI_STATUS EFIAPI
+GxDxeDiagnosticsGetSummary (OUT UINTN *Count, OUT UINTN *Failures, OUT UINTN *Warnings)
+{
+  UINTN Index;
+  if ((Count == NULL) || (Failures == NULL) || (Warnings == NULL)) return EFI_INVALID_PARAMETER;
+  *Count = mGxDiagCheckCount; *Failures = 0; *Warnings = 0;
+  for (Index = 0; Index < mGxDiagCheckCount; Index++) {
+    if (mGxDiagChecks[Index].Result == GxDiagFail) (*Failures)++;
+    if (mGxDiagChecks[Index].Result == GxDiagWarn) (*Warnings)++;
+  }
+  return EFI_SUCCESS;
 }
 
 /**

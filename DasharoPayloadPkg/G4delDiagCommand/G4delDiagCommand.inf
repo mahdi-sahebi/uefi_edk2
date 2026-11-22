@@ -1,0 +1,23 @@
+[Defines]
+  INF_VERSION                    = 0x00010006
+  BASE_NAME                      = G4delDiagCommand
+  FILE_GUID                      = 7DA04ACB-9670-4C63-85B7-BF0346445A27
+  MODULE_TYPE                    = DXE_DRIVER
+  VERSION_STRING                 = 1.0
+  ENTRY_POINT                    = G4delDiagCommandEntry
+[Sources]
+  G4delDiagCommand.c
+[Packages]
+  MdePkg/MdePkg.dec
+  ShellPkg/ShellPkg.dec
+  DasharoPayloadPkg/DasharoPayloadPkg.dec
+[LibraryClasses]
+  UefiDriverEntryPoint
+  UefiBootServicesTableLib
+  UefiLib
+  MemoryAllocationLib
+[Protocols]
+  gEfiShellDynamicCommandProtocolGuid ## PRODUCES
+  gGxDxeDiagnosticsProtocolGuid ## CONSUMES
+[Depex]
+  TRUE

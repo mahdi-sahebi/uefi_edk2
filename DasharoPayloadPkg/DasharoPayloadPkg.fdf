@@ -390,6 +390,7 @@ INF DasharoPayloadPkg/ApuConfigurationUi/ApuConfigurationUi.inf
 # Shell
 #
 !if $(SHELL_TYPE) == BUILD_SHELL
+INF DasharoPayloadPkg/G4delDiagCommand/G4delDiagCommand.inf
 INF ShellPkg/DynamicCommand/TftpDynamicCommand/TftpDynamicCommand.inf
 INF ShellPkg/DynamicCommand/DpDynamicCommand/DpDynamicCommand.inf
 INF ShellPkg/Application/Shell/Shell.inf

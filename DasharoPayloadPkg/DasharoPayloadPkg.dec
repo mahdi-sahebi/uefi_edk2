@@ -17,6 +17,9 @@
 [Includes]
   Include
 
+[LibraryClasses]
+  G4delDiagnosticChecksLib|Include/Library/G4delDiagnosticChecks.h
+
 [Guids]
   #
   ## Defines the token space for the UEFI Payload Package PCDs.

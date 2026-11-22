@@ -1,0 +1,21 @@
+## @file
+# G4DEL portable validation helpers.
+##
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = G4delDiagnosticChecks
+  FILE_GUID                      = 86D97B3F-2962-48BA-BE6E-66995FB7F73A
+  MODULE_TYPE                    = BASE
+  VERSION_STRING                 = 1.0
+  LIBRARY_CLASS                  = G4delDiagnosticChecksLib
+
+[Sources]
+  G4delDiagnosticChecks.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  DasharoPayloadPkg/DasharoPayloadPkg.dec
+
+[LibraryClasses]
+  BaseLib
