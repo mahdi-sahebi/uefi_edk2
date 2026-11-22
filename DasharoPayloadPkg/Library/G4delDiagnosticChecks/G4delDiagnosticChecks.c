@@ -37,15 +37,31 @@ G4delDiagHobHeaderValid (
   G4DEL_UINT16  HeaderSize
   )
 {
-  if ((Length < HeaderSize) || (Length > Remaining)) {
-    return FALSE;
+  return (BOOLEAN)(G4delDiagHobHeaderReason (Type, Length, Remaining, EndType, HeaderSize) == G4delDiagHobHeaderValidReason);
+}
+
+G4DEL_DIAG_HOB_HEADER_REASON
+G4delDiagHobHeaderReason (
+  G4DEL_UINT16  Type,
+  G4DEL_UINT16  Length,
+  G4DEL_UINTN   Remaining,
+  G4DEL_UINT16  EndType,
+  G4DEL_UINT16  HeaderSize
+  )
+{
+  if (Length < HeaderSize) {
+    return G4delDiagHobHeaderTooShort;
+  }
+
+  if (Length > Remaining) {
+    return G4delDiagHobHeaderExceedsRemaining;
   }
 
   if ((Type == EndType) && (Length != HeaderSize)) {
-    return FALSE;
+    return G4delDiagHobEndMarkerWrongLength;
   }
 
-  return TRUE;
+  return G4delDiagHobHeaderValidReason;
 }
 
 BOOLEAN

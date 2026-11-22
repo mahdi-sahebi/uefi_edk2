@@ -49,6 +49,22 @@ G4delDiagHobHeaderValid (
   G4DEL_UINT16  HeaderSize
   );
 
+typedef enum {
+  G4delDiagHobHeaderValidReason,
+  G4delDiagHobHeaderTooShort,
+  G4delDiagHobHeaderExceedsRemaining,
+  G4delDiagHobEndMarkerWrongLength
+} G4DEL_DIAG_HOB_HEADER_REASON;
+
+G4DEL_DIAG_HOB_HEADER_REASON
+G4delDiagHobHeaderReason (
+  G4DEL_UINT16  Type,
+  G4DEL_UINT16  Length,
+  G4DEL_UINTN   Remaining,
+  G4DEL_UINT16  EndType,
+  G4DEL_UINT16  HeaderSize
+  );
+
 BOOLEAN
 G4delDiagChecksumValid (
   const G4DEL_UINT8  *Bytes,
