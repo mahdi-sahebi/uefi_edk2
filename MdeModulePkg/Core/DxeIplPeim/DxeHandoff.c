@@ -80,49 +80,13 @@ void mde_7_edkii_vga_write_at_offset(unsigned int line, unsigned int offset, con
 }
 
 
-static void
-log_vga_row(unsigned int line)
-{
-#if !defined (GOOXI_G4DEL_LINEAR_GRAPHICS)
-    volatile const unsigned short *cells;
-    char text[81];
-    unsigned int i;
 
-    if (line >= 25)
-        return;
-    cells = (volatile const unsigned short *)0xB8000 + 80 * line;
-    for (i = 0; i < 80; i++) {
-        unsigned char ch = cells[i] & 0xff;
-        text[i] = ch ? (char)ch : ' ';
-    }
-    while (i > 0 && text[i - 1] == ' ')
-        i--;
-    text[i] = '\0';
-    if (i != 0)
-        DEBUG ((DEBUG_ERROR, "[GX-VGA] row=%u %a\n", line, text));
-
-#else
-  (void)line;
-#endif
-}
 
 void mde_7_edkii_vga_print(unsigned int line, const char *string)
 {
-    unsigned int i;
-
     mde_7_edkii_vga_write_at_offset(line, 0, string);
     if (string == NULL)
         return;
-    for (i = 0; string[i] != '\0'; i++) {
-        if (string[i] != ' ') {
-            #if defined (GOOXI_G4DEL_LINEAR_GRAPHICS)
-            DEBUG ((DEBUG_ERROR, "[GX-VGA] row=%u %a\n", line, string));
-#else
-            log_vga_row(line);
-#endif
-            break;
-        }
-    }
 }
 
 void mde_7_edkii_vga_sprintf(
@@ -202,7 +166,6 @@ void mde_7_edkii_vga_hex_dump(const unsigned char *addr, unsigned int len, int s
             char buf[2] = {c, '\0'};
             mde_7_edkii_vga_write_at_offset(row, offset_pos + j, buf);
         }
-        log_vga_row(row);
     }
 }
 
