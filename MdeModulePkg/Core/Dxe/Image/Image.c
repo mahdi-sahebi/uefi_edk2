@@ -1195,7 +1195,7 @@ CoreLoadImageCommon (
       "LOAD BEGIN parent=%a parent_handle=%p boot=%u source_buffer=%p source_size=%lu path=%p",
       (ParentImage->ImageContext.PdbPointer != NULL) ? ParentImage->ImageContext.PdbPointer : "unknown",
       ParentImageHandle, BootPolicy, SourceBuffer, (UINT64)SourceSize, FilePath);
-    GxDxeLogSerialOnly (GxMessage);
+    GxDxeLog (GxMessage);
     if (FilePath != NULL) {
       GxFilePathText = ConvertDevicePathToText (FilePath, FALSE, FALSE);
       if (GxFilePathText != NULL) {
@@ -1732,7 +1732,7 @@ CoreStartImage (
       (Image->ImageContext.PdbPointer != NULL) ? Image->ImageContext.PdbPointer : "unknown",
       ImageHandle, Image->Info.ParentHandle, Image->Info.ImageBase, (UINT64)Image->Info.ImageSize,
       Image->Machine, Image->EntryPoint, Image->Info.LoadOptionsSize);
-    GxDxeLogSerialOnly (GxMessage);
+    GxDxeLog (GxMessage);
     ParentImage = (Image->Info.ParentHandle != NULL) ?
                   CoreLoadedImageInfo (Image->Info.ParentHandle) : NULL;
     if (ParentImage != NULL) {
@@ -1776,10 +1776,17 @@ CoreStartImage (
     }
   }
   if ((Image == NULL) ||  Image->Started) {
+    if ((Image != NULL) && (Image->Type == EFI_IMAGE_SUBSYSTEM_EFI_APPLICATION)) {
+      GxDxeLogSerialOnly ("OS START REJECTED: image already started");
+    }
     return EFI_INVALID_PARAMETER;
   }
 
   if (EFI_ERROR (Image->LoadImageStatus)) {
+    if (Image->Type == EFI_IMAGE_SUBSYSTEM_EFI_APPLICATION) {
+      AsciiSPrint (GxMessage, sizeof (GxMessage), "OS START REJECTED: prior LoadImage status=%r", Image->LoadImageStatus);
+      GxDxeLogSerialOnly (GxMessage);
+    }
     return Image->LoadImageStatus;
   }
 
@@ -1795,6 +1802,10 @@ CoreStartImage (
     //
     DEBUG ((DEBUG_ERROR, "Image type %s can't be started ", GetMachineTypeName (Image->Machine)));
     DEBUG ((DEBUG_ERROR, "on %s UEFI system.\n", GetMachineTypeName (mDxeCoreImageMachineType)));
+    if (Image->Type == EFI_IMAGE_SUBSYSTEM_EFI_APPLICATION) {
+      AsciiSPrint (GxMessage, sizeof (GxMessage), "OS START REJECTED: unsupported machine=%u", Image->Machine);
+      GxDxeLogSerialOnly (GxMessage);
+    }
     return EFI_UNSUPPORTED;
   }
 
@@ -1811,6 +1822,10 @@ CoreStartImage (
         "CoreLoadPeImage: Failed to register foreign image with emulator - %r\n",
         Status
         ));
+      if (Image->Type == EFI_IMAGE_SUBSYSTEM_EFI_APPLICATION) {
+        AsciiSPrint (GxMessage, sizeof (GxMessage), "OS START REJECTED: emulator registration status=%r", Status);
+        GxDxeLogSerialOnly (GxMessage);
+      }
       return Status;
     }
   }
@@ -1845,6 +1860,10 @@ CoreStartImage (
     //
     mCurrentImage = LastImage;
 
+    if (Image->Type == EFI_IMAGE_SUBSYSTEM_EFI_APPLICATION) {
+      GxDxeLogSerialOnly ("OS START REJECTED: jump-buffer allocation failed");
+    }
+
     return EFI_OUT_OF_RESOURCES;
   }
 
@@ -1867,14 +1886,14 @@ CoreStartImage (
         ImageHandle,
         (Image->ImageContext.PdbPointer != NULL) ? Image->ImageContext.PdbPointer : "unknown",
         Image->Info.ImageBase, (UINT64)Image->Info.ImageSize, Image->Machine, Image->EntryPoint);
-      GxDxeLogSerialOnly (GxMessage);
+      GxDxeLog (GxMessage);
     }
     Image->Status  = Image->EntryPoint (ImageHandle, Image->Info.SystemTable);
     if (Image->Type == EFI_IMAGE_SUBSYSTEM_EFI_APPLICATION) {
       AsciiSPrint (GxMessage, sizeof (GxMessage), "OS START ENTRYPOINT returned app=%a status=%r exit_data_size=%lu",
         (Image->ImageContext.PdbPointer != NULL) ? Image->ImageContext.PdbPointer : "unknown",
         Image->Status, (UINT64)Image->ExitDataSize);
-      GxDxeLogSerialOnly (GxMessage);
+      GxDxeLog (GxMessage);
     }
 
     //

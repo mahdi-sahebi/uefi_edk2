@@ -310,3 +310,20 @@ and kernel console/handoff output. A `begin` without its matching `returned`
 line identifies the callback or cleanup operation at the hang boundary.
 These checkpoints do not retry ExitBootServices or change its status or gate
 behavior.
+
+## 2026-11-23 image entry diagnostics
+
+The next image sends `OS START BEGIN`, `OS START ENTRYPOINT begin`, and
+`OS START ENTRYPOINT returned` to both serial and the pinned VGA row. Serial
+also records why DXE rejects an application before entry: repeated start,
+prior image-load failure, unsupported machine type, emulator-registration
+failure, or jump-buffer allocation failure. Existing `[GX-BOOT]` messages
+continue to report boot option path, `LoadImage()` result, and `StartImage()`
+return status. These additions only observe the existing path; they do not
+change image selection or status handling.
+
+If the entry-point begin marker appears without a return, control entered the
+application and has not returned to DXE. Pair that with `[GX-EBS]`: the final
+EBS checkpoint indicates whether the Linux EFI stub reached and completed the
+firmware handoff. A complete SOL capture remains necessary because VGA keeps
+only the current marker in each pinned row.

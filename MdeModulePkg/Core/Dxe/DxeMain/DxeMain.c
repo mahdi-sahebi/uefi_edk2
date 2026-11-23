@@ -392,7 +392,9 @@ GxDxeScreenLog (
     Pinned = TRUE;
     PinnedRow = 1;
   } else if ((AsciiStrStr (Message, "OS START BEGIN") != NULL) ||
-             (AsciiStrStr (Message, "OS START PARENT_PATH") != NULL)) {
+             (AsciiStrStr (Message, "OS START PARENT_PATH") != NULL) ||
+             (AsciiStrStr (Message, "OS START ENTRYPOINT") != NULL) ||
+             (AsciiStrStr (Message, "OS START REJECTED") != NULL)) {
     Pinned = TRUE;
     PinnedRow = 2;
   } else if (AsciiStrStr (Message, "OS EBS ") != NULL) {
