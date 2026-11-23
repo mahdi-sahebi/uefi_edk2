@@ -1187,23 +1187,25 @@ CoreLoadImageCommon (
     return EFI_INVALID_PARAMETER;
   }
 
-  TraceImageLoad = GxDxeIsShellLoadTraceActive ();
+  // Boot-manager LoadImage calls are the OS/UEFI boot path. Trace them even
+  // when the Shell's interactive image-trace command has not been enabled.
+  TraceImageLoad = (BOOLEAN)(GxDxeIsShellLoadTraceActive () || BootPolicy);
   if (TraceImageLoad) {
     AsciiSPrint (GxMessage, sizeof (GxMessage),
       "LOAD BEGIN parent=%a parent_handle=%p boot=%u source_buffer=%p source_size=%lu path=%p",
       (ParentImage->ImageContext.PdbPointer != NULL) ? ParentImage->ImageContext.PdbPointer : "unknown",
       ParentImageHandle, BootPolicy, SourceBuffer, (UINT64)SourceSize, FilePath);
-    GxDxeLog (GxMessage);
+    GxDxeLogSerialOnly (GxMessage);
     if (FilePath != NULL) {
       GxFilePathText = ConvertDevicePathToText (FilePath, FALSE, FALSE);
       if (GxFilePathText != NULL) {
         GxDxeLogUnicodeData ("LOAD FILEPATH", GxFilePathText, StrSize (GxFilePathText));
         CoreFreePool (GxFilePathText);
       } else {
-        GxDxeLog ("LOAD FILEPATH conversion FAILED");
+        GxDxeLogSerialOnly ("LOAD FILEPATH conversion FAILED");
       }
     } else {
-      GxDxeLog ("LOAD FILEPATH <none>");
+      GxDxeLogSerialOnly ("LOAD FILEPATH <none>");
     }
     if (ParentImage->Info.FilePath != NULL) {
       GxFilePathText = ConvertDevicePathToText (ParentImage->Info.FilePath, FALSE, FALSE);
@@ -1234,7 +1236,7 @@ CoreLoadImageCommon (
     Status           = CoreLocateDevicePath (&gEfiDevicePathProtocolGuid, &HandleFilePath, &DeviceHandle);
     if (TraceImageLoad) {
       AsciiSPrint (GxMessage, sizeof (GxMessage), "LOAD DEVICE_PATH resolve status=%r device=%p", Status, DeviceHandle);
-      GxDxeLog (GxMessage);
+      GxDxeLogSerialOnly (GxMessage);
     }
     if (EFI_ERROR (Status)) {
       DeviceHandle = NULL;
@@ -1255,47 +1257,47 @@ CoreLoadImageCommon (
     //
     Node   = NULL;
     if (TraceImageLoad) {
-      GxDxeLog ("LOAD RESOLVE firmware-volume begin");
+      GxDxeLogSerialOnly ("LOAD RESOLVE firmware-volume begin");
     }
     Status = CoreLocateDevicePath (&gEfiFirmwareVolume2ProtocolGuid, &HandleFilePath, &DeviceHandle);
     if (TraceImageLoad) {
       AsciiSPrint (GxMessage, sizeof (GxMessage), "LOAD RESOLVE firmware-volume status=%r device=%p", Status, DeviceHandle);
-      GxDxeLog (GxMessage);
+      GxDxeLogSerialOnly (GxMessage);
     }
     if (!EFI_ERROR (Status)) {
       ImageIsFromFv = TRUE;
     } else {
       HandleFilePath = FilePath;
       if (TraceImageLoad) {
-        GxDxeLog ("LOAD RESOLVE filesystem begin");
+        GxDxeLogSerialOnly ("LOAD RESOLVE filesystem begin");
       }
       Status         = CoreLocateDevicePath (&gEfiSimpleFileSystemProtocolGuid, &HandleFilePath, &DeviceHandle);
       if (TraceImageLoad) {
         AsciiSPrint (GxMessage, sizeof (GxMessage), "LOAD RESOLVE filesystem status=%r device=%p", Status, DeviceHandle);
-        GxDxeLog (GxMessage);
+        GxDxeLogSerialOnly (GxMessage);
       }
       if (EFI_ERROR (Status)) {
         if (!BootPolicy) {
           HandleFilePath = FilePath;
           if (TraceImageLoad) {
-            GxDxeLog ("LOAD RESOLVE load-file2 begin");
+            GxDxeLogSerialOnly ("LOAD RESOLVE load-file2 begin");
           }
           Status         = CoreLocateDevicePath (&gEfiLoadFile2ProtocolGuid, &HandleFilePath, &DeviceHandle);
           if (TraceImageLoad) {
             AsciiSPrint (GxMessage, sizeof (GxMessage), "LOAD RESOLVE load-file2 status=%r device=%p", Status, DeviceHandle);
-            GxDxeLog (GxMessage);
+            GxDxeLogSerialOnly (GxMessage);
           }
         }
 
         if (EFI_ERROR (Status)) {
           HandleFilePath = FilePath;
           if (TraceImageLoad) {
-            GxDxeLog ("LOAD RESOLVE load-file begin");
+            GxDxeLogSerialOnly ("LOAD RESOLVE load-file begin");
           }
           Status         = CoreLocateDevicePath (&gEfiLoadFileProtocolGuid, &HandleFilePath, &DeviceHandle);
           if (TraceImageLoad) {
             AsciiSPrint (GxMessage, sizeof (GxMessage), "LOAD RESOLVE load-file status=%r device=%p", Status, DeviceHandle);
-            GxDxeLog (GxMessage);
+            GxDxeLogSerialOnly (GxMessage);
           }
           if (!EFI_ERROR (Status)) {
             ImageIsFromLoadFile = TRUE;
@@ -1309,7 +1311,7 @@ CoreLoadImageCommon (
     // Get the source file buffer by its device path.
     //
     if (TraceImageLoad) {
-      GxDxeLog ("LOAD FILE_READ begin");
+      GxDxeLogSerialOnly ("LOAD FILE_READ begin");
     }
     FHand.Source = GetFileBufferByFilePath (
                      BootPolicy,
@@ -1320,7 +1322,7 @@ CoreLoadImageCommon (
     if (TraceImageLoad) {
       AsciiSPrint (GxMessage, sizeof (GxMessage), "LOAD FILE_READ return buffer=%p size=%lu auth=0x%08x",
         FHand.Source, (UINT64)FHand.SourceSize, AuthenticationStatus);
-      GxDxeLog (GxMessage);
+      GxDxeLogSerialOnly (GxMessage);
     }
     if (FHand.Source == NULL) {
       Status = EFI_NOT_FOUND;
@@ -1345,7 +1347,7 @@ CoreLoadImageCommon (
     // Verify File Authentication through the Security2 Architectural Protocol
     //
     if (TraceImageLoad) {
-      GxDxeLog ("LOAD AUTH security2 begin");
+      GxDxeLogSerialOnly ("LOAD AUTH security2 begin");
     }
     SecurityStatus = gSecurity2->FileAuthentication (
                                    gSecurity2,
@@ -1356,7 +1358,7 @@ CoreLoadImageCommon (
                                    );
     if (TraceImageLoad) {
       AsciiSPrint (GxMessage, sizeof (GxMessage), "LOAD AUTH security2 status=%r", SecurityStatus);
-      GxDxeLog (GxMessage);
+      GxDxeLogSerialOnly (GxMessage);
     }
     if (!EFI_ERROR (SecurityStatus) && ImageIsFromFv) {
       //
@@ -1375,7 +1377,7 @@ CoreLoadImageCommon (
                                     );
       if (TraceImageLoad) {
         AsciiSPrint (GxMessage, sizeof (GxMessage), "LOAD AUTH firmware-volume status=%r", SecurityStatus);
-        GxDxeLog (GxMessage);
+        GxDxeLogSerialOnly (GxMessage);
       }
     }
   } else if ((gSecurity != NULL) && (OriginalFilePath != NULL)) {
@@ -1383,7 +1385,7 @@ CoreLoadImageCommon (
     // Verify the Authentication Status through the Security Architectural Protocol
     //
     if (TraceImageLoad) {
-      GxDxeLog ("LOAD AUTH firmware begin");
+      GxDxeLogSerialOnly ("LOAD AUTH firmware begin");
     }
     SecurityStatus = gSecurity->FileAuthenticationState (
                                   gSecurity,
@@ -1392,7 +1394,7 @@ CoreLoadImageCommon (
                                   );
     if (TraceImageLoad) {
       AsciiSPrint (GxMessage, sizeof (GxMessage), "LOAD AUTH firmware status=%r", SecurityStatus);
-      GxDxeLog (GxMessage);
+      GxDxeLogSerialOnly (GxMessage);
     }
   }
 
@@ -1470,14 +1472,14 @@ CoreLoadImageCommon (
   //
   if (TraceImageLoad) {
     AsciiSPrint (GxMessage, sizeof (GxMessage), "LOAD PE begin size=%lu image=%p", (UINT64)FHand.SourceSize, Image->Handle);
-    GxDxeLog (GxMessage);
+    GxDxeLogSerialOnly (GxMessage);
   }
   Status = CoreLoadPeImage (BootPolicy, &FHand, Image, DstBuffer, EntryPoint, Attribute);
   if (TraceImageLoad) {
     AsciiSPrint (GxMessage, sizeof (GxMessage), "LOAD PE return status=%r base=%p image_size=%lu machine=%u entry=%p",
       Status, Image->Info.ImageBase, (UINT64)Image->Info.ImageSize, Image->Machine,
       ((EntryPoint != NULL) && !EFI_ERROR (Status)) ? (VOID *)(UINTN)*EntryPoint : NULL);
-    GxDxeLog (GxMessage);
+    GxDxeLogSerialOnly (GxMessage);
   }
   if (EFI_ERROR (Status)) {
     if ((Status == EFI_BUFFER_TOO_SMALL) || (Status == EFI_OUT_OF_RESOURCES)) {
@@ -1601,7 +1603,7 @@ Done:
   if (TraceImageLoad) {
     AsciiSPrint (GxMessage, sizeof (GxMessage), "LOAD DONE status=%r image=%p source_size=%lu auth=0x%08x",
       Status, (Image != NULL) ? Image->Handle : NULL, (UINT64)FHand.SourceSize, AuthenticationStatus);
-    GxDxeLog (GxMessage);
+    GxDxeLogSerialOnly (GxMessage);
   }
 
   return Status;
@@ -1730,7 +1732,7 @@ CoreStartImage (
       (Image->ImageContext.PdbPointer != NULL) ? Image->ImageContext.PdbPointer : "unknown",
       ImageHandle, Image->Info.ParentHandle, Image->Info.ImageBase, (UINT64)Image->Info.ImageSize,
       Image->Machine, Image->EntryPoint, Image->Info.LoadOptionsSize);
-    GxDxeLog (GxMessage);
+    GxDxeLogSerialOnly (GxMessage);
     ParentImage = (Image->Info.ParentHandle != NULL) ?
                   CoreLoadedImageInfo (Image->Info.ParentHandle) : NULL;
     if (ParentImage != NULL) {
@@ -1738,20 +1740,20 @@ CoreStartImage (
         "OS START PARENT handle=%p base=%p size=%lu machine=%u",
         Image->Info.ParentHandle, ParentImage->Info.ImageBase,
         (UINT64)ParentImage->Info.ImageSize, ParentImage->Machine);
-      GxDxeLog (GxMessage);
+      GxDxeLogSerialOnly (GxMessage);
       if (ParentImage->Info.FilePath != NULL) {
         GxParentPathText = ConvertDevicePathToText (ParentImage->Info.FilePath, FALSE, FALSE);
         if (GxParentPathText != NULL) {
           GxDxeLogUnicodeData ("OS START PARENT_PATH", GxParentPathText, StrSize (GxParentPathText));
           CoreFreePool (GxParentPathText);
         } else {
-          GxDxeLog ("OS START PARENT_PATH conversion FAILED");
+          GxDxeLogSerialOnly ("OS START PARENT_PATH conversion FAILED");
         }
       } else {
-        GxDxeLog ("OS START PARENT_PATH <none>");
+        GxDxeLogSerialOnly ("OS START PARENT_PATH <none>");
       }
     } else {
-      GxDxeLog ("OS START PARENT image metadata unavailable");
+      GxDxeLogSerialOnly ("OS START PARENT image metadata unavailable");
     }
     if (Image->Info.FilePath != NULL) {
       GxDevicePathText = ConvertDevicePathToText (Image->Info.FilePath, FALSE, FALSE);
@@ -1760,17 +1762,17 @@ CoreStartImage (
         GxDxeSetCurrentImagePath (ImageHandle, GxDevicePathText);
       } else {
         GxDxeSetCurrentImagePath (ImageHandle, NULL);
-        GxDxeLog ("OS START PATH conversion FAILED");
+        GxDxeLogSerialOnly ("OS START PATH conversion FAILED");
       }
     } else {
       GxDxeSetCurrentImagePath (ImageHandle, NULL);
-      GxDxeLog ("OS START PATH <none>");
+      GxDxeLogSerialOnly ("OS START PATH <none>");
     }
 
     if ((Image->Info.LoadOptions != NULL) && (Image->Info.LoadOptionsSize != 0)) {
       GxDxeLogUnicodeData ("OS START OPTIONS", (CONST CHAR16 *)Image->Info.LoadOptions, Image->Info.LoadOptionsSize);
     } else {
-      GxDxeLog ("OS START OPTIONS <none>");
+      GxDxeLogSerialOnly ("OS START OPTIONS <none>");
     }
   }
   if ((Image == NULL) ||  Image->Started) {
@@ -1865,14 +1867,14 @@ CoreStartImage (
         ImageHandle,
         (Image->ImageContext.PdbPointer != NULL) ? Image->ImageContext.PdbPointer : "unknown",
         Image->Info.ImageBase, (UINT64)Image->Info.ImageSize, Image->Machine, Image->EntryPoint);
-      GxDxeLog (GxMessage);
+      GxDxeLogSerialOnly (GxMessage);
     }
     Image->Status  = Image->EntryPoint (ImageHandle, Image->Info.SystemTable);
     if (Image->Type == EFI_IMAGE_SUBSYSTEM_EFI_APPLICATION) {
       AsciiSPrint (GxMessage, sizeof (GxMessage), "OS START ENTRYPOINT returned app=%a status=%r exit_data_size=%lu",
         (Image->ImageContext.PdbPointer != NULL) ? Image->ImageContext.PdbPointer : "unknown",
         Image->Status, (UINT64)Image->ExitDataSize);
-      GxDxeLog (GxMessage);
+      GxDxeLogSerialOnly (GxMessage);
     }
 
     //

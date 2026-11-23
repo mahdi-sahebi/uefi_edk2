@@ -1951,7 +1951,14 @@ GxDxeDiagnosticsRunChecks (IN CONST CHAR8 *Category)
     if (!EFI_ERROR (Status)) {
       Status = gDxeCoreST->RuntimeServices->GetVariable (L"BootOrder", &gEfiGlobalVariableGuid, NULL, &Required, BootOrder);
       if (!EFI_ERROR (Status) && (Required % sizeof (UINT16) == 0)) {
+        CHAR8 BootMessage[96];
+
         GxDiagAdd ("Boot paths", (Required != 0) ? GxDiagPass : GxDiagWarn, FALSE, "BootOrder entries readable");
+        for (Index = 0; Index < (Required / sizeof (UINT16)); Index++) {
+          AsciiSPrint (BootMessage, sizeof (BootMessage), "PREBOOT BootOrder[%lu]=Boot%04x",
+            (UINT64)Index, BootOrder[Index]);
+          GxDxeLogSerialOnly (BootMessage);
+        }
       } else GxDiagAdd ("Boot paths", GxDiagWarn, FALSE, "BootOrder could not be read");
       CoreFreePool (BootOrder);
     } else GxDiagAdd ("Boot paths", GxDiagWarn, FALSE, "BootOrder allocation failed");

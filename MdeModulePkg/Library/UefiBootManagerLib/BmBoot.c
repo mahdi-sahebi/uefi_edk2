@@ -1862,6 +1862,7 @@ EfiBootManagerBoot (
   EFI_INPUT_KEY              Key;
   UINTN                      Index;
   UINT8                      *SecureBoot;
+  CHAR16                     *GxBootPathText;
 
   if (BootOption == NULL) {
     return;
@@ -1894,6 +1895,16 @@ EfiBootManagerBoot (
       BootOption->Status = Status;
       return;
     }
+  }
+
+  GxBootPathText = ConvertDevicePathToText (BootOption->FilePath, FALSE, FALSE);
+  DEBUG ((DEBUG_ERROR, "[GX-BOOT] begin option=%04x description='%s' attributes=0x%08x path='%s'\n",
+    (UINT32)OptionNumber,
+    (BootOption->Description != NULL) ? BootOption->Description : L"<none>",
+    BootOption->Attributes,
+    (GxBootPathText != NULL) ? GxBootPathText : L"<unavailable>"));
+  if (GxBootPathText != NULL) {
+    FreePool (GxBootPathText);
   }
 
   //
@@ -1951,6 +1962,8 @@ EfiBootManagerBoot (
 
   ImageHandle       = NULL;
   RamDiskDevicePath = NULL;
+  FileBuffer        = NULL;
+  FileSize          = 0;
   if (DevicePathType (BootOption->FilePath) != BBS_DEVICE_PATH) {
     Status   = EFI_NOT_FOUND;
     FilePath = NULL;
@@ -1969,6 +1982,9 @@ EfiBootManagerBoot (
                       &ImageHandle
                       );
     }
+
+    DEBUG ((DEBUG_ERROR, "[GX-BOOT] option=%04x LoadImage status=%r image=%p file_size=%u\n",
+      (UINT32)OptionNumber, Status, ImageHandle, FileSize));
 
     if (FileBuffer != NULL) {
       FreePool (FileBuffer);
@@ -2109,6 +2125,8 @@ EfiBootManagerBoot (
 
   Status = gBS->StartImage (ImageHandle, &BootOption->ExitDataSize, &BootOption->ExitData);
   DEBUG ((DEBUG_INFO | DEBUG_LOAD, "Image Return Status = %r\n", Status));
+  DEBUG ((DEBUG_ERROR, "[GX-BOOT] option=%04x StartImage return status=%r exit_data_size=%u\n",
+    (UINT32)OptionNumber, Status, BootOption->ExitDataSize));
   BootOption->Status = Status;
 
   //

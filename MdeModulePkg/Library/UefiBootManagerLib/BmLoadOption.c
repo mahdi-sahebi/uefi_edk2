@@ -1323,10 +1323,13 @@ BmGetNextLoadOptionBuffer (
   UINTN                     LocalFileSize;
   UINT32                    AuthenticationStatus;
   EFI_DEVICE_PATH_PROTOCOL  *RamDiskDevicePath;
+  CHAR16                    *GxLoadPathText;
+  UINTN                     CandidateIndex;
 
   LocalFileSize = 0;
   FileBuffer    = NULL;
   CurFullPath   = *FullPath;
+  CandidateIndex = 0;
   do {
     PreFullPath = CurFullPath;
     CurFullPath = BmGetNextLoadOptionDevicePath (FilePath, CurFullPath);
@@ -1338,11 +1341,34 @@ BmGetNextLoadOptionBuffer (
     }
 
     if (CurFullPath == NULL) {
+      if (Type == LoadOptionTypeBoot) {
+        DEBUG ((DEBUG_ERROR, "[GX-BOOT] no more device-path candidates after %u attempts\n", CandidateIndex));
+      }
       break;
     }
 
+    CandidateIndex++;
+    if (Type == LoadOptionTypeBoot) {
+      GxLoadPathText = ConvertDevicePathToText (CurFullPath, FALSE, FALSE);
+      DEBUG ((DEBUG_ERROR, "[GX-BOOT] candidate=%u path='%s'\n", CandidateIndex,
+        (GxLoadPathText != NULL) ? GxLoadPathText : L"<unavailable>"));
+      if (GxLoadPathText != NULL) {
+        FreePool (GxLoadPathText);
+      }
+    }
+
+    LocalFileSize = 0;
+    AuthenticationStatus = 0;
     FileBuffer = GetFileBufferByFilePath (TRUE, CurFullPath, &LocalFileSize, &AuthenticationStatus);
+    if (Type == LoadOptionTypeBoot) {
+      DEBUG ((DEBUG_ERROR, "[GX-BOOT] candidate=%u file-read status=%r buffer=%p size=%u auth=0x%08x\n",
+        CandidateIndex, (FileBuffer != NULL) ? EFI_SUCCESS : EFI_NOT_FOUND, FileBuffer,
+        LocalFileSize, AuthenticationStatus));
+    }
     if ((FileBuffer != NULL) && !BmIsLoadOptionPeHeaderValid (Type, FileBuffer, LocalFileSize)) {
+      if (Type == LoadOptionTypeBoot) {
+        DEBUG ((DEBUG_ERROR, "[GX-BOOT] candidate=%u rejected: invalid EFI image PE header or subsystem\n", CandidateIndex));
+      }
       //
       // Free the RAM disk file system if the load option is invalid.
       //

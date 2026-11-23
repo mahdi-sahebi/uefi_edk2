@@ -21,6 +21,30 @@ requirements. The follow-up HOB values are written directly to the DXE UART
 with a `[GX-HOB]` prefix; this instrumentation does not alter the validation
 result or boot flow.
 
+## Shell gate diagnosis — 2026-11-23
+
+The 2026-11-22 dashboard screenshot still showed the required HOB check
+failing and waited for `B`/`R`. Source tracing found that
+`GxRunPrebootDiagnostics()` was called before Shell registration and waited
+indefinitely on a failed required check. This explains why the Shell was not
+executed; the capture does not establish that malformed HOB data prevented
+Shell execution. The preboot dashboard now retains and logs the failure but
+continues automatically to Shell registration and BDS. The HOB validator is
+unchanged.
+
+Boot diagnostics now log BootOrder entry numbers, Boot#### paths and statuses,
+each expanded device path candidate, file-read result/size/authentication
+status, and invalid PE header rejection. Detailed DXE image loading trace is
+enabled for Boot Manager loads, including image authentication, PE/COFF load
+result, and final status; verbose OS image records are serial-only to keep VGA
+readable. The SOL files in the capture folder end
+before the dashboard/boot attempt and therefore cannot verify these later
+records. The integrated `make -j6` build succeeded and the resulting ROM
+contains these diagnostics (SHA-256:
+`68ffa545e390f52d1fd38cb434da2adcf6e7174341929004fd71706c8ed0a065`). Board
+verification remains pending. See the coreboot
+[Shell gate and OS boot trace report](../../../../../../doc/g4del_shell_gate_and_boot_trace_2026-11-23.md).
+
 ## Evidence boundary
 
 Raw captures remain under `/home/uefi/workspace/log/`; this report records
@@ -230,6 +254,35 @@ The next image should be tested in this order:
 5. Save the complete trace and screen recording with the ROM hash. Fix the
    first failed or incomplete checkpoint pair, rebuild and repeat. Do not
    mark menu, Shell, USB, or splash hardware operation verified until observed.
+
+## 2026-11-23 follow-up: Linux reaches ExitBootServices cleanup
+
+The later capture is in `/home/uefi/workspace/logs/1405-09-02/2/`. VGA now
+shows the Shell, manual launch of `FS0:\EFI\BOOT\BOOTX64.EFI`, a Kali/GRUB
+menu, then a `memmapped(...)` Linux image with load options beginning
+`BOOT-IMAGE=>BOOT\VMLINUZ...`. The last visible DXE EBS line is
+`OS EBS CONSOLE AND BOOT SERVICES POINTERS CLEARED`.
+
+In `CoreExitBootServices()`, that line follows successful
+`CoreTerminateMemoryMap(MapKey)`, returned ExitBootServices notifications,
+the memory protection callback, and interrupt disable. The previous Shell
+gate and initial boot-option lookup are therefore no longer the failure
+boundary. The capture proves the Linux EFI image enters ExitBootServices and
+the firmware accepts the map key, but it does not prove the function returns:
+system-table CRC recalculation, zeroing `gBS`, setting `AtRuntime`, the
+serial-only `OS EBS CORE RETURNING status=EFI_SUCCESS` marker, and the final
+return occur afterward.
+
+The corresponding SOL text file ends at early DXE checkpoint 16 and has no
+Shell or EBS records, so it is not a complete serial capture of the VGA run.
+Do not infer a Linux kernel failure or a firmware cleanup hang from the static
+GRUB splash. The next capture must include complete SOL through
+`OS EBS CORE RETURNING`; that marker distinguishes return to the Linux EFI
+stub from a stall in final firmware cleanup. If it appears, capture early
+Linux serial output and the full GRUB kernel command line to distinguish a
+kernel stall from a console/display transition. The EBS contract is specified
+in [UEFI 2.10 Boot Services](https://uefi.org/specs/UEFI/2.10/07_Services_Boot_Services.html);
+the subsequent Linux boot path is described in the [Linux EFI stub documentation](https://www.kernel.org/doc/html/latest/admin-guide/efi-stub.html).
 
 ## Additional essential checkpoint coverage
 
