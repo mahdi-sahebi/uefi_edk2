@@ -291,3 +291,22 @@ SEC/PEIM/callback/dependency/early-DXE instrumentation, runtime FMAP/config and
 FSP status additions, and the next capture interpretation guide. The earlier
 image hashes above identify the earlier build; use the new coverage report's
 validation record for the additional instrumentation.
+
+## Added EBS checkpoints for the next flash
+
+`DxeMain.c` now emits paired `[GX-EBS]` raw-UART checkpoints around loaded
+image metadata lookup, the before-exit notifications, timer shutdown, memory
+map validation, exit notifications, status-code reporting, memory-protection
+callback, debug-timer shutdown, interrupt disable, system-table pointer clear
+and CRC, Boot Services table clear, runtime-state transition, VGA restoration,
+and the successful return. It writes directly to the UART without DebugLib,
+runtime clock reads, or post-map allocation. When the preallocated VGA log
+backup exists, the same checkpoint is drawn to the pinned VGA trace row.
+
+On the next capture, the final `[GX-EBS]` line identifies the call that did
+not return. `OS EBS core returning status=EFI_SUCCESS` proves EDK2 returned
+success from ExitBootServices; after that point investigate Linux EFI-stub
+and kernel console/handoff output. A `begin` without its matching `returned`
+line identifies the callback or cleanup operation at the hang boundary.
+These checkpoints do not retry ExitBootServices or change its status or gate
+behavior.

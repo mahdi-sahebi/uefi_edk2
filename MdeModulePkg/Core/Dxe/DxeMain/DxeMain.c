@@ -522,6 +522,30 @@ GxDxeLogSerialOnly (
   GxDxeLogInternal (Message, FALSE);
 }
 
+// ExitBootServices tears down the memory map and later clears Boot Services.
+// Keep its final checkpoints independent of DebugLib, RuntimeServices, and
+// memory allocation so the diagnostic path remains usable at that boundary.
+STATIC
+VOID
+GxDxeEbsCheckpoint (
+  IN CONST CHAR8  *Message
+  )
+{
+  if (Message == NULL) {
+    return;
+  }
+
+  SerialPortWrite ((UINT8 *)"[GX-EBS] ", sizeof ("[GX-EBS] ") - 1);
+  SerialPortWrite ((UINT8 *)Message, AsciiStrLen (Message));
+  SerialPortWrite ((UINT8 *)"\r\n", sizeof ("\r\n") - 1);
+
+  // The framebuffer logger has an existing, preallocated background buffer.
+  // Do not allocate after CoreTerminateMemoryMap has accepted the map key.
+  if (mGxDxeScreenBackup != NULL) {
+    GxDxeScreenLog (Message);
+  }
+}
+
 STATIC
 VOID
 GxDxeLogHobSerialOnly (
@@ -1575,6 +1599,7 @@ CoreExitBootServices (
   LOADED_IMAGE_PRIVATE_DATA   *GxImage;
 
   GxLoadedImage = NULL;
+  GxDxeEbsCheckpoint ("OS EBS ENTRY: locating loaded-image metadata");
   GxImageStatus = CoreHandleProtocol (ImageHandle, &gEfiLoadedImageProtocolGuid, (VOID **)&GxLoadedImage);
   GxImage       = (!EFI_ERROR (GxImageStatus) && (GxLoadedImage != NULL)) ?
                   LOADED_IMAGE_PRIVATE_DATA_FROM_THIS (GxLoadedImage) : NULL;
@@ -1590,6 +1615,7 @@ CoreExitBootServices (
     (GxLoadedImage != NULL) ? GxLoadedImage->LoadOptionsSize : 0,
     (UINT64)MapKey);
   GxDxeLog (GxMessage);
+  GxDxeEbsCheckpoint (GxMessage);
 
   GxDxeLogCurrentImagePath (ImageHandle);
 
@@ -1605,62 +1631,78 @@ CoreExitBootServices (
   //
   if (!mExitBootServicesCalled) {
     GxDxeLog ("OS EBS BEFORE_EXIT_BOOT_SERVICES NOTIFY BEGIN");
+    GxDxeEbsCheckpoint ("OS EBS BEFORE_EXIT_BOOT_SERVICES notify begin");
     CoreNotifySignalList (&gEfiEventBeforeExitBootServicesGuid);
     GxDxeLog ("OS EBS BEFORE_EXIT_BOOT_SERVICES NOTIFY RETURNED");
+    GxDxeEbsCheckpoint ("OS EBS BEFORE_EXIT_BOOT_SERVICES notify returned");
     mExitBootServicesCalled = TRUE;
   }
 
   //
   // Disable Timer
   //
+  GxDxeEbsCheckpoint ("OS EBS timer disable begin");
   gTimer->SetTimerPeriod (gTimer, 0);
+  GxDxeEbsCheckpoint ("OS EBS timer disable returned");
 
   //
   // Terminate memory services if the MapKey matches
   //
+  AsciiSPrint (GxMessage, sizeof (GxMessage), "OS EBS memory-map validation begin map_key=0x%lx", (UINT64)MapKey);
+  GxDxeEbsCheckpoint (GxMessage);
   Status = CoreTerminateMemoryMap (MapKey);
   if (EFI_ERROR (Status)) {
     AsciiSPrint (GxMessage, sizeof (GxMessage), "OS EBS REJECTED map_key=0x%lx status=%r",
       (UINT64)MapKey, Status);
     GxDxeLog (GxMessage);
+    GxDxeEbsCheckpoint (GxMessage);
     //
     // Notify other drivers that ExitBootServices fail
     //
+    GxDxeEbsCheckpoint ("OS EBS failed-map notification begin");
     CoreNotifySignalList (&gEventExitBootServicesFailedGuid);
+    GxDxeEbsCheckpoint ("OS EBS failed-map notification returned");
     return Status;
   }
 
   gMemoryMapTerminated = TRUE;
   AsciiSPrint (GxMessage, sizeof (GxMessage), "OS EBS MAP KEY ACCEPTED status=EFI_SUCCESS map_key=0x%lx cleanup=IN_PROGRESS", (UINT64)MapKey);
-  GxDxeLog (GxMessage);
+  GxDxeEbsCheckpoint (GxMessage);
 
   //
   // Notify other drivers that we are exiting boot services.
   //
+  GxDxeEbsCheckpoint ("OS EBS EXIT_BOOT_SERVICES notify begin");
   CoreNotifySignalList (&gEfiEventExitBootServicesGuid);
-  GxDxeLog ("OS EBS EXIT_BOOT_SERVICES NOTIFY RETURNED");
+  GxDxeEbsCheckpoint ("OS EBS EXIT_BOOT_SERVICES notify returned");
 
   //
   // Report that ExitBootServices() has been called
   //
+  GxDxeEbsCheckpoint ("OS EBS progress status-code report begin");
   REPORT_STATUS_CODE (
     EFI_PROGRESS_CODE,
     (EFI_SOFTWARE_EFI_BOOT_SERVICE | EFI_SW_BS_PC_EXIT_BOOT_SERVICES)
     );
+  GxDxeEbsCheckpoint ("OS EBS progress status-code report returned");
 
+  GxDxeEbsCheckpoint ("OS EBS memory-protection callback begin");
   MemoryProtectionExitBootServicesCallback ();
-  GxDxeLog ("OS EBS MEMORY PROTECTION CALLBACK RETURNED");
+  GxDxeEbsCheckpoint ("OS EBS memory-protection callback returned");
 
   //
   // Disable interrupt of Debug timer.
   //
+  GxDxeEbsCheckpoint ("OS EBS debug-timer interrupt disable begin");
   SaveAndSetDebugTimerInterrupt (FALSE);
+  GxDxeEbsCheckpoint ("OS EBS debug-timer interrupt disable returned");
 
   //
   // Disable CPU Interrupts
   //
+  GxDxeEbsCheckpoint ("OS EBS CPU interrupt disable begin");
   gCpu->DisableInterrupt (gCpu);
-  GxDxeLog ("OS EBS CPU INTERRUPTS DISABLED");
+  GxDxeEbsCheckpoint ("OS EBS CPU interrupts disabled");
 
   //
   // Clear the non-runtime values of the EFI System Table
@@ -1672,23 +1714,29 @@ CoreExitBootServices (
   gDxeCoreST->ConsoleOutHandle    = NULL;
   gDxeCoreST->StdErr              = NULL;
   gDxeCoreST->StandardErrorHandle = NULL;
-  GxDxeLog ("OS EBS CONSOLE AND BOOT SERVICES POINTERS CLEARED");
+  GxDxeEbsCheckpoint ("OS EBS console and boot-services pointers cleared");
 
   //
   // Recompute the 32-bit CRC of the EFI System Table
   //
+  GxDxeEbsCheckpoint ("OS EBS system-table CRC calculation begin");
   CalculateEfiHdrCrc (&gDxeCoreST->Hdr);
+  GxDxeEbsCheckpoint ("OS EBS system-table CRC calculation returned");
 
   //
   // Zero out the Boot Service Table
   //
+  GxDxeEbsCheckpoint ("OS EBS boot-services table zero begin");
   ZeroMem (gBS, sizeof (EFI_BOOT_SERVICES));
   gBS = NULL;
+  GxDxeEbsCheckpoint ("OS EBS boot-services table zero returned");
 
   //
   // Update the AtRuntime field in Runtiem AP.
   //
+  GxDxeEbsCheckpoint ("OS EBS runtime-state transition begin");
   gRuntime->AtRuntime = TRUE;
+  GxDxeEbsCheckpoint ("OS EBS runtime-state transition returned");
 
   //
   // This is the final diagnostic checkpoint before returning success to the
@@ -1696,8 +1744,11 @@ CoreExitBootServices (
   // add boot-service allocations or protocol calls after the memory map has
   // been terminated.
   //
-  GxDxeLogSerialOnly ("OS EBS CORE RETURNING status=EFI_SUCCESS");
+  GxDxeEbsCheckpoint ("OS EBS core returning status=EFI_SUCCESS");
+  GxDxeEbsCheckpoint ("OS EBS VGA background restore begin");
   GxDxeRestoreScreenLogBackground ();
+  SerialPortWrite ((UINT8 *)"[GX-EBS] OS EBS VGA background restore returned\r\n",
+    sizeof ("[GX-EBS] OS EBS VGA background restore returned\r\n") - 1);
 
   return Status;
 }
