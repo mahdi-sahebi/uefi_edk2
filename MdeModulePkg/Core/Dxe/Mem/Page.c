@@ -2300,7 +2300,7 @@ CoreTerminateMemoryMap (
         SerialPortWrite ((UINT8 *)"\r\n", sizeof ("\r\n") - 1);
       }
 
-      if (Entry->Type < EfiMaxMemoryType) {
+      if ((UINT32)Entry->Type < EfiMaxMemoryType) {
         if (mMemoryTypeStatistics[Entry->Type].Runtime) {
           ASSERT (Entry->Type != EfiACPIReclaimMemory);
           ASSERT (Entry->Type != EfiACPIMemoryNVS);
