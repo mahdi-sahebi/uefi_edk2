@@ -35,6 +35,13 @@ STATIC UINTN  mGxDxeScreenBackupWidth;
 STATIC UINTN  mGxDxeScreenBackupRows;
 STATIC UINTN  mGxDxeScreenBackupPitch;
 STATIC UINT64 mGxDxeScreenBackupBase;
+STATIC UINT64 mGxDxeScreenBackupSize;
+STATIC UINTN  mGxDxeScreenBackupHeight;
+STATIC UINT32 mGxDxeScreenBackupFormat;
+STATIC BOOLEAN mGxDxeFramebufferSafeForEbs;
+STATIC BOOLEAN mGxDxeBootServicesTerminated;
+STATIC BOOLEAN mGxDxeOsImageHandoff;
+STATIC BOOLEAN mGxDxeFramebufferMismatchLogged;
 STATIC EFI_HANDLE mGxDxeImagePathHandle;
 STATIC CHAR16 *mGxDxeImagePathText;
 STATIC UINT64 mGxDxeElapsedMilliseconds;
@@ -50,6 +57,151 @@ STATIC EFI_STATUS EFIAPI GxDxeDiagnosticsRunChecks (IN CONST CHAR8 *Category);
 STATIC EFI_STATUS EFIAPI GxDxeDiagnosticsGetCheck (IN UINTN Index, OUT GX_DIAG_CHECK *Check);
 STATIC EFI_STATUS EFIAPI GxDxeDiagnosticsGetSummary (OUT UINTN *Count, OUT UINTN *Failures, OUT UINTN *Warnings);
 STATIC CONST EFI_GUID  mGxGraphicsInfoHobGuid = EFI_PEI_GRAPHICS_INFO_HOB_GUID;
+
+typedef struct {
+  UINT64  Base;
+  UINT64  Size;
+  UINT32  Width;
+  UINT32  Height;
+  UINT32  Pitch;
+  UINT32  Format;
+} GX_DXE_FRAMEBUFFER_IDENTITY;
+
+STATIC
+BOOLEAN
+GxDxeGetHobFramebufferIdentity (
+  OUT GX_DXE_FRAMEBUFFER_IDENTITY  *Identity
+  )
+{
+  VOID                       *Hob;
+  EFI_PEI_GRAPHICS_INFO_HOB  *GraphicsInfo;
+
+  if (Identity == NULL) {
+    return FALSE;
+  }
+
+  Hob = GetFirstGuidHob (&mGxGraphicsInfoHobGuid);
+  if ((Hob == NULL) || (GET_GUID_HOB_DATA_SIZE (Hob) < sizeof (*GraphicsInfo))) {
+    return FALSE;
+  }
+
+  GraphicsInfo = (EFI_PEI_GRAPHICS_INFO_HOB *)GET_GUID_HOB_DATA (Hob);
+  Identity->Base   = GraphicsInfo->FrameBufferBase;
+  Identity->Size   = GraphicsInfo->FrameBufferSize;
+  Identity->Width  = GraphicsInfo->GraphicsMode.HorizontalResolution;
+  Identity->Height = GraphicsInfo->GraphicsMode.VerticalResolution;
+  Identity->Pitch  = GraphicsInfo->GraphicsMode.PixelsPerScanLine;
+  Identity->Format = GraphicsInfo->GraphicsMode.PixelFormat;
+  return TRUE;
+}
+
+STATIC
+EFI_STATUS
+GxDxeGetCurrentGopFramebufferIdentity (
+  OUT GX_DXE_FRAMEBUFFER_IDENTITY  *Identity
+  )
+{
+  EFI_STATUS                       Status;
+  EFI_GRAPHICS_OUTPUT_PROTOCOL     *Gop;
+  EFI_GRAPHICS_OUTPUT_MODE_INFORMATION  *ModeInfo;
+
+  if (Identity == NULL) {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  Gop = NULL;
+  Status = CoreLocateProtocol (&gEfiGraphicsOutputProtocolGuid, NULL, (VOID **)&Gop);
+  if (EFI_ERROR (Status) || (Gop == NULL) || (Gop->Mode == NULL) || (Gop->Mode->Info == NULL)) {
+    return EFI_ERROR (Status) ? Status : EFI_NOT_READY;
+  }
+
+  ModeInfo = Gop->Mode->Info;
+  Identity->Base   = Gop->Mode->FrameBufferBase;
+  Identity->Size   = Gop->Mode->FrameBufferSize;
+  Identity->Width  = ModeInfo->HorizontalResolution;
+  Identity->Height = ModeInfo->VerticalResolution;
+  Identity->Pitch  = ModeInfo->PixelsPerScanLine;
+  Identity->Format = ModeInfo->PixelFormat;
+  return EFI_SUCCESS;
+}
+
+STATIC
+BOOLEAN
+GxDxeFramebufferIdentityMatches (
+  IN CONST GX_DXE_FRAMEBUFFER_IDENTITY  *HobIdentity,
+  IN CONST GX_DXE_FRAMEBUFFER_IDENTITY  *GopIdentity
+  )
+{
+  if ((HobIdentity == NULL) || (GopIdentity == NULL)) {
+    return FALSE;
+  }
+
+  return G4delDiagFramebufferIdentityMatches (
+           HobIdentity->Base, HobIdentity->Size, HobIdentity->Width,
+           HobIdentity->Height, HobIdentity->Pitch, HobIdentity->Format,
+           GopIdentity->Base, GopIdentity->Size, GopIdentity->Width,
+           GopIdentity->Height, GopIdentity->Pitch, GopIdentity->Format);
+}
+
+STATIC
+VOID
+GxDxeLogFramebufferIdentity (
+  IN CONST CHAR8                      *Label,
+  IN CONST GX_DXE_FRAMEBUFFER_IDENTITY  *Identity
+  )
+{
+  CHAR8  Message[224];
+
+  if ((Label == NULL) || (Identity == NULL)) {
+    return;
+  }
+
+  AsciiSPrint (Message, sizeof (Message),
+    "%a base=0x%lx size=0x%lx mode=%ux%u pitch=%u format=%u",
+    Label, Identity->Base, Identity->Size, Identity->Width,
+    Identity->Height, Identity->Pitch, Identity->Format);
+  SerialPortWrite ((UINT8 *)"[GX-VGA] ", sizeof ("[GX-VGA] ") - 1);
+  SerialPortWrite ((UINT8 *)Message, AsciiStrLen (Message));
+  SerialPortWrite ((UINT8 *)"\r\n", sizeof ("\r\n") - 1);
+}
+
+STATIC
+BOOLEAN
+GxDxeRefreshFramebufferSafety (
+  IN CONST CHAR8  *Reason
+  )
+{
+  EFI_STATUS                       Status;
+  GX_DXE_FRAMEBUFFER_IDENTITY      HobIdentity;
+  GX_DXE_FRAMEBUFFER_IDENTITY      GopIdentity;
+  BOOLEAN                          HobPresent;
+  BOOLEAN                          Matches;
+  CHAR8                            Message[160];
+
+  HobPresent = GxDxeGetHobFramebufferIdentity (&HobIdentity);
+  Status = GxDxeGetCurrentGopFramebufferIdentity (&GopIdentity);
+  Matches = (BOOLEAN)(HobPresent && !EFI_ERROR (Status) &&
+                      GxDxeFramebufferIdentityMatches (&HobIdentity, &GopIdentity));
+  mGxDxeFramebufferSafeForEbs = Matches;
+
+  AsciiSPrint (Message, sizeof (Message), "%a result=%a gop_status=%r",
+    (Reason != NULL) ? Reason : "framebuffer check",
+    Matches ? "MATCH" : "SKIP", Status);
+  SerialPortWrite ((UINT8 *)"[GX-VGA] ", sizeof ("[GX-VGA] ") - 1);
+  SerialPortWrite ((UINT8 *)Message, AsciiStrLen (Message));
+  SerialPortWrite ((UINT8 *)"\r\n", sizeof ("\r\n") - 1);
+  if (HobPresent) {
+    GxDxeLogFramebufferIdentity ("PEI-HOB", &HobIdentity);
+  } else {
+    SerialPortWrite ((UINT8 *)"[GX-VGA] PEI-HOB identity unavailable\r\n",
+      sizeof ("[GX-VGA] PEI-HOB identity unavailable\r\n") - 1);
+  }
+  if (!EFI_ERROR (Status)) {
+    GxDxeLogFramebufferIdentity ("active-GOP", &GopIdentity);
+  }
+
+  return Matches;
+}
 
 STATIC
 BOOLEAN
@@ -295,6 +447,9 @@ GxDxeSaveScreenLogBackground (
   mGxDxeScreenBackupRows  = ScreenRows;
   mGxDxeScreenBackupPitch = Mode->PixelsPerScanLine;
   mGxDxeScreenBackupBase  = GraphicsInfo->FrameBufferBase;
+  mGxDxeScreenBackupSize  = GraphicsInfo->FrameBufferSize;
+  mGxDxeScreenBackupHeight = Mode->VerticalResolution;
+  mGxDxeScreenBackupFormat = Mode->PixelFormat;
   return TRUE;
 }
 
@@ -307,8 +462,25 @@ GxDxeRestoreScreenLogBackground (
   UINTN                   Row;
   UINTN                   Column;
   volatile UINT32         *FrameBuffer;
+  GX_DXE_FRAMEBUFFER_IDENTITY  SavedIdentity;
+  GX_DXE_FRAMEBUFFER_IDENTITY  HobIdentity;
 
-  if (mGxDxeScreenBackup == NULL) {
+  if ((mGxDxeScreenBackup == NULL) || !mGxDxeFramebufferSafeForEbs) {
+    return;
+  }
+
+  SavedIdentity.Base   = mGxDxeScreenBackupBase;
+  SavedIdentity.Size   = mGxDxeScreenBackupSize;
+  SavedIdentity.Width  = (UINT32)mGxDxeScreenBackupWidth;
+  SavedIdentity.Height = (UINT32)mGxDxeScreenBackupHeight;
+  SavedIdentity.Pitch  = (UINT32)mGxDxeScreenBackupPitch;
+  SavedIdentity.Format = mGxDxeScreenBackupFormat;
+  if (!GxDxeGetHobFramebufferIdentity (&HobIdentity) ||
+      !GxDxeFramebufferIdentityMatches (&SavedIdentity, &HobIdentity))
+  {
+    mGxDxeFramebufferSafeForEbs = FALSE;
+    SerialPortWrite ((UINT8 *)"[GX-VGA] background restore skipped: saved buffer identity/bounds invalid\r\n",
+      sizeof ("[GX-VGA] background restore skipped: saved buffer identity/bounds invalid\r\n") - 1);
     return;
   }
 
@@ -350,6 +522,43 @@ GxDxeScreenLog (
 
   if (Message == NULL) {
     return;
+  }
+
+  // Once an OS loader owns the display, DXE must not overwrite its output.
+  if (mGxDxeOsImageHandoff) {
+    return;
+  }
+
+  // GOP can be changed by GRUB or another EFI application after PEI. Check
+  // its live identity while Boot Services are available, then use the cached
+  // result after ExitBootServices has terminated protocol services.
+  if (mGxDxeBootServicesTerminated) {
+    if (!mGxDxeFramebufferSafeForEbs) {
+      return;
+    }
+  } else {
+    GX_DXE_FRAMEBUFFER_IDENTITY  HobIdentity;
+    GX_DXE_FRAMEBUFFER_IDENTITY  GopIdentity;
+    EFI_STATUS                  GopStatus;
+
+    if (!GxDxeGetHobFramebufferIdentity (&HobIdentity)) {
+      return;
+    }
+    GopStatus = GxDxeGetCurrentGopFramebufferIdentity (&GopIdentity);
+    if (EFI_ERROR (GopStatus) || !GxDxeFramebufferIdentityMatches (&HobIdentity, &GopIdentity)) {
+      if (!mGxDxeFramebufferMismatchLogged) {
+        mGxDxeFramebufferMismatchLogged = TRUE;
+        SerialPortWrite ((UINT8 *)"[GX-VGA] draw skipped: active GOP differs from PEI HOB or is invalid\r\n",
+          sizeof ("[GX-VGA] draw skipped: active GOP differs from PEI HOB or is invalid\r\n") - 1);
+        GxDxeLogFramebufferIdentity ("PEI-HOB", &HobIdentity);
+        if (!EFI_ERROR (GopStatus)) {
+          GxDxeLogFramebufferIdentity ("active-GOP", &GopIdentity);
+        }
+      }
+      return;
+    }
+    mGxDxeFramebufferSafeForEbs = TRUE;
+    mGxDxeFramebufferMismatchLogged = FALSE;
   }
 
   Hob = GetFirstGuidHob (&mGxGraphicsInfoHobGuid);
@@ -546,6 +755,28 @@ GxDxeEbsCheckpoint (
   if (mGxDxeScreenBackup != NULL) {
     GxDxeScreenLog (Message);
   }
+}
+
+VOID
+GxDxePrepareOsImageHandoff (
+  VOID
+  )
+{
+  BOOLEAN  Safe;
+
+  Safe = GxDxeRefreshFramebufferSafety ("OS EFI image handoff GOP identity check");
+  if (Safe) {
+    GxDxeRestoreScreenLogBackground ();
+    SerialPortWrite ((UINT8 *)"[GX-VGA] background restored before OS EFI image entry\r\n",
+      sizeof ("[GX-VGA] background restored before OS EFI image entry\r\n") - 1);
+  } else {
+    SerialPortWrite ((UINT8 *)"[GX-VGA] background restore skipped: framebuffer identity/bounds check failed\r\n",
+      sizeof ("[GX-VGA] background restore skipped: framebuffer identity/bounds check failed\r\n") - 1);
+  }
+
+  mGxDxeOsImageHandoff = TRUE;
+  SerialPortWrite ((UINT8 *)"[GX-VGA] DXE VGA diagnostics disabled at OS EFI image entry; serial logging continues\r\n",
+    sizeof ("[GX-VGA] DXE VGA diagnostics disabled at OS EFI image entry; serial logging continues\r\n") - 1);
 }
 
 STATIC
@@ -1652,6 +1883,7 @@ CoreExitBootServices (
   //
   AsciiSPrint (GxMessage, sizeof (GxMessage), "OS EBS memory-map validation begin map_key=0x%lx", (UINT64)MapKey);
   GxDxeEbsCheckpoint (GxMessage);
+  GxDxeRefreshFramebufferSafety ("pre-EBS active GOP identity check");
   Status = CoreTerminateMemoryMap (MapKey);
   if (EFI_ERROR (Status)) {
     AsciiSPrint (GxMessage, sizeof (GxMessage), "OS EBS REJECTED map_key=0x%lx status=%r",
@@ -1668,6 +1900,7 @@ CoreExitBootServices (
   }
 
   gMemoryMapTerminated = TRUE;
+  mGxDxeBootServicesTerminated = TRUE;
   AsciiSPrint (GxMessage, sizeof (GxMessage), "OS EBS MAP KEY ACCEPTED status=EFI_SUCCESS map_key=0x%lx cleanup=IN_PROGRESS", (UINT64)MapKey);
   GxDxeEbsCheckpoint (GxMessage);
 
@@ -1748,9 +1981,17 @@ CoreExitBootServices (
   //
   GxDxeEbsCheckpoint ("OS EBS core returning status=EFI_SUCCESS");
   GxDxeEbsCheckpoint ("OS EBS VGA background restore begin");
-  GxDxeRestoreScreenLogBackground ();
-  SerialPortWrite ((UINT8 *)"[GX-EBS] OS EBS VGA background restore returned\r\n",
-    sizeof ("[GX-EBS] OS EBS VGA background restore returned\r\n") - 1);
+  if (mGxDxeOsImageHandoff) {
+    SerialPortWrite ((UINT8 *)"[GX-EBS] VGA restore skipped: background restored before OS EFI image entry\r\n",
+      sizeof ("[GX-EBS] VGA restore skipped: background restored before OS EFI image entry\r\n") - 1);
+  } else if (mGxDxeFramebufferSafeForEbs) {
+    GxDxeRestoreScreenLogBackground ();
+    SerialPortWrite ((UINT8 *)"[GX-EBS] OS EBS VGA background restore returned\r\n",
+      sizeof ("[GX-EBS] OS EBS VGA background restore returned\r\n") - 1);
+  } else {
+    SerialPortWrite ((UINT8 *)"[GX-EBS] VGA restore skipped: active GOP differs from PEI HOB or framebuffer bounds invalid\r\n",
+      sizeof ("[GX-EBS] VGA restore skipped: active GOP differs from PEI HOB or framebuffer bounds invalid\r\n") - 1);
+  }
 
   return Status;
 }

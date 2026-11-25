@@ -82,6 +82,22 @@ G4delDiagFramebufferValid (
   );
 
 BOOLEAN
+G4delDiagFramebufferIdentityMatches (
+  G4DEL_UINT64  BaseA,
+  G4DEL_UINT64  SizeA,
+  G4DEL_UINT32  WidthA,
+  G4DEL_UINT32  HeightA,
+  G4DEL_UINT32  PitchA,
+  G4DEL_UINT32  FormatA,
+  G4DEL_UINT64  BaseB,
+  G4DEL_UINT64  SizeB,
+  G4DEL_UINT32  WidthB,
+  G4DEL_UINT32  HeightB,
+  G4DEL_UINT32  PitchB,
+  G4DEL_UINT32  FormatB
+  );
+
+BOOLEAN
 G4delDiagBootAllowed (
   G4DEL_UINTN  FailureCount,
   BOOLEAN      OneTimeOverride

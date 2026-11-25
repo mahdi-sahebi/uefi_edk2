@@ -160,6 +160,7 @@
   gEfiDevicePathProtocolGuid
   gEfiLoadedImageProtocolGuid                   ## PRODUCES
   gEfiLoadedImageDevicePathProtocolGuid         ## PRODUCES
+  gEfiGraphicsOutputProtocolGuid                ## SOMETIMES_CONSUMES
   gEfiHiiPackageListProtocolGuid                ## SOMETIMES_PRODUCES
   gEfiSmmBase2ProtocolGuid                      ## SOMETIMES_CONSUMES
   gEdkiiPeCoffImageEmulatorProtocolGuid         ## SOMETIMES_CONSUMES

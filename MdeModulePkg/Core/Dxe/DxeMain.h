@@ -26,6 +26,11 @@ GxDxeLog (
   );
 
 VOID
+GxDxePrepareOsImageHandoff (
+  VOID
+  );
+
+VOID
 GxDxeLogSerialOnly (
   IN CONST CHAR8  *Message
   );

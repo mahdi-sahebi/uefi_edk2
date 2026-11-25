@@ -1887,6 +1887,16 @@ CoreStartImage (
         (Image->ImageContext.PdbPointer != NULL) ? Image->ImageContext.PdbPointer : "unknown",
         Image->Info.ImageBase, (UINT64)Image->Info.ImageSize, Image->Machine, Image->EntryPoint);
       GxDxeLog (GxMessage);
+
+      // Keep the Shell interactive and visible. For other EFI applications,
+      // restore the validated firmware background before entry and stop DXE
+      // VGA writes so they cannot cover the loader's or kernel's display.
+      if ((Image->ImageContext.PdbPointer == NULL) ||
+          ((AsciiStrStr (Image->ImageContext.PdbPointer, "Shell.dll") == NULL) &&
+           (AsciiStrStr (Image->ImageContext.PdbPointer, "Shell.efi") == NULL)))
+      {
+        GxDxePrepareOsImageHandoff ();
+      }
     }
     Image->Status  = Image->EntryPoint (ImageHandle, Image->Info.SystemTable);
     if (Image->Type == EFI_IMAGE_SUBSYSTEM_EFI_APPLICATION) {

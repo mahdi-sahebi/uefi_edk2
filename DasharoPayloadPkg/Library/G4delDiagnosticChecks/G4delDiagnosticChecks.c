@@ -118,6 +118,30 @@ G4delDiagFramebufferValid (
 }
 
 BOOLEAN
+G4delDiagFramebufferIdentityMatches (
+  G4DEL_UINT64  BaseA,
+  G4DEL_UINT64  SizeA,
+  G4DEL_UINT32  WidthA,
+  G4DEL_UINT32  HeightA,
+  G4DEL_UINT32  PitchA,
+  G4DEL_UINT32  FormatA,
+  G4DEL_UINT64  BaseB,
+  G4DEL_UINT64  SizeB,
+  G4DEL_UINT32  WidthB,
+  G4DEL_UINT32  HeightB,
+  G4DEL_UINT32  PitchB,
+  G4DEL_UINT32  FormatB
+  )
+{
+  return (BOOLEAN)(
+    (BaseA == BaseB) && (SizeA == SizeB) &&
+    (WidthA == WidthB) && (HeightA == HeightB) &&
+    (PitchA == PitchB) && (FormatA == FormatB) &&
+    G4delDiagFramebufferValid (BaseA, SizeA, WidthA, HeightA, PitchA, 4) &&
+    G4delDiagFramebufferValid (BaseB, SizeB, WidthB, HeightB, PitchB, 4));
+}
+
+BOOLEAN
 G4delDiagBootAllowed (
   G4DEL_UINTN  FailureCount,
   BOOLEAN      OneTimeOverride
