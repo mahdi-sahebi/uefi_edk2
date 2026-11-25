@@ -10,6 +10,8 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include "Imem.h"
 #include "HeapGuard.h"
 #include <Pi/PiDxeCis.h>
+#include <Library/PrintLib.h>
+#include <Library/SerialPortLib.h>
 
 //
 // Entry for tracking the memory regions for each memory type to coalesce similar memory types
@@ -2264,6 +2266,8 @@ CoreTerminateMemoryMap (
   EFI_STATUS  Status;
   LIST_ENTRY  *Link;
   MEMORY_MAP  *Entry;
+  UINTN       EntryIndex;
+  CHAR8       SerialMessage[192];
 
   Status = EFI_SUCCESS;
 
@@ -2276,8 +2280,26 @@ CoreTerminateMemoryMap (
     // the  console devices.
     //
 
-    for (Link = gMemoryMap.ForwardLink; Link != &gMemoryMap; Link = Link->ForwardLink) {
+    EntryIndex = 0;
+    for (Link = gMemoryMap.ForwardLink; Link != &gMemoryMap; Link = Link->ForwardLink, EntryIndex++) {
       Entry = CR (Link, MEMORY_MAP, Link, MEMORY_MAP_SIGNATURE);
+      // Keep a serial breadcrumb before the legacy enum comparison below.
+      // A high-bit OS-reserved type must be visible even if that comparison
+      // misclassifies it and indexes mMemoryTypeStatistics out of bounds.
+      if ((UINT32)Entry->Type >= (UINT32)EfiMaxMemoryType) {
+        AsciiSPrint (
+          SerialMessage,
+          sizeof (SerialMessage),
+          "[GX-EBS-MAPCHECK] reserved descriptor index=%lu type_u32=0x%08x start=0x%016lx end=0x%016lx",
+          (UINT64)EntryIndex,
+          (UINT32)Entry->Type,
+          (UINT64)Entry->Start,
+          (UINT64)Entry->End
+          );
+        SerialPortWrite ((UINT8 *)SerialMessage, AsciiStrLen (SerialMessage));
+        SerialPortWrite ((UINT8 *)"\r\n", sizeof ("\r\n") - 1);
+      }
+
       if (Entry->Type < EfiMaxMemoryType) {
         if (mMemoryTypeStatistics[Entry->Type].Runtime) {
           ASSERT (Entry->Type != EfiACPIReclaimMemory);

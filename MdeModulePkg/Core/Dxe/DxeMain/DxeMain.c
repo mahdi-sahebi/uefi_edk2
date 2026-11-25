@@ -27,6 +27,9 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #define GX_DXE_FB_CELL_WIDTH    12
 #define GX_DXE_FB_CELL_HEIGHT   16
 #define GX_DXE_LOG_BUFFER_SIZE  512
+#define GX_DXE_EBS_MAP_MAX_DESCRIPTORS  512
+#define GX_DXE_EBS_MAP_SLOT_SIZE        64
+#define GX_DXE_ACPI_MAX_TABLES          128
 
 STATIC UINTN  mGxDxeScreenRow;
 STATIC UINT32 mGxDxeSequence;
@@ -53,6 +56,15 @@ STATIC EFI_HANDLE mGxDxeDiagnosticsHandle;
 STATIC GX_DXE_DIAGNOSTICS_PROTOCOL mGxDxeDiagnosticsProtocol;
 STATIC GX_DIAG_CHECK mGxDiagChecks[GX_DIAG_MAX_CHECKS];
 STATIC UINTN mGxDiagCheckCount;
+typedef union {
+  EFI_MEMORY_DESCRIPTOR  Descriptor;
+  UINT8                  Bytes[GX_DXE_EBS_MAP_SLOT_SIZE];
+} GX_DXE_EBS_MAP_SLOT;
+
+// This storage is part of DXE Core's image and exists before any OS loader
+// calls ExitBootServices. Do not allocate a map buffer after receiving its key.
+STATIC GX_DXE_EBS_MAP_SLOT mGxDxeEbsMap[GX_DXE_EBS_MAP_MAX_DESCRIPTORS];
+STATIC UINTN mGxDxeEbsObservedMapKey;
 STATIC EFI_STATUS EFIAPI GxDxeDiagnosticsRunChecks (IN CONST CHAR8 *Category);
 STATIC EFI_STATUS EFIAPI GxDxeDiagnosticsGetCheck (IN UINTN Index, OUT GX_DIAG_CHECK *Check);
 STATIC EFI_STATUS EFIAPI GxDxeDiagnosticsGetSummary (OUT UINTN *Count, OUT UINTN *Failures, OUT UINTN *Warnings);
@@ -738,7 +750,7 @@ GxDxeLogSerialOnly (
 // memory allocation so the diagnostic path remains usable at that boundary.
 STATIC
 VOID
-GxDxeEbsCheckpoint (
+GxDxeEbsCheckpointSerialOnly (
   IN CONST CHAR8  *Message
   )
 {
@@ -749,12 +761,118 @@ GxDxeEbsCheckpoint (
   SerialPortWrite ((UINT8 *)"[GX-EBS] ", sizeof ("[GX-EBS] ") - 1);
   SerialPortWrite ((UINT8 *)Message, AsciiStrLen (Message));
   SerialPortWrite ((UINT8 *)"\r\n", sizeof ("\r\n") - 1);
+}
+
+STATIC
+VOID
+GxDxeEbsCheckpoint (
+  IN CONST CHAR8  *Message
+  )
+{
+  GxDxeEbsCheckpointSerialOnly (Message);
 
   // The framebuffer logger has an existing, preallocated background buffer.
   // Do not allocate after CoreTerminateMemoryMap has accepted the map key.
   if (mGxDxeScreenBackup != NULL) {
     GxDxeScreenLog (Message);
   }
+}
+
+STATIC
+VOID
+GxDxeLogEbsMemoryMap (
+  IN UINTN  SubmittedMapKey
+  )
+{
+  EFI_STATUS  Status;
+  UINTN       MapSize;
+  UINTN       CurrentMapKey;
+  UINTN       DescriptorSize;
+  UINT32      DescriptorVersion;
+  UINTN       DescriptorCount;
+  UINTN       Index;
+  CHAR8       Message[GX_DXE_LOG_BUFFER_SIZE];
+
+  MapSize           = sizeof (mGxDxeEbsMap);
+  CurrentMapKey     = 0;
+  DescriptorSize    = 0;
+  DescriptorVersion = 0;
+
+  // Query into preallocated DXE-Core storage. GetMemoryMap is read-only; this
+  // path deliberately performs no allocation or protocol lookup.
+  Status = CoreGetMemoryMap (
+             &MapSize,
+             &mGxDxeEbsMap[0].Descriptor,
+             &CurrentMapKey,
+             &DescriptorSize,
+             &DescriptorVersion
+             );
+  mGxDxeEbsObservedMapKey = CurrentMapKey;
+  AsciiSPrint (
+    Message,
+    sizeof (Message),
+    "OS EBS MAP SNAPSHOT status=%r submitted_key=0x%lx current_key=0x%lx bytes=%lu descriptor_size=%lu version=%u capacity=%u",
+    Status,
+    (UINT64)SubmittedMapKey,
+    (UINT64)CurrentMapKey,
+    (UINT64)MapSize,
+    (UINT64)DescriptorSize,
+    DescriptorVersion,
+    GX_DXE_EBS_MAP_MAX_DESCRIPTORS
+    );
+  GxDxeEbsCheckpointSerialOnly (Message);
+
+  if (EFI_ERROR (Status) || (DescriptorSize < sizeof (EFI_MEMORY_DESCRIPTOR)) ||
+      (DescriptorSize > GX_DXE_EBS_MAP_SLOT_SIZE) || (MapSize % DescriptorSize != 0))
+  {
+    AsciiSPrint (
+      Message,
+      sizeof (Message),
+      "OS EBS MAP SNAPSHOT unavailable or truncated status=%r required_bytes=%lu",
+      Status,
+      (UINT64)MapSize
+      );
+    GxDxeEbsCheckpointSerialOnly (Message);
+    return;
+  }
+
+  DescriptorCount = MapSize / DescriptorSize;
+  for (Index = 0; Index < DescriptorCount; Index++) {
+    EFI_MEMORY_DESCRIPTOR  *Descriptor;
+
+    Descriptor = (EFI_MEMORY_DESCRIPTOR *)((UINT8 *)mGxDxeEbsMap + (Index * DescriptorSize));
+    AsciiSPrint (
+      Message,
+      sizeof (Message),
+      "OS EBS MAP[%lu] type=%u start=0x%016lx pages=0x%lx attributes=0x%016lx",
+      (UINT64)Index,
+      (UINT32)Descriptor->Type,
+      Descriptor->PhysicalStart,
+      Descriptor->NumberOfPages,
+      Descriptor->Attribute
+      );
+    GxDxeEbsCheckpointSerialOnly (Message);
+  }
+}
+
+STATIC
+VOID
+GxDxeLogEbsFinalReturn (
+  IN EFI_STATUS  Status,
+  IN UINTN       MapKey
+  )
+{
+  CHAR8  Message[GX_DXE_LOG_BUFFER_SIZE];
+
+  AsciiSPrint (
+    Message,
+    sizeof (Message),
+    "OS EBS LAST PRE-RETURN status=%r submitted_map_key=0x%lx observed_map_key=0x%lx",
+    Status,
+    (UINT64)MapKey,
+    (UINT64)mGxDxeEbsObservedMapKey
+    );
+  GxDxeEbsCheckpointSerialOnly (Message);
 }
 
 VOID
@@ -1884,6 +2002,7 @@ CoreExitBootServices (
   AsciiSPrint (GxMessage, sizeof (GxMessage), "OS EBS memory-map validation begin map_key=0x%lx", (UINT64)MapKey);
   GxDxeEbsCheckpoint (GxMessage);
   GxDxeRefreshFramebufferSafety ("pre-EBS active GOP identity check");
+  GxDxeLogEbsMemoryMap (MapKey);
   Status = CoreTerminateMemoryMap (MapKey);
   if (EFI_ERROR (Status)) {
     AsciiSPrint (GxMessage, sizeof (GxMessage), "OS EBS REJECTED map_key=0x%lx status=%r",
@@ -1896,6 +2015,7 @@ CoreExitBootServices (
     GxDxeEbsCheckpoint ("OS EBS failed-map notification begin");
     CoreNotifySignalList (&gEventExitBootServicesFailedGuid);
     GxDxeEbsCheckpoint ("OS EBS failed-map notification returned");
+    GxDxeLogEbsFinalReturn (Status, MapKey);
     return Status;
   }
 
@@ -1979,7 +2099,6 @@ CoreExitBootServices (
   // add boot-service allocations or protocol calls after the memory map has
   // been terminated.
   //
-  GxDxeEbsCheckpoint ("OS EBS core returning status=EFI_SUCCESS");
   GxDxeEbsCheckpoint ("OS EBS VGA background restore begin");
   if (mGxDxeOsImageHandoff) {
     SerialPortWrite ((UINT8 *)"[GX-EBS] VGA restore skipped: background restored before OS EFI image entry\r\n",
@@ -1993,6 +2112,8 @@ CoreExitBootServices (
       sizeof ("[GX-EBS] VGA restore skipped: active GOP differs from PEI HOB or framebuffer bounds invalid\r\n") - 1);
   }
 
+  // This is the final firmware log before control returns to the EFI loader.
+  GxDxeLogEbsFinalReturn (Status, MapKey);
   return Status;
 }
 
@@ -2174,34 +2295,177 @@ GxDxeDiagnosticsRunChecks (IN CONST CHAR8 *Category)
 
   FoundAcpi = FALSE;
   {
-    EFI_PHYSICAL_ADDRESS RootAddress = 0;
-    BOOLEAN RootValid = FALSE;
-    UINT8 *Rsdp = NULL;
-  for (Index = 0; Index < gDxeCoreST->NumberOfTableEntries; Index++) {
-    Table = &gDxeCoreST->ConfigurationTable[Index];
-    if (CompareGuid (&Table->VendorGuid, &AcpiGuid)) {
-      Rsdp = Table->VendorTable;
-      FoundAcpi = (Rsdp != NULL) && (AsciiStrnCmp ((CHAR8 *)Rsdp, "RSD PTR ", 8) == 0) && G4delDiagChecksumValid (Rsdp, 20);
-      if (FoundAcpi && (Rsdp[15] >= 2)) {
-        UINT32 RsdpLength;
-        CopyMem (&RsdpLength, Rsdp + 20, sizeof (RsdpLength));
-        FoundAcpi = (RsdpLength >= 36) && (RsdpLength <= 4096) && G4delDiagChecksumValid (Rsdp, RsdpLength);
+    typedef struct {
+      UINT32  Signature;
+      UINT32  Length;
+      UINT8   Revision;
+      UINT8   Checksum;
+      UINT8   OemId[6];
+      UINT8   OemTableId[8];
+      UINT32  OemRevision;
+      UINT32  CreatorId;
+      UINT32  CreatorRevision;
+    } GX_ACPI_HEADER;
+
+    EFI_PHYSICAL_ADDRESS  RootAddress;
+    BOOLEAN               RootValid;
+    UINT8                 *Rsdp;
+    UINT32                RsdpLength;
+    UINT32                ExpectedSignature;
+    UINTN                 ConfigIndex;
+    UINTN                 RootEntrySize;
+    UINTN                 RootEntryCount;
+    UINTN                 RootEntryIndex;
+    CHAR8                 Message[GX_DXE_LOG_BUFFER_SIZE];
+    GX_ACPI_HEADER        *Root;
+
+    RootAddress = 0;
+    RootValid = FALSE;
+    Rsdp = NULL;
+    RsdpLength = 20;
+    ConfigIndex = 0;
+    for (Index = 0; Index < gDxeCoreST->NumberOfTableEntries; Index++) {
+      Table = &gDxeCoreST->ConfigurationTable[Index];
+      if (CompareGuid (&Table->VendorGuid, &AcpiGuid)) {
+        Rsdp = Table->VendorTable;
+        ConfigIndex = Index;
+        FoundAcpi = (Rsdp != NULL) &&
+                    (AsciiStrnCmp ((CHAR8 *)Rsdp, "RSD PTR ", 8) == 0) &&
+                    G4delDiagChecksumValid (Rsdp, 20);
+        if (FoundAcpi && (Rsdp[15] >= 2)) {
+          CopyMem (&RsdpLength, Rsdp + 20, sizeof (RsdpLength));
+          FoundAcpi = (RsdpLength >= 36) && (RsdpLength <= 4096) &&
+                      G4delDiagChecksumValid (Rsdp, RsdpLength);
+        }
+        if (FoundAcpi) {
+          if (Rsdp[15] >= 2) {
+            CopyMem (&RootAddress, Rsdp + 24, sizeof (RootAddress));
+          } else {
+            UINT32  RsdtAddress;
+
+            CopyMem (&RsdtAddress, Rsdp + 16, sizeof (RsdtAddress));
+            RootAddress = RsdtAddress;
+          }
+        }
+        break;
       }
-      if (FoundAcpi) {
-        if (Rsdp[15] >= 2) CopyMem (&RootAddress, Rsdp + 24, sizeof (RootAddress));
-        else { UINT32 RsdtAddress; CopyMem (&RsdtAddress, Rsdp + 16, sizeof (RsdtAddress)); RootAddress = RsdtAddress; }
-      }
-      break;
     }
-  }
-  GxDiagAdd ("ACPI RSDP", FoundAcpi ? GxDiagPass : GxDiagFail, TRUE, FoundAcpi ? "signature/checksum valid" : "missing or checksum invalid");
+
+    AsciiSPrint (
+      Message,
+      sizeof (Message),
+      "ACPI RSDP config_index=%lu present=%u address=%p valid=%u revision=%u length=%u root=0x%016lx",
+      (UINT64)ConfigIndex,
+      (Rsdp != NULL),
+      Rsdp,
+      FoundAcpi,
+      (Rsdp != NULL) ? Rsdp[15] : 0,
+      (Rsdp != NULL) ? RsdpLength : 0,
+      (UINT64)RootAddress
+      );
+    GxDxeLogSerialOnly (Message);
+    GxDiagAdd ("ACPI RSDP", FoundAcpi ? GxDiagPass : GxDiagFail, TRUE, FoundAcpi ? "signature/checksum valid" : "missing or checksum invalid");
+
+    Root = NULL;
     if (FoundAcpi && (RootAddress != 0)) {
-      typedef struct { UINT32 Signature; UINT32 Length; UINT8 Revision; UINT8 Checksum; UINT8 OemId[6]; UINT8 OemTableId[8]; UINT32 OemRevision; UINT32 CreatorId; UINT32 CreatorRevision; } GX_ACPI_HEADER;
-      GX_ACPI_HEADER *Root = (GX_ACPI_HEADER *)(UINTN)RootAddress;
-      UINT32 ExpectedSignature = (Rsdp[15] >= 2) ? SIGNATURE_32 ('X','S','D','T') : SIGNATURE_32 ('R','S','D','T');
-      RootValid = (Root->Signature == ExpectedSignature) && (Root->Length >= sizeof (*Root)) &&
-                  (Root->Length <= 1024 * 1024) && G4delDiagChecksumValid ((UINT8 *)Root, Root->Length);
+      Root = (GX_ACPI_HEADER *)(UINTN)RootAddress;
+      ExpectedSignature = (Rsdp[15] >= 2) ? SIGNATURE_32 ('X','S','D','T') : SIGNATURE_32 ('R','S','D','T');
+      RootValid = (Root->Signature == ExpectedSignature) &&
+                  (Root->Length >= sizeof (*Root)) &&
+                  (Root->Length <= 1024 * 1024) &&
+                  G4delDiagChecksumValid ((UINT8 *)Root, Root->Length);
+      AsciiSPrint (
+        Message,
+        sizeof (Message),
+        "ACPI ROOT address=0x%016lx signature=0x%08x length=%u revision=%u checksum=%a valid=%u",
+        (UINT64)RootAddress,
+        Root->Signature,
+        Root->Length,
+        Root->Revision,
+        RootValid ? "PASS" : "FAIL",
+        RootValid
+        );
+      GxDxeLogSerialOnly (Message);
+
+      if (RootValid) {
+        RootEntrySize = (Rsdp[15] >= 2) ? sizeof (UINT64) : sizeof (UINT32);
+        RootEntryCount = (Root->Length - sizeof (*Root)) / RootEntrySize;
+        AsciiSPrint (
+          Message,
+          sizeof (Message),
+          "ACPI ROOT entries=%lu entry_size=%lu logged_limit=%u trailing_bytes=%lu",
+          (UINT64)RootEntryCount,
+          (UINT64)RootEntrySize,
+          GX_DXE_ACPI_MAX_TABLES,
+          (UINT64)((Root->Length - sizeof (*Root)) % RootEntrySize)
+          );
+        GxDxeLogSerialOnly (Message);
+
+        for (RootEntryIndex = 0;
+             (RootEntryIndex < RootEntryCount) && (RootEntryIndex < GX_DXE_ACPI_MAX_TABLES);
+             RootEntryIndex++)
+        {
+          EFI_PHYSICAL_ADDRESS  TableAddress;
+          GX_ACPI_HEADER        *AcpiTable;
+          UINT32                TableLength;
+          CHAR8                 Signature[5];
+          UINTN                 SignatureIndex;
+          BOOLEAN               TableValid;
+
+          TableAddress = 0;
+          if (RootEntrySize == sizeof (UINT64)) {
+            CopyMem (&TableAddress, (UINT8 *)Root + sizeof (*Root) + (RootEntryIndex * RootEntrySize), sizeof (UINT64));
+          } else {
+            UINT32  TableAddress32;
+
+            CopyMem (&TableAddress32, (UINT8 *)Root + sizeof (*Root) + (RootEntryIndex * RootEntrySize), sizeof (TableAddress32));
+            TableAddress = TableAddress32;
+          }
+
+          TableValid = FALSE;
+          TableLength = 0;
+          ZeroMem (Signature, sizeof (Signature));
+          AcpiTable = (TableAddress != 0) ? (GX_ACPI_HEADER *)(UINTN)TableAddress : NULL;
+          if (AcpiTable != NULL) {
+            CopyMem (Signature, &AcpiTable->Signature, sizeof (AcpiTable->Signature));
+            for (SignatureIndex = 0; SignatureIndex < sizeof (AcpiTable->Signature); SignatureIndex++) {
+              if ((Signature[SignatureIndex] < 0x20) || (Signature[SignatureIndex] > 0x7E)) {
+                Signature[SignatureIndex] = '.';
+              }
+            }
+            TableLength = AcpiTable->Length;
+            TableValid = (TableLength >= sizeof (*AcpiTable)) &&
+                         (TableLength <= 1024 * 1024) &&
+                         G4delDiagChecksumValid ((UINT8 *)AcpiTable, TableLength);
+          }
+
+          AsciiSPrint (
+            Message,
+            sizeof (Message),
+            "ACPI TABLE[%lu] address=0x%016lx signature=%a length=%u revision=%u checksum=%a",
+            (UINT64)RootEntryIndex,
+            (UINT64)TableAddress,
+            (AcpiTable != NULL) ? Signature : "NULL",
+            TableLength,
+            (AcpiTable != NULL) ? AcpiTable->Revision : 0,
+            TableValid ? "PASS" : "FAIL"
+            );
+          GxDxeLogSerialOnly (Message);
+        }
+
+        if (RootEntryCount > GX_DXE_ACPI_MAX_TABLES) {
+          AsciiSPrint (
+            Message,
+            sizeof (Message),
+            "ACPI TABLE inventory truncated logged=%u total=%lu",
+            GX_DXE_ACPI_MAX_TABLES,
+            (UINT64)RootEntryCount
+            );
+          GxDxeLogSerialOnly (Message);
+        }
+      }
     }
+
     GxDiagAdd ("ACPI root", RootValid ? GxDiagPass : GxDiagFail, TRUE, RootValid ? "XSDT/RSDT signature and checksum valid" : "root table missing or malformed");
   }
 
